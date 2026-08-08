@@ -19,6 +19,7 @@ import { ToolbarRow } from "./chat/ToolbarRow";
 import { HistoryMenu } from "./chat/HistoryMenu";
 import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescription, SLASH_SOURCE_ORDER, type SlashCommandPaletteItem } from "./chat/SlashPalette";
 import { AtMenu } from "./chat/AtMenu";
+import { Button } from "./ui/button";
 import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
@@ -964,14 +965,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 {t("chat.queued", { count: (queuedMessages?.steering.length ?? 0) + (queuedMessages?.followUp.length ?? 0) })}
               </span>
               {onRecallQueue && (
-                <button
+                <Button
                   onClick={onRecallQueue}
+                  variant="outline"
+                  size="sm"
                   title={t("chat.recallTitle")}
-                  className="flex items-center gap-1.5 whitespace-nowrap rounded-[7px] border border-[var(--border)] px-3 py-1 text-xs text-[var(--text)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] hover:bg-[var(--bg-hover)]"
+                  className="h-6 gap-1.5 rounded-[7px] px-3 text-xs hover:border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] hover:bg-[var(--bg-hover)]"
                 >
                   <Undo2 size={13} />
                    {t("chat.recall")}
-                </button>
+                </Button>
               )}
             </div>
             {queuedMessages?.steering.map((text, i) => (

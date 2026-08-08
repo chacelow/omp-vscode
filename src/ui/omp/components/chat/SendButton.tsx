@@ -1,5 +1,7 @@
 import { memo } from "react";
 import { Send, Square } from "lucide-react";
+import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
 
 // Round primary send/stop button — one button, two states, icon-only:
 //   idle      → Send (accent circle, disabled when empty)
@@ -17,27 +19,27 @@ interface SendButtonProps {
 export const SendButton = memo(function SendButton({ isStreaming, canSend, onSend, onAbort }: SendButtonProps) {
   if (isStreaming) {
     return (
-      <button
+      <Button
         onClick={onAbort}
+        variant="destructive"
+        size="icon"
         title="Stop"
-        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#ef4444]/45 bg-[#ef4444]/15 text-[#ef4444] transition-colors hover:bg-[#ef4444]/25"
+        className="h-8 w-8 rounded-full border border-[#ef4444]/45 bg-[#ef4444]/15 text-[#ef4444] hover:bg-[#ef4444]/25 hover:text-[#ef4444]"
       >
         <Square size={13} fill="currentColor" />
-      </button>
+      </Button>
     );
   }
   return (
-    <button
+    <Button
       onClick={onSend}
       disabled={!canSend}
+      variant={canSend ? "default" : "secondary"}
+      size="icon"
       title="Send"
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-none transition-colors ${
-        canSend
-          ? "cursor-pointer bg-[var(--accent)] text-white shadow-[0_1px_4px_rgba(37,99,235,0.35)]"
-          : "cursor-not-allowed bg-[var(--bg-panel)] text-[var(--text-dim)]"
-      }`}
+      className={cn("h-8 w-8 rounded-full", !canSend && "shadow-none")}
     >
       <Send size={15} />
-    </button>
+    </Button>
   );
 });
