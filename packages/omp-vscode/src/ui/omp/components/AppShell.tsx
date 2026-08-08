@@ -22,7 +22,7 @@ import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { Spinner, LoadingState } from "./ui/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Check, Copy, Gauge } from "lucide-react";
+import { Check, Copy, Gauge, History } from "lucide-react";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -78,6 +78,7 @@ export function AppShell() {
   const [initialCwdError, setInitialCwdError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
+  const [minimapOpen, setMinimapOpen] = useState(false);
   // Set when the user explicitly clicks "New Session"; ChatWindow consumes it
   // on mount to skip the cwd's resume (fresh session, not continue).
   const forceNewSessionRef = useRef(false);
@@ -511,15 +512,6 @@ export function AppShell() {
     });
   }, [fileTabs]);
 
-  const handleViewFullHistory = useCallback(() => {
-    if (!selectedSession) return;
-    window.open(
-      `/api/sessions/${encodeURIComponent(selectedSession.id)}/export?inline=1`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  }, [selectedSession]);
-
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
   const showChat = selectedSession !== null || effectiveNewSessionCwd !== null;
@@ -876,19 +868,20 @@ export function AppShell() {
           {showChat && (
             <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
               <button
-                onClick={handleViewFullHistory}
+                onClick={() => setMinimapOpen((o) => !o)}
                 disabled={!selectedSession}
-                 title={selectedSession ? translate("history.full") : translate("history.unsaved")}
-                 aria-label={translate("history.full")}
+                title={translate("history.full")}
+                aria-label={translate("history.full")}
+                aria-pressed={minimapOpen}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
                   height: "100%",
                   padding: "0 12px",
-                  background: "none",
+                  background: minimapOpen ? "var(--bg-selected)" : "none",
                   border: "none",
-                  borderTop: "2px solid transparent",
+                  borderTop: minimapOpen ? "2px solid var(--accent)" : "2px solid transparent",
                   borderRight: "1px solid var(--border)",
                   color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
                   cursor: selectedSession ? "pointer" : "not-allowed",
@@ -901,32 +894,15 @@ export function AppShell() {
                 onMouseEnter={(e) => {
                   if (!selectedSession) return;
                   e.currentTarget.style.color = "var(--text)";
-                  e.currentTarget.style.background = "var(--bg-hover)";
+                  e.currentTarget.style.background = minimapOpen ? "var(--bg-selected)" : "var(--bg-hover)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.color = selectedSession ? "var(--text-muted)" : "var(--text-dim)";
-                  e.currentTarget.style.background = "none";
+                  e.currentTarget.style.background = minimapOpen ? "var(--bg-selected)" : "none";
                 }}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-                  <path d="M3 3v5h5" />
-                  <path d="M12 7v5l3 2" />
-                </svg>
-                {!isMobile && <span>{t("Full history", "完整历史")}</span>}
+                <History size={12} style={{ color: selectedSession ? "var(--text-muted)" : "var(--text-dim)", flexShrink: 0 }} />
+                <span>{t("Full history", "完整历史")}</span>
                 </button>
                 <BranchNavigator
                 tree={branchTree}
@@ -1145,6 +1121,7 @@ export function AppShell() {
               key={sessionKey}
               session={selectedSession}
               newSessionCwd={effectiveNewSessionCwd}
+              minimapOpen={minimapOpen}
               onAgentEnd={handleAgentEnd}
               onSessionCreated={handleSessionCreated}
               onSessionForked={handleSessionForked}
