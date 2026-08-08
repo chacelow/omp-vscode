@@ -918,7 +918,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 if (!selectedCwd) return;
                 e.currentTarget.style.background = "var(--bg-selected)";
                 e.currentTarget.style.color = "var(--accent)";
-                e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 35%, transparent)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "var(--bg-hover)";
@@ -936,8 +936,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               onClick={() => loadSessions(false)}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
-                background: sessionRefreshDone ? "rgba(74,222,128,0.18)" : "var(--bg-hover)",
-                border: `1px solid ${sessionRefreshDone ? "rgba(74,222,128,0.4)" : "var(--border)"}`,
+                background: sessionRefreshDone ? "color-mix(in srgb, var(--success) 18%, transparent)" : "var(--bg-hover)",
+                border: `1px solid ${sessionRefreshDone ? "color-mix(in srgb, var(--success) 40%, transparent)" : "var(--border)"}`,
                 color: sessionRefreshDone ? "#4ade80" : "var(--text-muted)",
                 cursor: "pointer",
                 width: 32, height: 32,
@@ -950,7 +950,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 if (sessionRefreshDone) return;
                 e.currentTarget.style.background = "var(--bg-selected)";
                 e.currentTarget.style.color = "var(--accent)";
-                e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 35%, transparent)";
               }}
               onMouseLeave={(e) => {
                 if (sessionRefreshDone) return;
@@ -984,8 +984,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               display: "flex",
               alignItems: "center",
               padding: "6px 10px",
-              background: selectedCwd ? "var(--bg-hover)" : "rgba(37,99,235,0.06)",
-              border: selectedCwd ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.4)",
+              background: selectedCwd ? "var(--bg-hover)" : "color-mix(in srgb, var(--accent) 6%, transparent)",
+              border: selectedCwd ? "1px solid var(--border)" : "1px solid color-mix(in srgb, var(--accent) 40%, transparent)",
               borderRadius: 7,
               cursor: "pointer",
               fontSize: 12,
@@ -1032,7 +1032,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               background: "var(--bg)",
               border: "1px solid var(--border)",
               borderRadius: 8,
-              boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+              boxShadow: "0 6px 20px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
               overflow: "hidden",
             }}
           >
@@ -1268,7 +1268,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   background: "var(--bg)",
                   border: "1px solid var(--border)",
                   borderRadius: 8,
-                  boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+                  boxShadow: "0 6px 20px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
                   overflow: "hidden",
                 }}
               >
@@ -1305,7 +1305,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       const isCurrent = wt.path === selectedCwd || (wt.isMain && !worktreeState.worktrees.some((w) => w.path === selectedCwd));
                       if (wtConfirmRemove === wt.path) {
                         return (
-                          <div key={wt.path} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderBottom: "1px solid var(--border)", background: "rgba(239,68,68,0.06)" }}>
+                          <div key={wt.path} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderBottom: "1px solid var(--border)", background: "color-mix(in srgb, var(--destructive) 6%, transparent)" }}>
                             <span style={{ flex: 1, fontSize: 11, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {t("sidebar.forceRemoveCheckout")}
                             </span>
@@ -1378,7 +1378,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                                 borderRadius: 5, flexShrink: 0,
                                 transition: "color 0.12s, background 0.12s",
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "color-mix(in srgb, var(--destructive) 8%, transparent)"; }}
                               onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1667,7 +1667,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               title={t("sidebar.refreshExplorer")}
               skipHover={explorerRefreshDone}
               color={explorerRefreshDone ? "#4ade80" : "var(--text-dim)"}
-              background={explorerRefreshDone ? "rgba(74,222,128,0.18)" : "none"}
+              background={explorerRefreshDone ? "color-mix(in srgb, var(--success) 18%, transparent)" : "none"}
               marginRight={6}
             >
               {explorerRefreshDone ? (
@@ -1952,7 +1952,7 @@ function SessionItem({
         paddingRight: 8,
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
-          ? "rgba(239,68,68,0.06)"
+          ? "color-mix(in srgb, var(--destructive) 6%, transparent)"
           : isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
         borderLeft: confirmDelete
           ? "2px solid #ef4444"
@@ -2121,7 +2121,7 @@ function SessionItem({
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "var(--bg-selected)";
                   e.currentTarget.style.color = "var(--accent)";
-                  e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                  e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 35%, transparent)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "var(--bg-hover)";
@@ -2145,9 +2145,9 @@ function SessionItem({
                   transition: "background 0.12s, color 0.12s, border-color 0.12s",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+                  e.currentTarget.style.background = "color-mix(in srgb, var(--destructive) 8%, transparent)";
                   e.currentTarget.style.color = "#ef4444";
-                  e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)";
+                  e.currentTarget.style.borderColor = "color-mix(in srgb, var(--destructive) 35%, transparent)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "var(--bg-hover)";

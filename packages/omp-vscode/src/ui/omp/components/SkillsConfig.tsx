@@ -85,7 +85,7 @@ function Toggle({
           height: 16,
           borderRadius: "50%",
           background: "var(--bg)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.22)",
+          boxShadow: "0 1px 4px var(--vscode-widget-shadow, rgba(0,0,0,0.22))",
           transition: "left 0.18s cubic-bezier(.4,0,.2,1)",
         }}
       />
@@ -143,10 +143,10 @@ function SkillDetail({
               flexShrink: 0,
               background:
                 label === "project"
-                  ? "rgba(99,102,241,0.12)"
-                  : "rgba(120,120,120,0.12)",
+                  ? "color-mix(in srgb, var(--accent) 12%, transparent)"
+                  : "color-mix(in srgb, var(--text-muted) 12%, transparent)",
               color:
-                label === "project" ? "rgba(99,102,241,0.8)" : "var(--text-dim)",
+                label === "project" ? "color-mix(in srgb, var(--accent) 80%, transparent)" : "var(--text-dim)",
             }}
           >
             {label}
@@ -667,7 +667,7 @@ function AddSkillPanel({
                       isInstalled || isInstalling || installing !== null
                         ? "not-allowed"
                         : "pointer",
-                    background: isInstalled ? "rgba(34,197,94,0.1)" : "none",
+                    background: isInstalled ? "color-mix(in srgb, var(--success) 10%, transparent)" : "none",
                     color: isInstalled
                       ? "#16a34a"
                       : isInstalling
@@ -906,7 +906,7 @@ export function SkillsConfig({
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.35)",
+        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.35))",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -926,7 +926,7 @@ export function SkillsConfig({
           borderRadius: 10,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+          boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
           overflow: "hidden",
         }}
       >

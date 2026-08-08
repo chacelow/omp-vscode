@@ -670,14 +670,14 @@ export function AppShell() {
           transform: translateY(0);
           filter: blur(0);
           background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
-          box-shadow: 0 18px 44px rgba(37,99,235,0.16);
+          box-shadow: 0 18px 44px color-mix(in srgb, var(--accent) 16%, transparent);
         }
         100% {
           opacity: 1;
           transform: translateY(0);
           filter: blur(0);
           background: var(--bg-panel);
-          box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+          box-shadow: 0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.10));
         }
       }
       @keyframes session-info-light-wash {
@@ -745,7 +745,7 @@ export function AppShell() {
           position: "fixed",
           inset: 0,
           zIndex: 199,
-          background: "rgba(0,0,0,0.4)",
+          background: "var(--vscode-widget-shadow, rgba(0,0,0,0.4))",
           opacity: sidebarOpen ? 1 : 0,
           pointerEvents: sidebarOpen ? "auto" : "none",
           transition: "opacity 0.25s ease",
@@ -1091,7 +1091,7 @@ export function AppShell() {
                 <div className="session-info-popover" style={{
                   background: "var(--bg-panel)",
                   borderBottom: "1px solid var(--border)",
-                  boxShadow: "0 10px 28px rgba(0,0,0,0.10)",
+                  boxShadow: "0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
                   padding: "12px 16px",
                 }}>
                   {sessionStats ? (() => {

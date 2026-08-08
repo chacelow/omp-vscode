@@ -94,7 +94,7 @@ export const ToolbarRow = memo(function ToolbarRow({
           </Button>
         )}
         <div
-          className={`flex items-center ${isMobile ? "absolute right-0 bottom-0 z-[60] w-max max-w-[calc(100vw-32px)] gap-0.5 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--bg-panel)_92%,var(--bg))] p-px shadow-[0_8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[10px]" : "gap-0.5"} ${isMobile && !menuOpen ? "hidden" : "flex"}`}
+          className={`flex items-center ${isMobile ? "absolute right-0 bottom-0 z-[60] w-max max-w-[calc(100vw-32px)] gap-0.5 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--bg-panel)_92%,var(--bg))] p-px shadow-[0_8px_24px_var(--vscode-widget-shadow, rgba(0,0,0,0.14))] backdrop-blur-[10px]" : "gap-0.5"} ${isMobile && !menuOpen ? "hidden" : "flex"}`}
         >
           {!isStreaming && onToolPresetChange && (
             <DropdownMenu open={toolOpen} onOpenChange={setToolOpen}>
@@ -156,7 +156,7 @@ export const ToolbarRow = memo(function ToolbarRow({
               title={isCompacting ? t("chat.stopCompaction") : t("chat.compactContext")}
               aria-label={isCompacting ? t("chat.stopCompaction") : t("chat.compactContext")}
               className={`${iconBtn} gap-1.5 ${
-                isCompacting ? "bg-[#ef4444]/8 text-[#ef4444] hover:bg-[#ef4444]/15 hover:text-[#ef4444]" : ""
+                isCompacting ? "bg-destructive/8 text-destructive hover:bg-destructive/15 hover:text-destructive" : ""
               }`}
             >
               {isCompacting ? (

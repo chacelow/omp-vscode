@@ -217,7 +217,7 @@ export const ModelSelector = memo(function ModelSelector({
       {thinkingOpen && (
         <div
           ref={thinkingRef}
-          className="absolute bottom-full right-0 z-[1001] mb-1 min-w-[120px] rounded-[10px] border border-[var(--border)] bg-[var(--bg)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+          className="absolute bottom-full right-0 z-[1001] mb-1 min-w-[120px] rounded-[10px] border border-[var(--border)] bg-[var(--bg)] p-1 shadow-[0_8px_30px_var(--vscode-widget-shadow, rgba(0,0,0,0.25))]"
         >
           {THINKING_LEVELS.map((level) => {
             const active = thinkingLevel === level;

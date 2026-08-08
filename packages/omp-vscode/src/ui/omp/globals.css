@@ -61,8 +61,12 @@
   --color-secondary-foreground: var(--text);
   --color-muted: var(--bg-panel);
   --color-muted-foreground: var(--text-muted);
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #fff;
+  --color-destructive: var(--vscode-errorForeground, #ef4444);
+  --color-destructive-foreground: var(--vscode-button-foreground, #fff);
+  --warning: var(--vscode-inputValidation-warningBorder, #eab308);
+  --success: var(--vscode-charts-green, #10b981);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
   --color-input: var(--border);
   --color-ring: var(--accent);
   --color-popover: var(--bg);

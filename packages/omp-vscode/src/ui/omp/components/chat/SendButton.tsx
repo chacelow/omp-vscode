@@ -25,7 +25,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
         variant="destructive"
         size="sm"
         title="Stop"
-        className="h-6 w-6 shrink-0 rounded-full border border-[#ef4444]/45 bg-[#ef4444]/15 p-0 text-[#ef4444] hover:bg-[#ef4444]/25 hover:text-[#ef4444]"
+        className="h-6 w-6 shrink-0 rounded-full border border-destructive/45 bg-destructive/15 p-0 text-destructive hover:bg-destructive/25 hover:text-destructive"
       >
         <Square size={10} fill="currentColor" />
       </Button>

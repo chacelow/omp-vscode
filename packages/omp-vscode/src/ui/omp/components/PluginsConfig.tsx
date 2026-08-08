@@ -166,8 +166,8 @@ function ScopeTag({ scope }: { scope: PluginScope }) {
         padding: "1px 5px",
         borderRadius: 3,
         flexShrink: 0,
-        background: scope === "project" ? "rgba(99,102,241,0.12)" : "rgba(120,120,120,0.12)",
-        color: scope === "project" ? "rgba(99,102,241,0.85)" : "var(--text-dim)",
+        background: scope === "project" ? "color-mix(in srgb, var(--accent) 12%, transparent)" : "color-mix(in srgb, var(--text-muted) 12%, transparent)",
+        color: scope === "project" ? "color-mix(in srgb, var(--accent) 85%, transparent)" : "var(--text-dim)",
       }}
     >
       {scope}
@@ -178,7 +178,7 @@ function ScopeTag({ scope }: { scope: PluginScope }) {
 function buttonStyle(disabled?: boolean, danger?: boolean): React.CSSProperties {
   return {
     padding: "6px 12px",
-    background: danger ? "rgba(239,68,68,0.08)" : "none",
+    background: danger ? "color-mix(in srgb, var(--destructive) 8%, transparent)" : "none",
     border: "1px solid var(--border)",
     borderRadius: 6,
     color: danger ? "#ef4444" : "var(--text-muted)",
@@ -231,7 +231,7 @@ function Toggle({
           height: 16,
           borderRadius: "50%",
           background: "var(--bg)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.22)",
+          boxShadow: "0 1px 4px var(--vscode-widget-shadow, rgba(0,0,0,0.22))",
           transition: "left 0.18s cubic-bezier(.4,0,.2,1)",
         }}
       />
@@ -501,7 +501,7 @@ function PackageDetail({
                 fontSize: 10,
                 padding: "1px 5px",
                 borderRadius: 3,
-                background: "rgba(120,120,120,0.12)",
+                background: "color-mix(in srgb, var(--text-muted) 12%, transparent)",
                 color: "var(--text-dim)",
               }}
             >
@@ -760,7 +760,7 @@ export function PluginsConfig({
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.35)",
+        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.35))",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -780,7 +780,7 @@ export function PluginsConfig({
           borderRadius: 8,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+          boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
           overflow: "hidden",
         }}
       >

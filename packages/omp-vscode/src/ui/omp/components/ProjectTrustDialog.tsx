@@ -28,7 +28,7 @@ export function ProjectTrustDialog({
         alignItems: "center",
         justifyContent: "center",
         padding: 16,
-        background: "rgba(0,0,0,0.4)",
+        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.4))",
       }}
       onClick={(event) => {
         if (!busy && event.target === event.currentTarget) onCancel();
@@ -44,7 +44,7 @@ export function ProjectTrustDialog({
           border: "1px solid var(--border)",
           borderRadius: 8,
           background: "var(--bg-panel)",
-          boxShadow: "0 12px 36px rgba(0,0,0,0.24)",
+          boxShadow: "0 12px 36px var(--vscode-widget-shadow, rgba(0,0,0,0.24))",
           overflow: "hidden",
         }}
       >

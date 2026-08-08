@@ -155,7 +155,7 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
         position: "fixed",
         inset: 0,
         zIndex: 1200,
-        background: "rgba(0,0,0,0.5)",
+        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.5))",
         backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
@@ -178,7 +178,7 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
           borderRadius: 10,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
+          boxShadow: "0 12px 40px var(--vscode-widget-shadow, rgba(0,0,0,0.3))",
           overflow: "hidden",
         }}
       >

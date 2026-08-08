@@ -990,13 +990,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         )}
         {/* Retry banner */}
         {retryInfo && (
-          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-[#eab308]/25 bg-[#eab308]/8 px-2.5 py-[5px] text-xs text-[rgba(180,130,0,0.9)]">
+          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-warning/25 bg-warning/8 px-2.5 py-[5px] text-xs text-warning">
             <RefreshCw size={11} className="shrink-0" />
             Retrying upstream request ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span className="ml-1 opacity-70">— {retryInfo.errorMessage}</span>}
           </div>
         )}
         {compactResultText && (
-          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-[#10b981]/24 bg-[#10b981]/8 px-2.5 py-[5px] text-xs text-[rgba(5,150,105,0.95)]">
+          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-success/24 bg-success/8 px-2.5 py-[5px] text-xs text-success">
             <Check size={11} className="shrink-0" />
             {compactResultText}
           </div>
@@ -1004,7 +1004,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {compactError && (
           <div
             role="alert"
-            className="mb-2 whitespace-pre-wrap break-words rounded-md border border-[#ef4444]/30 bg-[#ef4444]/7 px-2.5 py-[7px] font-mono text-xs leading-[1.5] text-[#ef4444]"
+            className="mb-2 whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/7 px-2.5 py-[7px] font-mono text-xs leading-[1.5] text-destructive"
           >
             {compactError}
           </div>
@@ -1072,7 +1072,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             />
           )}
           <div
-            className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--bg-panel)] px-3 pb-2 pt-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.10)] transition-[border-color,background,box-shadow] duration-150"
+            className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--bg-panel)] px-3 pb-2 pt-3 shadow-[0_8px_24px_-12px_var(--vscode-widget-shadow,var(--vscode-widget-shadow, var(--vscode-widget-shadow, rgba(15,23,42,0.10))))] transition-[border-color,background,box-shadow] duration-150"
             style={{
               border: `1px solid ${bashMode ? "var(--tool-bg)" : isStreaming && (onSteer || onFollowUp)
                 ? "rgba(234,179,8,0.4)"

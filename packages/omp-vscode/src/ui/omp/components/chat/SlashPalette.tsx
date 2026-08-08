@@ -99,7 +99,7 @@ export const SlashPalette = memo(function SlashPalette({
   loading, countLabel, filtered, groups, activeIndex, dormancy, onApply, onHover, itemRefs, t,
 }: SlashPaletteProps) {
   return (
-    <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[120] max-h-[min(56vh,460px)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-[0_-6px_20px_rgba(0,0,0,0.12)]">
+    <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[120] max-h-[min(56vh,460px)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-[0_-6px_20px_var(--vscode-widget-shadow, rgba(0,0,0,0.12))]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-dim)]">
         <span>{loading ? t("chat.loadingCommands") : t("chat.slashCommands", { label: countLabel })}</span>
         <span className="font-mono">{t("chat.tabEnter")}</span>

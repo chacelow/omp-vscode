@@ -127,7 +127,7 @@ export function LanguagePicker() {
             minWidth: 170,
             background: "var(--bg-panel)",
             border: "1px solid var(--border)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
+            boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.28))",
             borderRadius: isStarfield ? 0 : 8,
             overflow: "hidden",
             borderTop: isStarfield ? "2px solid #d99b26" : "1px solid var(--border)",
