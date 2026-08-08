@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 import { spawn } from "child_process";
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync, readdirSync, type Dirent } from "fs";
+import { join, relative } from "path";
 import { resolveOmpBinary, setRpcLogFn } from "./omp-rpc";
 import {
   getRpcSession,
@@ -170,6 +170,12 @@ export class ApiHandler {
         return this.configSurface(parts[1] as string, method, parts, body);
       }
       if (parts[1] === "models" && method === "GET") return this.models();
+
+      // /api/file-index?cwd=...&q=... — @ file autocomplete index
+      if (parts[1] === "file-index" && method === "GET") {
+        const params = new URL(url, "http://local").searchParams;
+        return this.fileIndex(params.get("cwd") ?? "", params.get("q") ?? "");
+      }
 
       return { status: 404, body: { error: `Not found: ${path}` } };
     } catch (err) {
@@ -359,6 +365,66 @@ export class ApiHandler {
   // -------------------------------------------------------------------------
   // Config surfaces (not embedded yet — degrade gracefully)
   // -------------------------------------------------------------------------
+
+  /** @ file autocomplete index: walk cwd (bounded), return relative paths. */
+  private async fileIndex(cwd: string, query: string): Promise<HandlerResult> {
+    if (!cwd || !existsSync(cwd)) return { status: 200, body: { files: [], truncated: false } };
+    const MAX_FILES = 20_000;
+    const MAX_DEPTH = 8;
+    const IGNORED: Record<string, true> = {
+      node_modules: true, ".git": true, ".hg": true, ".svn": true,
+      dist: true, build: true, ".next": true, ".cache": true,
+      ".vscode-test": true, ".DS_Store": true,
+    };
+    const files: string[] = [];
+    let truncated = false;
+
+    const walk = (dir: string, depth: number): void => {
+      if (truncated || depth > MAX_DEPTH) return;
+      let entries: Dirent[];
+      try {
+        entries = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const e of entries) {
+        if (IGNORED[e.name]) continue;
+        const abs = join(dir, e.name);
+        const rel = relative(cwd, abs).split("\\").join("/");
+        if (e.isDirectory()) {
+          walk(abs, depth + 1);
+        } else if (e.isFile()) {
+          files.push(rel);
+          if (files.length >= MAX_FILES) {
+            truncated = true;
+            return;
+          }
+        }
+      }
+    };
+    walk(cwd, 0);
+
+    if (!query) {
+      return { status: 200, body: { files, truncated } };
+    }
+    // Query mode: filter paths (substring on the basename or full path) and
+    // return entries with derived directories (matches the webview format).
+    const q = query.toLowerCase();
+    const matched = files.filter((f) => f.toLowerCase().includes(q));
+    const dirs = new Set<string>();
+    for (const f of matched) {
+      let idx = f.indexOf("/");
+      while (idx !== -1) {
+        dirs.add(f.slice(0, idx));
+        idx = f.indexOf("/", idx + 1);
+      }
+    }
+    const matches: { path: string; isDir: boolean }[] = [];
+    for (const d of dirs) matches.push({ path: d, isDir: true });
+    for (const f of matched) matches.push({ path: f, isDir: false });
+    matches.sort((a, b) => a.path.split("/").length - b.path.split("/").length || a.path.localeCompare(b.path));
+    return { status: 200, body: { matches } };
+  }
 
   private async configSurface(surface: string, _method: string, parts: string[], body?: string): Promise<HandlerResult> {
     switch (surface) {
