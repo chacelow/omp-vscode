@@ -52,7 +52,7 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
-const READY_TIMEOUT_MS = 30_000;
+const READY_TIMEOUT_MS = 10_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
 /** Locate the omp binary: explicit install dirs first, then PATH. */

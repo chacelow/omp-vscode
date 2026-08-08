@@ -644,7 +644,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // explicit request for a fresh session (no resume of the cwd's recent
       // one). Initial open (nonce unchanged) keeps omp's resume behavior.
       const forceNewSession = initialForceNewSessionRef.current;
-      const res = await fetch("/api/agent/new", {
+      let res = await fetch("/api/agent/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -657,7 +657,25 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             : {}),
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // A session that resumes an unfinished tool call can stall the omp
+        // process (verified) — retry once as a fresh session instead of
+        // blocking the whole warm-up on it.
+        if (!forceNewSession) {
+          res = await fetch("/api/agent/new", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cwd: newSessionCwd,
+              type: "ensure_session",
+              forceNewSession: true,
+              ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
+              ...(selectedThinkingLevel ? { thinkingLevel: selectedThinkingLevel } : {}),
+            }),
+          });
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }
       const result = await res.json() as {
         sessionId: string;
         model?: SelectedModel | null;

@@ -18,6 +18,27 @@ export interface OmpModelItem {
   provider: string;
 }
 
+/** Read the configured providers' models from ~/.omp/agent/models.yml
+ *  (the OMP config surface — local, no network). */
+export function readOmpModelsFromConfig(): OmpModelItem[] {
+  const configPath = join(getOmpAgentDir(), "models.yml");
+  if (!existsSync(configPath)) return [];
+  try {
+    const doc = parseYaml(readFileSync(configPath, "utf8")) as { providers?: Record<string, { models?: Array<{ id?: string; name?: string }> }> };
+    const providers = doc?.providers ?? {};
+    const items: OmpModelItem[] = [];
+    for (const [provider, cfg] of Object.entries(providers)) {
+      if (!cfg || !Array.isArray(cfg.models)) continue;
+      for (const m of cfg.models) {
+        if (m && typeof m.id === "string") items.push({ id: m.id, name: m.name || m.id, provider });
+      }
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
 /** OMP's own model cache (~/.omp/agent/models.db) — written by the CLI, read
  *  without network. Used when get_available_models stalls on a remote
  *  custom provider (e.g. a slow cursor-proxy baseUrl). */

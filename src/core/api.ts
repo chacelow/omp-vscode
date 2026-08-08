@@ -12,7 +12,7 @@ import {
   subscribeRunningSessions,
 } from "./rpc-manager";
 import { getOmpAgentDir, listAllSessions, loadSessionContext, readSessionHeader, resolveSessionPath } from "./session-reader";
-import { parseModelRef, readOmpConfig, readOmpModelsFromDb } from "./omp-models";
+import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
 // ============================================================================
 // In-memory API handler — replaces the omp-web HTTP service.
@@ -275,10 +275,16 @@ export class ApiHandler {
     };
   }
 
-  /** GET /api/models — from the OMP runtime (get_available_models), matching
-   *  the TUI's live model view. Roles come from config.yml (the CLI's own
-   *  config surface). No offline fallback: the frontend warms up a session
-   *  before requesting models. */
+  /**
+   * GET /api/models — the user's configured model list, read locally:
+   *   1. ~/.omp/agent/models.yml providers (the OMP config surface — the
+   *      exact list the user configured; no network)
+   *   2. models.db entries for providers referenced by modelRoles (e.g.
+   *      deepseek) that aren't in models.yml
+   * get_available_models is NOT used as the primary source — it can stall on
+   * a remote custom provider (OAuth refresh / model discovery), which is
+   * pointless when the config already defines the models.
+   */
   private async models(): Promise<HandlerResult> {
     const config = readOmpConfig();
     const roles = config.modelRoles ?? {};
@@ -297,72 +303,49 @@ export class ApiHandler {
     }
     const defaultModel = parseModelRef(roles.default) ?? null;
 
-    // A session that resumed with an unfinished tool call can hang the omp
-    // process (verified: get_available_models never responds). Probe each
-    // live session with a short timeout and skip any that don't answer.
+    // 1. Configured providers from models.yml (authoritative for the user's list).
+    const configItems = readOmpModelsFromConfig();
+    // 2. models.db entries for role-referenced providers not in models.yml
+    //    (deepseek, anyrouter, ...).
+    const roleProviders = new Set(Object.values(modelRoles).map((r) => r.provider));
+    const configProviders = new Set(configItems.map((m) => m.provider));
+    const dbItems = readOmpModelsFromDb().filter((m) => roleProviders.has(m.provider) && !configProviders.has(m.provider));
+
+    const items = [...configItems, ...dbItems];
+    const modelList = items.map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
+    const models: Record<string, string> = {};
+    for (const m of items) if (!models[m.id]) models[m.id] = m.name;
+
+    // Current model from the live session (fast local get_state).
+    let currentModel: { provider: string; modelId: string } | null = null;
+    let fastModeEnabled = false;
+    let fastModeActive = false;
     for (const live of getRpcSessionList()) {
       if (!live.isAlive()) continue;
       try {
-        const state = (await withTimeout(live.send({ type: "get_state" }), 30_000)) as {
-          model?: { id: string; provider: string; name?: string };
+        const state = (await withTimeout(live.send({ type: "get_state" }), 2000)) as {
+          model?: { id: string; provider: string };
           fastModeEnabled?: boolean;
           fastModeActive?: boolean;
         };
-        const cacheKey = live.sessionId;
-        const cached = this.modelsCache.get(cacheKey);
-        let list = cached && Date.now() - cached.at < 300_000 ? cached.list : null;
-        if (!list) {
-          const available = (await withTimeout(live.send({ type: "get_available_models" }), 30_000)) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
-          list = (available.models ?? []).map((m) => ({
-            id: m.id,
-            name: m.name || m.id,
-            provider: m.provider,
-            contextWindow: m.contextWindow,
-          }));
-          this.modelsCache.set(cacheKey, { at: Date.now(), list });
-        }
-        const models: Record<string, string> = {};
-        for (const m of list) if (!models[m.id]) models[m.id] = m.name;
-        return {
-          status: 200,
-          body: {
-            models,
-            modelList: list,
-            defaultModel: defaultModel ?? (state.model ? { provider: state.model.provider, modelId: state.model.id } : null),
-            currentModel: state.model ? { provider: state.model.provider, modelId: state.model.id } : null,
-            fastModeEnabled: state.fastModeEnabled ?? false,
-            fastModeActive: state.fastModeActive ?? false,
-            modelRoles,
-            thinkingLevels: {},
-            thinkingLevelMaps: {},
-            thinkingLevelPins: {},
-            modelError: null,
-            modelScopeWarnings: [],
-          },
-        };
+        if (state?.model) currentModel = { provider: state.model.provider, modelId: state.model.id };
+        fastModeEnabled = state?.fastModeEnabled ?? fastModeEnabled;
+        fastModeActive = state?.fastModeActive ?? fastModeActive;
+        if (currentModel) break;
       } catch {
-        // Session is hung (get_available_models can stall on a slow remote
-        // custom provider) — try the next live session.
         continue;
       }
     }
 
-    // No healthy session answered. Fall back to OMP's own model cache
-    // (~/.omp/agent/models.db, written by the CLI — no network) so the
-    // selector still has the catalog.
-    const items = readOmpModelsFromDb();
-    const fallbackList = items.map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
-    const fallbackModels: Record<string, string> = {};
-    for (const m of items) if (!fallbackModels[m.id]) fallbackModels[m.id] = m.name;
     return {
       status: 200,
       body: {
-        models: fallbackModels,
-        modelList: fallbackList,
+        models,
+        modelList,
         defaultModel,
-        currentModel: null,
-        fastModeEnabled: false,
-        fastModeActive: false,
+        currentModel,
+        fastModeEnabled,
+        fastModeActive,
         modelRoles,
         thinkingLevels: {},
         thinkingLevelMaps: {},
