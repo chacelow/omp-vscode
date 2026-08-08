@@ -24,6 +24,9 @@ interface HostMessage {
   error?: string;
   url?: string;
   event?: unknown;
+  cli?: string;
+  pi?: string;
+  omp?: string;
 }
 
 type PendingRequest = {
@@ -84,6 +87,21 @@ window.addEventListener("message", (ev: MessageEvent<HostMessage>) => {
         for (const cb of es._listeners["error"] ?? []) cb(err);
       }
     }
+    return;
+  }
+
+  if (msg.type === "versions") {
+    // /api/version can respond before React mounts ChatWindow and registers its
+    // event listener. Cache the latest value so the component can initialize
+    // from it instead of losing this one-shot host message.
+    const versions = {
+      cli: typeof msg.cli === "string" ? msg.cli : "",
+      pi: typeof msg.pi === "string" ? msg.pi : "",
+      omp: typeof msg.omp === "string" ? msg.omp : "",
+    };
+    (globalThis as { __OMP_VERSIONS?: typeof versions }).__OMP_VERSIONS = versions;
+    window.dispatchEvent(new CustomEvent("omp-versions", { detail: versions }));
+    return;
   }
 });
 
@@ -176,3 +194,9 @@ class BridgeEventSource implements BridgeEventSourceLike {
 }
 
 window.EventSource = BridgeEventSource as unknown as typeof EventSource;
+
+// React requests versions after ChatWindow has mounted its listener. Keeping
+// the request behind an event removes the module-load race for fast responses.
+window.addEventListener("omp-request-versions", () => {
+  ompPost({ type: "getVersions" });
+});

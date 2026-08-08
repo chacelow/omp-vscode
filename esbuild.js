@@ -11,8 +11,10 @@ const production = process.argv.includes("--production");
 
 const common = {
   logLevel: "info",
-  sourcemap: !production,
-  minify: production,
+  // Keep sourcemaps for debugging, but always minify: the webview bundle is
+  // ~12MB unminified and takes several seconds to load in VS Code.
+  sourcemap: true,
+  minify: true,
   bundle: true,
   target: ["es2022"],
 };

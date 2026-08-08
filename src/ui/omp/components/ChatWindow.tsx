@@ -8,6 +8,7 @@ import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantB
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
+import { ProjectSwitcher } from "./ProjectSwitcher";
 import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
@@ -36,6 +37,13 @@ interface Props {
   onSessionStatsPanelOpen?: () => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
   onOpenFile?: (filePath: string) => void;
+  /** Current project (short name) + full path + change callback — for the
+   *  project switcher in the empty chat page (input top-left). */
+  cwdName?: string | null;
+  cwd?: string | null;
+  onCwdChange?: (cwd: string) => void;
+  /** True when the user explicitly requested a new session (no resume). */
+  forceNewSession?: boolean;
 }
 
 function phaseLabel(phase: AgentPhase, t: (key: string, params?: Record<string, string | number>) => string): string | null {
@@ -169,7 +177,7 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { mes
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, cwdName, cwd, onCwdChange, forceNewSession }: Props) {
   const { t } = useI18n();
   const { soundEnabled, onSoundToggle, playDoneSound, unlockAudio } = useAudio();
   const isMobile = useIsMobile();
@@ -215,6 +223,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd: wrappedOnAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
+    forceNewSession,
   });
   const sessionBusy = agentRunning || bashRunning;
 
@@ -332,6 +341,23 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !sessionBusy;
   const messageCwd = session?.cwd ?? newSessionCwd ?? undefined;
+
+  // Versions reported internally by the omp-web service via /api/version.
+  // The bridge caches them because its response may arrive before React mounts.
+  const [serviceVersions, setServiceVersions] = useState<{ cli: string; pi: string; omp: string }>(() => {
+    const cached = (globalThis as { __OMP_VERSIONS?: { cli?: string; pi?: string; omp?: string } }).__OMP_VERSIONS;
+    return { cli: cached?.cli ?? "", pi: cached?.pi ?? "", omp: cached?.omp ?? "" };
+  });
+  useEffect(() => {
+    const apply = (d?: { cli?: string; pi?: string; omp?: string }) => {
+      if (d) setServiceVersions({ cli: d.cli ?? "", pi: d.pi ?? "", omp: d.omp ?? "" });
+    };
+    apply((globalThis as { __OMP_VERSIONS?: { cli?: string; pi?: string; omp?: string } }).__OMP_VERSIONS);
+    const h = (e: Event) => apply((e as CustomEvent<{ cli?: string; pi?: string; omp?: string }>).detail);
+    window.addEventListener("omp-versions", h);
+    window.dispatchEvent(new Event("omp-request-versions"));
+    return () => window.removeEventListener("omp-versions", h);
+  }, []);
 
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
@@ -461,28 +487,55 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       {isEmptyNew ? (
         <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
           <div className="w-full max-w-[820px]">
+            {/* Brand: logo centered, version below */}
             <div
               className="mb-3"
               style={{
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                marginLeft: 16,
-                marginRight: 52,
+                gap: 2,
                 fontFamily: "var(--font-mono)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4, overflow: "hidden" }}>
-                <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: 0, color: "var(--text)", flexShrink: 0, whiteSpace: "nowrap" }}>Ω</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, lineHeight: 1.4 }}>
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 2455 2449"
+                  fill="currentColor"
+                  style={{ color: "var(--text)", flexShrink: 0 }}
+                  aria-hidden="true"
+                >
+                  <path d="M2455 777.771H2045.99V2122.09L1381.8 2449V777.771H1079.65V1937.72L415.462 1553.45V777.771H0V0H2455V777.771Z"/>
+                </svg>
                 <span style={{ fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: 0, flexShrink: 0, whiteSpace: "nowrap" }}>OMP Web</span>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                  omp <span style={{ color: "var(--text)" }}>v{process.env.NEXT_PUBLIC_OMP_VERSION ?? process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}</span>
-                </span>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-muted)",
+                  fontFamily: "var(--font-mono)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+                title="Versions reported by the local omp-web service"
+              >
+                <span>omp <span style={{ color: "var(--text)" }}>v{serviceVersions.cli || serviceVersions.pi || "0.0.0"}</span></span>
+                <span style={{ opacity: 0.6 }}>·</span>
+                <span>pi <span style={{ color: "var(--text)" }}>v{serviceVersions.pi || "0.0.0"}</span></span>
+                <span style={{ opacity: 0.6 }}>·</span>
+                <span>omp-web <span style={{ color: "var(--text)" }}>v{serviceVersions.omp || "0.0.0"}</span></span>
               </div>
             </div>
+
+            {/* Project switcher — input top-left entry point (aligned with
+                the input's 16px left padding; hidden once the chat has content) */}
+            <div style={{ marginBottom: 10, paddingLeft: 16 }}>
+              <ProjectSwitcher cwdName={cwdName ?? null} cwd={cwd ?? null} onSelect={onCwdChange ?? (() => {})} />
+            </div>
+
             <NoticeShelf notices={notices} align="right" />
             {chatInputElement}
           </div>

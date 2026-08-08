@@ -7,7 +7,11 @@
 
 declare function acquireVsCodeApi(): { postMessage: (msg: unknown) => void };
 
+// acquireVsCodeApi() may only be called ONCE per webview; expose the single
+// instance globally so other modules (e.g. ChatWindow) can post without
+// calling it again.
 const vscode = acquireVsCodeApi();
+(globalThis as { __ompVscode?: { postMessage: (msg: unknown) => void } }).__ompVscode = vscode;
 
 export function ompPost(msg: unknown): void {
   try {

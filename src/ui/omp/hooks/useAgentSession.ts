@@ -150,6 +150,9 @@ export interface UseAgentSessionOptions {
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsPanelOpen?: () => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
+  /** True when the user explicitly requested a new session (no resume of the
+   * cwd's recent omp session). Captured at mount. */
+  forceNewSession?: boolean;
 }
 
 export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
@@ -338,8 +341,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const isNew = session === null && newSessionCwd !== null;
 
+  // Snapshot at mount: if the shell mounted this ChatWindow because the user
+  // clicked "New Session", forceNewSession stays true for this instance.
+  const initialForceNewSessionRef = useRef(opts.forceNewSession === true);
+
   const [data, setData] = useState<SessionData | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(() =>
+    session !== null || (newSessionCwd !== null && opts.forceNewSession !== true),
+  );
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -605,6 +614,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const selectedThinkingLevel = thinkingLevelOverrideRef.current;
       if (selectedModel) setPendingModel(selectedModel);
       const toolNames = getToolNamesForPreset(toolPreset);
+      // Sidebar "New Session" remounts with a bumped nonce — that is an
+      // explicit request for a fresh session (no resume of the cwd's recent
+      // one). Initial open (nonce unchanged) keeps omp's resume behavior.
+      const forceNewSession = initialForceNewSessionRef.current;
       const res = await fetch("/api/agent/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -612,6 +625,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           cwd: newSessionCwd,
           type: "ensure_session",
           toolNames,
+          ...(forceNewSession ? { forceNewSession: true } : {}),
           ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
           ...(selectedThinkingLevel
             ? { thinkingLevel: selectedThinkingLevel }
@@ -1310,6 +1324,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             }
           }
           await ensureEventsConnected(sid);
+          // Resume case: omp --mode rpc --cwd continues the cwd's recent
+          // session, so load its history into the view. Explicit new-session
+          // case: the fresh session file exists but is empty — loading it
+          // would wipe the optimistic first message, so skip and let the
+          // event stream deliver it.
+          if (!initialForceNewSessionRef.current) {
+            await loadSession(sid);
+          }
           promptRequestStarted = true;
           await sendAgentCommand(sid, {
             type: "prompt",
@@ -1364,7 +1386,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentPhase(null);
       dispatch({ type: "end" });
     }
-  }, [isNew, newSessionCwd, newSessionModel, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, cancelEventStreamGrace, closeEvents, opts.chatInputRef]);
+  }, [isNew, newSessionCwd, newSessionModel, session, ensureNewSession, ensureEventsConnected, loadSession, promoteNewSession, waitForPromptSettlement, addNotice, cancelEventStreamGrace, closeEvents, opts.chatInputRef]);
 
   const executeBash = useCallback(async (command: string, excludeFromContext: boolean) => {
     if (agentRunningRef.current || bashRunningRef.current) return;
@@ -1666,7 +1688,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             onSessionForked?.(res.sessionId);
             return complete({ handled: true, message: `Forked session (${res.sessionId.slice(0, 8)})` });
           }
-          return complete({ handled: true, message: "Forked session" });
+          return complete({ handled: true, message: "Fork is not supported in this backend (OMP RPC has no fork command)" });
         }
 
         case "tree": {
@@ -1867,8 +1889,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     if (session) {
       sessionIdRef.current = session.id;
-      loadSession(session.id, true, true).then((agentState) => {
-        if (agentState?.running) {
+      loadSession(session.id, true, true).then((agentState) => {        if (agentState?.running) {
           loadTools(session.id);
           if (agentState.state?.isStreaming || agentState.state?.isPromptRunning) {
             sdkAgentActiveRef.current = Boolean(agentState.state.isStreaming);
@@ -1906,6 +1927,34 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Warm up on the empty (new) chat view: omp --mode rpc --cwd resumes the
+  // cwd's most recent session, so surface its history immediately instead of
+  // only after the first message is sent. Skipped for explicit "New Session":
+  // keep the plain input box — the session is created on the first send.
+  useEffect(() => {
+    if (session || !isNew || !newSessionCwd) return;
+    if (initialForceNewSessionRef.current) return;
+    if (sessionIdRef.current) return;
+    setLoading(true);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const sid = await ensureNewSession();
+        if (cancelled || !sid) return;
+        await loadSession(sid, true);
+        if (cancelled) return;
+        // Surface the resumed session in the shell (sidebar highlight, header)
+        // so the view is a continued conversation, not a blank new-chat page.
+        promoteNewSession(1, "");
+      } catch {
+        // warm-up failure is non-fatal; handleSend will retry
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isNew, newSessionCwd, session, ensureNewSession, loadSession, promoteNewSession]);
 
   useEffect(() => {
     onSystemPromptChange?.(systemPrompt);

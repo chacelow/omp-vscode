@@ -1,33 +1,21 @@
 import * as vscode from "vscode";
-import { OmpClient } from "../core/omp-client";
-import { OmpServerManager } from "../core/server-manager";
-import type { AgentEvent } from "../core/types";
+import { ApiHandler } from "../core/api";
 
 // Sidebar chat view hosting the omp-web React app (AppShell) inside a
 // WebviewView. The React app is bundled as dist/webview.js and talks to the
 // extension host through the fetch/EventSource bridge in src/ui/bridge.ts.
 // This provider only:
 //   - resolves the webview (HTML/CSP)
-//   - proxies /api/* fetch calls to the local omp-web service
-//   - streams SSE events from omp-web into the webview (with auto-reconnect)
-//   - manages the server lifecycle on demand
-
-export interface ChatProviderDeps {
-  server: OmpServerManager;
-}
-
-type WebviewMsg =
-  | { type: "api"; requestId: number; url: string; method: string; headers?: unknown; body?: string }
-  | { type: "events"; url: string }
-  | { type: "eventsClose"; url: string }
-  | { type: "startServer" }
-  | { type: "log"; level: string; message: string; stack?: string };
+//   - answers /api/* fetch calls from the in-memory ApiHandler (embedded OMP
+//     RPC session manager — no HTTP server, no port)
+//   - forwards session/running events to the webview
+//   - spawns `omp --mode rpc` subprocesses on demand (via the ApiHandler)
 
 export class ChatProvider implements vscode.WebviewViewProvider {
   private static instance: ChatProvider | null = null;
 
-  static get(deps: ChatProviderDeps): ChatProvider {
-    if (!ChatProvider.instance) ChatProvider.instance = new ChatProvider(deps);
+  static get(api: ApiHandler): ChatProvider {
+    if (!ChatProvider.instance) ChatProvider.instance = new ChatProvider(api);
     return ChatProvider.instance;
   }
 
@@ -37,15 +25,14 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   }
 
   private view: vscode.WebviewView | null = null;
-  private client: OmpClient;
-  private deps: ChatProviderDeps;
-  private eventStreams = new Map<string, { abort: AbortController; closed: boolean }>();
+  private api: ApiHandler;
+  private eventStreams = new Map<string, { closed: boolean }>();
+  private runningUnsub: (() => void) | null = null;
   private disposed = false;
   private readonly log = vscode.window.createOutputChannel("OMP Chat");
 
-  private constructor(deps: ChatProviderDeps) {
-    this.deps = deps;
-    this.client = new OmpClient(deps.server.baseUrl);
+  private constructor(api: ApiHandler) {
+    this.api = api;
   }
 
   // -------------------------------------------------------------------------
@@ -55,7 +42,6 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
     this.disposed = false;
-    this.client = new OmpClient(this.deps.server.baseUrl);
 
     webviewView.webview.options = {
       enableScripts: true,
@@ -66,7 +52,7 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this.buildHtml(webviewView.webview);
-    webviewView.webview.onDidReceiveMessage((msg: WebviewMsg) => {
+    webviewView.webview.onDidReceiveMessage((msg) => {
       void this.handleWebviewMessage(msg);
     });
 
@@ -75,9 +61,8 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  /** Focus the sidebar chat view. Creates it if not resolved yet. */
+  /** Focus the sidebar chat view. No server to start — sessions spawn on demand. */
   async createOrShow(): Promise<void> {
-    await this.deps.server.ensureRunning();
     await vscode.commands.executeCommand("omp.chat.focus");
   }
 
@@ -88,9 +73,6 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   private buildHtml(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extUri(), "dist", "webview.js"));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extUri(), "dist", "webview.css"));
-    // Pass the active workspace folder as the initial cwd so sessions follow
-    // the currently opened directory (omp-web's AppShell reads ?cwd= via
-    // useSearchParams, which our shim feeds from this data attribute).
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
     const csp = [
       "default-src 'none'",
@@ -121,7 +103,8 @@ export class ChatProvider implements vscode.WebviewViewProvider {
 
   private disposeInternal(): void {
     this.disposed = true;
-    for (const [, entry] of this.eventStreams) entry.abort.abort();
+    this.runningUnsub?.();
+    this.runningUnsub = null;
     this.eventStreams.clear();
     this.view = null;
   }
@@ -133,10 +116,19 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   }
 
   // -------------------------------------------------------------------------
-  // Bridge: API proxy
+  // Bridge
   // -------------------------------------------------------------------------
 
-  private async handleWebviewMessage(msg: WebviewMsg): Promise<void> {
+  private async handleWebviewMessage(msg: {
+    type: string;
+    requestId?: number;
+    url?: string;
+    method?: string;
+    body?: string;
+    level?: string;
+    message?: string;
+    stack?: string;
+  }): Promise<void> {
     try {
       switch (msg.type) {
         case "log":
@@ -144,38 +136,25 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           break;
 
         case "api": {
-          const resp = await this.client.rawRequest(msg.url, msg.method, msg.body);
-          this.post({
-            type: "apiResponse",
-            requestId: msg.requestId,
-            status: resp.status,
-            body: resp.body,
-          });
+          const resp = await this.api.handle(msg.url ?? "", msg.method ?? "GET", msg.body);
+          this.post({ type: "apiResponse", requestId: msg.requestId, status: resp.status, body: resp.body });
           break;
         }
 
         case "events":
-          this.startEventStream(msg.url);
+          this.startEventStream(msg.url ?? "");
           break;
 
         case "eventsClose":
-          this.closeEventStream(msg.url);
+          this.closeEventStream(msg.url ?? "");
           break;
 
-        case "startServer":
-          try {
-            await this.deps.server.ensureRunning();
-            this.client = new OmpClient(this.deps.server.baseUrl);
-            this.post({ type: "serverReady" });
-          } catch (err) {
-            this.post({
-              type: "apiResponse",
-              requestId: -1,
-              status: 500,
-              body: { error: err instanceof Error ? err.message : String(err) },
-            });
-          }
+        case "getVersions": {
+          const resp = await this.api.handle("/api/version", "GET");
+          const body = (resp.body ?? {}) as { pi?: string; omp?: string; cli?: string };
+          this.post({ type: "versions", cli: body.cli ?? "", pi: body.pi ?? "", omp: body.omp ?? "" });
           break;
+        }
       }
     } catch (err) {
       if (msg.type === "api") {
@@ -190,7 +169,7 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   }
 
   // -------------------------------------------------------------------------
-  // Bridge: SSE
+  // Event streams (SSE simulation over postMessage)
   // -------------------------------------------------------------------------
 
   private sessionIdFromUrl(url: string): string | null {
@@ -198,43 +177,50 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     return m ? decodeURIComponent(m[1]) : null;
   }
 
+  private isRunningStreamUrl(url: string): boolean {
+    return url.includes("/api/agent/running/events");
+  }
+
   private startEventStream(url: string): void {
-    const existing = this.eventStreams.get(url);
-    if (existing && !existing.abort.signal.aborted) return;
+    if (this.eventStreams.has(url)) return;
+    const entry = { closed: false };
+    this.eventStreams.set(url, entry);
+
+    if (this.isRunningStreamUrl(url)) {
+      this.runningUnsub?.();
+      this.runningUnsub = this.api.subscribeRunning((ids) => {
+        if (entry.closed || this.disposed) return;
+        this.post({ type: "event", url, event: { type: "running", runningSessionIds: ids } });
+      });
+      // Initial snapshot
+      void this.api.handle("/api/agent/running", "GET").then((resp) => {
+        if (entry.closed || this.disposed) return;
+        const body = resp.body as { runningSessionIds?: string[] };
+        this.post({ type: "event", url, event: { type: "running", runningSessionIds: body.runningSessionIds ?? [] } });
+      });
+      return;
+    }
 
     const sid = this.sessionIdFromUrl(url);
     if (!sid) return;
 
-    const abort = new AbortController();
-    this.eventStreams.set(url, { abort, closed: false });
-    const entry = this.eventStreams.get(url)!;
-
-    const stream = async (): Promise<void> => {
-      try {
-        await this.client.streamEvents(
-          sid,
-          (event: AgentEvent) => this.post({ type: "event", url, event }),
-          abort.signal,
-        );
-      } catch {
-        // connection error — retry below if not closed
-      }
-      // Retry forever until the webview asks us to stop (covers server
-      // restarts and transient failures; the React side sees a stable stream).
-      if (!abort.signal.aborted && !entry.closed && !this.disposed) {
-        setTimeout(() => void stream(), 1000);
-      }
-    };
-
-    void stream();
+    const unsub = this.api.subscribeSession(sid, (event) => {
+      if (entry.closed || this.disposed) return;
+      this.post({ type: "event", url, event });
+    });
+    entry.closed = false;
+    (entry as { unsub?: () => void }).unsub = unsub;
   }
 
   private closeEventStream(url: string): void {
     const entry = this.eventStreams.get(url);
-    if (entry) {
-      entry.closed = true;
-      entry.abort.abort();
-      this.eventStreams.delete(url);
+    if (!entry) return;
+    entry.closed = true;
+    (entry as { unsub?: () => void }).unsub?.();
+    this.eventStreams.delete(url);
+    if (this.isRunningStreamUrl(url)) {
+      this.runningUnsub?.();
+      this.runningUnsub = null;
     }
   }
 

@@ -62,6 +62,9 @@ export function AppShell() {
   const [initialCwdError, setInitialCwdError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
+  // Set when the user explicitly clicks "New Session"; ChatWindow consumes it
+  // on mount to skip the cwd's resume (fresh session, not continue).
+  const forceNewSessionRef = useRef(false);
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
@@ -71,7 +74,7 @@ export function AppShell() {
   const [projectTrustDialogOpen, setProjectTrustDialogOpen] = useState(false);
   const [projectTrustBusy, setProjectTrustBusy] = useState(false);
   const [projectTrustError, setProjectTrustError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [mobileSidebarReady, setMobileSidebarReady] = useState(false);
   const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
@@ -349,10 +352,17 @@ export function AppShell() {
     }
   }, [router, isMobile]);
 
+  // Clear the explicit-new-session flag after the remounted ChatWindow has
+  // consumed it (effects run after render).
+  useEffect(() => {
+    if (forceNewSessionRef.current) forceNewSessionRef.current = false;
+  });
+
   const handleNewSession = useCallback((_sessionId: string, cwd: string) => {
     setSelectedSession(null);
     setNewSessionCwd(cwd);
     setSessionKey((k) => k + 1);
+    forceNewSessionRef.current = true;
     setBranchTree([]);
     setBranchActiveLeafId(null);
     setSystemPrompt(null);
@@ -1254,6 +1264,10 @@ export function AppShell() {
               onSessionStatsPanelOpen={openSessionStatsPanel}
               onContextUsageChange={handleContextUsageChange}
               onOpenFile={handleOpenLinkedFile}
+              cwdName={activeCwdName}
+              cwd={activeCwd}
+              onCwdChange={(nextCwd) => handleCwdChange(nextCwd)}
+              forceNewSession={forceNewSessionRef.current}
             />
           ) : initialCwdStatus === "validating" ? (
             <div

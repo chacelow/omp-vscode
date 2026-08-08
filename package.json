@@ -91,6 +91,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.24.0",
+    "jsdom": "^29.1.1",
     "typescript": "^5.5.0"
   },
   "dependencies": {

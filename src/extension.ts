@@ -1,22 +1,24 @@
 import * as vscode from "vscode";
-import { OmpServerManager } from "./core/server-manager";
+import { ApiHandler } from "./core/api";
 import { ChatProvider } from "./providers/chat-provider";
 
-// OMP Chat — VS Code extension.
+// OMP Chat — VS Code extension (single project, zero ports).
 //
 // The entire omp-web UI (AppShell + components, copied into src/ui/omp/) runs
 // inside one sidebar WebviewView. Every fetch/EventSource call from the React
-// app is bridged to this host, which proxies them to the local omp-web
-// service (HTTP + SSE). The service itself is untouched.
+// app is bridged to this host, which answers them from the embedded OMP RPC
+// session manager (ApiHandler): it spawns `omp --mode rpc` subprocesses on
+// demand and reads session files directly. No omp-web service, no HTTP
+// server, no port — multiple VS Code windows never conflict.
 //
-//   webview (omp-web UI) ──postMessage──► host (fetch/SSE proxy) ──► omp-web
+//   webview (omp-web UI) ──postMessage──► host (ApiHandler) ──spawn stdio──► omp --mode rpc
 
-let server: OmpServerManager;
+let api: ApiHandler;
 let chat: ChatProvider;
 let statusBar: vscode.StatusBarItem;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  server = new OmpServerManager();
+  api = new ApiHandler();
 
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.text = "$(hubot) OMP";
@@ -24,10 +26,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   statusBar.tooltip = "OMP Chat — open";
   statusBar.show();
 
-  chat = ChatProvider.get({ server });
-
-  // Startup: ensure the server is reachable.
-  await ensureServerWithFeedback();
+  chat = ChatProvider.get(api);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("omp.chat", chat, {
@@ -36,38 +35,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("omp.openChat", () => {
       void chat.createOrShow();
     }),
-    vscode.commands.registerCommand("omp.startServer", async () => {
-      await server.ensureRunning();
-    }),
-    vscode.commands.registerCommand("omp.stopServer", async () => {
-      await server.stop();
-    }),
   );
 }
 
-async function ensureServerWithFeedback(): Promise<void> {
-  try {
-    await server.ensureRunning();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const choice = await vscode.window.showErrorMessage(
-      `OMP: ${message}`,
-      "Start Server",
-    );
-    if (choice === "Start Server") {
-      try {
-        await server.ensureRunning();
-      } catch (err2) {
-        void vscode.window.showErrorMessage(`OMP: ${err2 instanceof Error ? err2.message : String(err2)}`);
-      }
-    }
-  }
-}
-
 export async function deactivate(): Promise<void> {
-  const stopOnExit = vscode.workspace.getConfiguration("omp").get<boolean>("server.stopOnExit", true);
-  if (stopOnExit && server) {
-    await server.stop();
-  }
   chat?.disposeAll();
 }
