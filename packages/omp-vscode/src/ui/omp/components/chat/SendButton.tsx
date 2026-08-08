@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Send, Square } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +40,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
       title="Send"
       className={cn("h-6 w-6 shrink-0 rounded-full p-0", !canSend && "shadow-none")}
     >
-      <Send size={12} />
+      <ArrowUp size={13} strokeWidth={2.5} />
     </Button>
   );
 });
