@@ -1,11 +1,14 @@
 @import "tailwindcss";
 
 /* The webview iframe is width/height 100%; the app must fill it exactly
-   or the body background shows below the chat page. */
+   or the body background shows below the chat page. Scrolling happens
+   inside the app's own containers; the page itself must never scroll,
+   or a hidden scrollbar leaves a dead gap at the bottom. */
 html, body, #app {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 /* ── Local font: HarmonyOS Sans (UI chrome) ─────────────────────────────── */
