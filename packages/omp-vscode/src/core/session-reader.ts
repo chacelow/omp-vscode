@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
+import { randomUUID } from "crypto";
 import { homedir } from "os";
 import { join } from "path";
 import type { AgentMessage, SessionInfo } from "./types";
@@ -245,12 +246,14 @@ function messageEntryToUiMessage(entry: Record<string, unknown>): AgentMessage |
 }
 
 /** Parse a session file into the ACTIVE-branch message list: omp's leaf is
- * the file's last message entry, and the branch is its parentId chain — old
- * branches stay in the file (full tree, never deleted) but are not shown. */
+ * the file's last entry, and the branch is its parentId chain across ALL
+ * entry types (model/thinking anchors are tree nodes too — the first user
+ * message's parent is a thinking entry). Old branches stay in the file (full
+ * tree, never deleted) but are not shown. */
 export function loadSessionContext(filePath: string): SessionContext {
   const messages: AgentMessage[] = [];
   const entryIds: string[] = [];
-  const byId = new Map<string, { entry: { id: string; parentId: string | null }; message: AgentMessage }>();
+  const byId = new Map<string, { parentId: string | null; message?: AgentMessage }>();
   let leafId: string | null = null;
   let thinkingLevel: string | undefined;
   let model: { provider: string; modelId: string } | null = null;
@@ -264,22 +267,20 @@ export function loadSessionContext(filePath: string): SessionContext {
       } catch {
         continue;
       }
+      const id = typeof entry.id === "string" ? entry.id : "";
+      const parentId = typeof entry.parentId === "string" ? entry.parentId : null;
+      if (id) {
+        // Track EVERY entry id for chain traversal (thinking_level_change /
+        // model_change anchors are tree nodes); only messages carry content.
+        byId.set(id, {
+          parentId,
+          message: entry.type === "message" ? (messageEntryToUiMessage(entry) ?? undefined) : undefined,
+        });
+        // Last entry in file order = the runtime leaf (omp's
+        // SessionEntryIndex.insert sets leaf = entry.id).
+        leafId = id;
+      }
       switch (entry.type) {
-        case "message": {
-          const ui = messageEntryToUiMessage(entry);
-          if (!ui) break;
-          const id = typeof entry.id === "string" ? entry.id : "";
-          if (id) {
-            byId.set(id, {
-              entry: { id, parentId: typeof entry.parentId === "string" ? entry.parentId : null },
-              message: ui,
-            });
-            // Last message entry in file order = the runtime leaf (omp's
-            // SessionEntryIndex.insert sets leaf = entry.id).
-            leafId = id;
-          }
-          break;
-        }
         case "model_change": {
           // TUI writes a single `model` string ("provider/path/modelId").
           if (typeof entry.model === "string") {
@@ -300,16 +301,17 @@ export function loadSessionContext(filePath: string): SessionContext {
         }
       }
     }
-    // Active branch = leaf's parentId chain (root → leaf), in order.
+    // Active branch = leaf's parentId chain (root → leaf), in order. Only
+    // messages are emitted; anchor/non-message entries only guide traversal.
     if (leafId) {
       const chain: Array<{ id: string; message: AgentMessage }> = [];
       const seen = new Set<string>();
       let cur: string | null = leafId;
       while (cur && byId.has(cur) && !seen.has(cur)) {
         seen.add(cur);
-        const node: { entry: { id: string; parentId: string | null }; message: AgentMessage } = byId.get(cur)!;
-        chain.push({ id: node.entry.id, message: node.message });
-        cur = node.entry.parentId;
+        const node: { parentId: string | null; message?: AgentMessage } = byId.get(cur)!;
+        if (node.message) chain.push({ id: cur, message: node.message });
+        cur = node.parentId;
       }
       chain.reverse();
       for (const node of chain) {
@@ -342,25 +344,24 @@ export function hasSessionContent(filePath: string): boolean {
 }
 
 /**
- * Rewind / branch switch, omp-tree philosophy (no file deletion): rewrite the
- * session file so the ancestor chain of `entryId` (its parentId path, which is
- * where a re-prompt must attach) ends up as the LAST lines. omp rebuilds its
- * in-memory leaf from the file's last entry (SessionEntryIndex.insert sets
- * #leaf = entry.id), so after a resume the next prompt appends AT the edit
- * point — a new branch in the SAME file. Everything else (old branches, later
- * turns) stays in the file, preserving the full tree; the chat view shows only
- * the active branch via loadSessionContext's leaf-chain filter.
- * Returns true on success, false if entryId is missing / not a user message.
+ * Rewind / branch switch, copying omp's appendMessageToBranch mechanism: the
+ * session file is a full tree (append-only, never deleted) and the active
+ * branch (leaf) is the file's LAST entry after a resume. Instead of reordering
+ * lines (which corrupted real sessions by fighting omp's own writes), we
+ * APPEND a non-message anchor entry (thinking_level_change, omp id convention:
+ * 8-hex) whose parentId is the edit point's parent. On resume the leaf is that
+ * anchor, so the next prompt appends the edited message as a NEW BRANCH under
+ * the edit point — same file, same session id, nothing reordered, nothing
+ * deleted, history intact. Returns true on success.
  */
-export function reorderSessionAt(filePath: string, entryId: string): boolean {
+export function anchorSessionAt(filePath: string, entryId: string): boolean {
   let lines: string[];
   try {
     lines = readFileSync(filePath, "utf8").split("\n").filter((l) => l.trim().length > 0);
   } catch {
     return false;
   }
-  // Locate the target user message and its parentId chain (the attach point).
-  const entries: Array<{ line: string; id?: string; parentId?: string | null; type?: string; role?: string }> = [];
+  const ids = new Set<string>();
   let targetParent: string | null | undefined;
   let found = false;
   for (const line of lines) {
@@ -370,13 +371,7 @@ export function reorderSessionAt(filePath: string, entryId: string): boolean {
     } catch {
       continue;
     }
-    entries.push({
-      line,
-      id: typeof e.id === "string" ? e.id : undefined,
-      parentId: typeof e.parentId === "string" ? e.parentId : (e.parentId == null ? null : undefined),
-      type: typeof e.type === "string" ? e.type : undefined,
-      role: (e.message as { role?: string } | undefined)?.role,
-    });
+    if (typeof e.id === "string") ids.add(e.id);
     if (!found && e.type === "message" && e.id === entryId) {
       const msg = e.message as { role?: string } | undefined;
       if (!msg || msg.role !== "user") return false;
@@ -385,27 +380,22 @@ export function reorderSessionAt(filePath: string, entryId: string): boolean {
     }
   }
   if (!found || targetParent === undefined) return false;
-
-  // Ancestor chain of the attach point (root → targetParent). omp's tree
-  // includes non-message entries (model_change / thinking_level_change are
-  // tree nodes too — the first user message's parent is a thinking entry),
-  // so the chain must follow ALL entry types, not just messages.
-  const chainIds = new Set<string>();
-  let cur: string | null = targetParent;
-  let guard = 0;
-  while (cur && guard++ < 10_000) {
-    chainIds.add(cur);
-    cur = entries.find((e) => e.id === cur)?.parentId ?? null;
+  // omp id convention: 8-hex (crypto.randomUUID().slice(-8)), collision-checked.
+  let id = "";
+  for (let i = 0; i < 100; i++) {
+    const candidate = crypto.randomUUID().slice(-8);
+    if (!ids.has(candidate)) { id = candidate; break; }
   }
-
-  const nonChain = entries.filter((e) => (e.id === undefined || !chainIds.has(e.id)) && e.type !== "custom").map((e) => e.line);
-  const chain = entries.filter((e) => e.id !== undefined && chainIds.has(e.id)).map((e) => e.line);
-  // Lifecycle entries (custom/session_exit) must stay at the END — omp stalls
-  // on resume if they land mid-file. Leaf = last line = edit point's parent.
-  const customs = entries.filter((e) => e.type === "custom").map((e) => e.line);
-  const reordered = [...nonChain, ...chain, ...customs];
+  if (!id) return false;
+  const anchor = {
+    type: "thinking_level_change",
+    id,
+    parentId: targetParent,
+    timestamp: new Date().toISOString(),
+    thinkingLevel: "off",
+  };
   try {
-    writeFileSync(filePath, reordered.join("\n") + "\n", "utf8");
+    writeFileSync(filePath, readFileSync(filePath, "utf8").trimEnd() + "\n" + JSON.stringify(anchor) + "\n", "utf8");
   } catch {
     return false;
   }

@@ -11,7 +11,7 @@ import {
   startRpcSession,
   subscribeRunningSessions,
 } from "./rpc-manager";
-import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, reorderSessionAt, resolveSessionPath } from "./session-reader";
+import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, anchorSessionAt, resolveSessionPath } from "./session-reader";
 import type { SessionTreeNode as ReaderSessionTreeNode } from "./session-reader";
 import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
@@ -273,10 +273,10 @@ export class ApiHandler {
       }
     }
 
-    // 2. Reorder the file: the edit point's ancestor chain becomes the last
-    //    lines, so omp's resumed leaf = the edit point's parent (SessionEntry
-    //    Index.insert sets leaf = last entry). Old branches stay in the file.
-    const ok = reorderSessionAt(filePath, entryId);
+    // 2. Append an anchor entry whose parent is the edited message's parent:
+    //    on resume the leaf is the anchor, so the replay prompt appends a new
+    //    branch AT the edit point — same file, nothing reordered/deleted.
+    const ok = anchorSessionAt(filePath, entryId);
     if (!ok) {
       return { status: 400, body: { error: "Entry not found or not a user message" } };
     }
@@ -323,7 +323,7 @@ export class ApiHandler {
         // continue anyway
       }
     }
-    if (!reorderSessionAt(filePath, entryId)) {
+    if (!anchorSessionAt(filePath, entryId)) {
       return { status: 400, body: { error: "Entry not found or not a user message" } };
     }
     try {
