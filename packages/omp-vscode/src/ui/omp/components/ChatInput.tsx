@@ -269,6 +269,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   valueRef.current = value;
   attachedImagesRef.current = attachedImages;
 
+  // Edit-from-here: entering edit mode focuses the composer with the
+  // caret at the end, so the user can type immediately. Never auto-focus
+  // the bottom composer (no initialValue). The transition runs after the
+  // toolbar collapse animation mounts the expanded layout.
+  useEffect(() => {
+    if (collapsed || initialValue === undefined) return;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      ta.focus();
+      const len = ta.value.length;
+      ta.setSelectionRange(len, len);
+      ta.scrollTop = ta.scrollHeight;
+    });
+  }, [collapsed, initialValue]);
+
   useImperativeHandle(ref, () => ({
     insertIfEmpty(text: string) {
       const ta = textareaRef.current;
@@ -1141,7 +1158,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
             rows={1}
             className="min-h-6 max-h-[200px] w-full min-w-0 flex-1 resize-none overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
-            style={{ fontSize: 12, textSizeAdjust: "none" }}
+            style={{ fontSize: 12, textSizeAdjust: "none", pointerEvents: collapsed ? "none" : undefined }}
           />
 
         {/* Bash mode status label */}

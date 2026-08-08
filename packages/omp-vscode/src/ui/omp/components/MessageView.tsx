@@ -167,7 +167,6 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState<{ text: string; images?: Array<{ data: string; mimeType: string }> } | null>(null);
 
@@ -195,14 +194,48 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
     });
   };
 
-  // Edit-from-here: the message row becomes the full-width composer —
-  // same component as the bottom input, not wrapped in a bubble.
-  if (editing && editInputRender) {
-    const cancelEdit = () => {
-      if (!confirmOpen) setEditing(false);
-    };
-    return (
-      <div style={{ marginBottom: 16, width: "100%" }}>
+  // Edit-from-here: the message row renders the full composer — the same
+  // component as the bottom input, at ONE position across both states, so
+  // the toolbar AnimatePresence runs on the collapsed flip instead of a
+  // remount. The composer bleeds past the message-column padding so its
+  // box aligns with the bottom input (CHAT_COLUMN_PADDING = 16px per side).
+  const cancelEdit = () => {
+    if (!confirmOpen) setEditing(false);
+  };
+
+  if (!editInputRender) return null;
+
+  return (
+    <div
+      style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
+      onClick={!editing ? () => setEditing(true) : undefined}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ width: "100%", maxWidth: 820, margin: "0 -16px" }}>
+        {imageBlocks.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", marginBottom: 6 }}>
+            {imageBlocks.map((img, i) => {
+              const flat = img as unknown as { data?: string; mimeType?: string };
+              const src = img.source
+                ? img.source.type === "base64"
+                  ? `data:${img.source.media_type};base64,${img.source.data}`
+                  : img.source.url ?? ""
+                : flat.data
+                  ? `data:${flat.mimeType};base64,${flat.data}`
+                  : "";
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={src}
+                  alt=""
+                  style={{ maxWidth: 180, maxHeight: 180, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid color-mix(in srgb, var(--accent) 15%, transparent)" }}
+                />
+              );
+            })}
+          </div>
+        )}
         {editInputRender(
           entryId ?? "",
           content,
@@ -212,142 +245,51 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
             setPendingSubmit({ text, images });
             setConfirmOpen(true);
           },
+          !editing,
         )}
-        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogContent className="max-w-[380px]">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm">
-                {t("i18n.editFromHereTitle") ?? "Edit and resend"}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-xs">
-                {t("i18n.editFromHereConfirm") ?? "This rewinds the conversation to this message and regenerates from your edited text."}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="h-7 text-xs">
-                {t("i18n.cancel") ?? "Cancel"}
-              </AlertDialogCancel>
-              <AlertDialogAction
-                className="h-7 text-xs"
-                onClick={() => {
-                  setConfirmOpen(false);
-                  const p = pendingSubmit;
-                  setPendingSubmit(null);
-                  if (p && entryId) {
-                    onEditResend?.(entryId, p.text, p.images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType })));
-                    setEditing(false);
-                  }
-                }}
-              >
-                {t("i18n.editFromHere") ?? "Resend"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
-    );
-  }
-
-  return (
-    <div
-      style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
-      onClick={!editing && editInputRender ? () => setEditing(true) : undefined}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {editInputRender ? (
-        <div style={{ width: "100%", maxWidth: 560 }}>
-          {imageBlocks.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", marginBottom: 6 }}>
-              {imageBlocks.map((img, i) => {
-                const flat = img as unknown as { data?: string; mimeType?: string };
-                const src = img.source
-                  ? img.source.type === "base64"
-                    ? `data:${img.source.media_type};base64,${img.source.data}`
-                    : img.source.url ?? ""
-                  : flat.data
-                    ? `data:${flat.mimeType};base64,${flat.data}`
-                    : "";
-                return (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={src}
-                    alt=""
-                    style={{ maxWidth: 180, maxHeight: 180, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid color-mix(in srgb, var(--accent) 15%, transparent)" }}
-                  />
-                );
-              })}
-            </div>
-          )}
-          {editInputRender(entryId ?? "", content, () => setEditing(false), undefined, true)}
-        </div>
-      ) : (
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
-        <div
-          className="sf-user-bubble"
-          onClick={() => {
-            if (editing || !entryId || !onEditResend) return;
-            setDraft(content);
-            setEditing(true);
-          }}
-          title={editing ? undefined : (t("i18n.editFromHereTitle") ?? "Click to edit")}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "var(--user-bg)",
-            border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
-            borderRadius: 12,
-            padding: "8px 12px",
-            fontSize: 14,
-            lineHeight: 1.6,
-            color: "var(--text)",
-            wordBreak: "break-word",
-            cursor: editing || !entryId || !onEditResend ? "default" : "pointer",
-          }}
-        >
-          {imageBlocks.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
-                  {imageBlocks.map((img, i) => {
-                    // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
-                    // pi-ai on-disk format uses flat {data, mimeType} — handle both
-                    const flat = img as unknown as { data?: string; mimeType?: string };
-                    const src = img.source
-                      ? img.source.type === "base64"
-                        ? `data:${img.source.media_type};base64,${img.source.data}`
-                        : img.source.url ?? ""
-                      : flat.data
-                        ? `data:${flat.mimeType};base64,${flat.data}`
-                        : "";
-                    return (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={i}
-                        src={src}
-                        alt=""
-                        style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid color-mix(in srgb, var(--accent) 15%, transparent)" }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              {content && <MarkdownBody className="markdown-user-message" cwd={cwd} onOpenFile={onOpenFile}>{content}</MarkdownBody>}
-        </div>
-      </div>
-      )}
-
-      {/* Bottom row: action buttons + timestamp */}
-      {(time || canFork || canNavigate || true) && (
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="max-w-[380px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">
+              {t("i18n.editFromHereTitle") ?? "Edit and resend"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              {t("i18n.editFromHereConfirm") ?? "This rewinds the conversation to this message and regenerates from your edited text."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-7 text-xs">
+              {t("i18n.cancel") ?? "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="h-7 text-xs"
+              onClick={() => {
+                setConfirmOpen(false);
+                const p = pendingSubmit;
+                setPendingSubmit(null);
+                if (p && entryId) {
+                  onEditResend?.(entryId, p.text, p.images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType })));
+                  setEditing(false);
+                }
+              }}
+            >
+              {t("i18n.editFromHere") ?? "Resend"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {!editing && (
+      <div onClick={(e) => e.stopPropagation()} style={{
+        display: "flex", alignItems: "center", justifyContent: "flex-end",
+        gap: 6, marginTop: 3,
+      }}>
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "flex-end",
-          gap: 6, marginTop: 3,
+          display: "flex", gap: 3,
+          opacity: hovered ? 1 : 0,
+          pointerEvents: hovered ? "auto" : "none",
+          transition: "opacity 0.12s",
         }}>
-          <div style={{
-            display: "flex", gap: 3,
-            opacity: hovered ? 1 : 0,
-            pointerEvents: hovered ? "auto" : "none",
-            transition: "opacity 0.12s",
-          }}>
             <button
               onClick={copyContent}
                title={t("i18n.copyMessage")}
