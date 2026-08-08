@@ -12,6 +12,7 @@ import {
   subscribeRunningSessions,
 } from "./rpc-manager";
 import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, reorderSessionAt, resolveSessionPath } from "./session-reader";
+import type { SessionTreeNode as ReaderSessionTreeNode } from "./session-reader";
 import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
 // ============================================================================
@@ -281,19 +282,12 @@ export class ApiHandler {
     }
 
     // 3. Restart on the SAME file → same session id, context rebuilt from the
-    //    truncated transcript.
+    //    reordered transcript. The webview re-subscribes to SSE and then sends
+    //    the replay prompt itself, so agent_start/agent_end stream back with
+    //    normal timing (no event lost during the restart).
     try {
       const { session } = await startRpcSession(sid, filePath, undefined);
       this.wireSession(sid, session as never);
-
-      // 4. Replay: send the edited text as a fresh prompt (events stream to
-      //    the webview via the existing SSE subscription on sid).
-      const images = req.images;
-      await session.send({
-        type: "prompt",
-        message: text,
-        ...(images?.length ? { images } : {}),
-      });
     } catch (e) {
       return { status: 500, body: { error: e instanceof Error ? e.message : String(e) } };
     }
@@ -356,28 +350,24 @@ export class ApiHandler {
     if (!filePath) return { status: 404, body: { error: "Session not found" } };
     const ctx = loadSessionContext(filePath);
     const header = readSessionHeader(filePath);
-    // Real message tree (entry parentId links) for the lightweight
-    // session-tree view; children populate branch/fork points.
+    // Full message tree (entry parentId links) for the session-tree view:
+    // every branch incl. old rewinds stays in the file, so the tree shows the
+    // complete history; the active branch is context.messages (leaf chain).
     const treeInfo = loadSessionTree(filePath);
-    const tree = treeInfo.roots.map((node) => ({
+    const toUiTree = (node: ReaderSessionTreeNode): Record<string, unknown> => ({
       entry: {
         type: "message",
         id: node.id,
         parentId: node.parentId,
         timestamp: node.timestamp ?? new Date().toISOString(),
-        message: { role: node.role, content: node.summary ? [{ type: "text", text: node.summary }] : [] },
-      },
-      children: node.children.map((c) => ({
-        entry: {
-          type: "message",
-          id: c.id,
-          parentId: c.parentId,
-          timestamp: c.timestamp ?? new Date().toISOString(),
-          message: { role: c.role, content: c.summary ? [{ type: "text", text: c.summary }] : [] },
+        message: {
+          role: node.role,
+          content: node.summary ? [{ type: "text", text: node.summary }] : [],
         },
-        children: [],
-      })),
-    }));
+      },
+      children: node.children.map(toUiTree),
+    });
+    const tree = treeInfo.roots.map(toUiTree);
     return {
       status: 200,
       body: {

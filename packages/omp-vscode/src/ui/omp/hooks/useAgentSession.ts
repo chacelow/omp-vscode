@@ -1530,10 +1530,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // The RPC process was restarted — re-subscribe so the replay streams
-      // in, then reload the rewritten transcript (edited point + replay).
-      ensureEventsConnected(sid).catch(() => {});
+      // The RPC process was restarted — re-subscribe BEFORE sending the replay
+      // so agent_start/agent_end stream back with normal timing (no lost
+      // events), then reload the reordered transcript, then replay.
+      await ensureEventsConnected(sid);
       await loadContext(sid, null);
+      await sendAgentCommand(sid, {
+        type: "prompt",
+        message: text,
+        ...(images?.length ? { images } : {}),
+      });
     } catch (e) {
       console.error("Edit-from-here failed:", e);
     } finally {

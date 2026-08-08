@@ -208,7 +208,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   }, [chatInputRef]);
 
   const {
-    loading, error, messages, entryIds, streamState,
+    loading, error, messages, entryIds, streamState, data,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, fastMode, handleRoleChange, loadModels,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
@@ -716,8 +716,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             {messages.length > 0 && entryIds.length > 0 && (
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, paddingRight: CHAT_COLUMN_PADDING }}>
                 <SessionTreePanel
-                  messages={messages}
-                  entryIds={entryIds}
+                  tree={data?.tree ?? []}
+                  activeEntryIds={entryIds}
                   onSelect={(entryId) => {
                     if (sessionBusy) return;
                     void handleNavigate(entryId);
