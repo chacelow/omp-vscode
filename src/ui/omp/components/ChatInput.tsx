@@ -1611,8 +1611,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               overflow: "auto",
             }}
           />
-          </div>
-        </div>
 
         {/* Bash mode status label */}
         {bashMode && (
@@ -1643,6 +1641,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           onSend={handleSend}
           onAbort={onAbort}
         />
+          </div>
+        </div>
 
       </div>
     </div>
