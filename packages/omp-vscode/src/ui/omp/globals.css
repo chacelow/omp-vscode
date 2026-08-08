@@ -1590,6 +1590,9 @@ span.linenumber {
     width: 0;
     min-width: 0;
     border-right: none !important;
+    /* Stay invisible across breakpoint flips (mobile fixed 280px →
+       desktop width 0 animates through visible widths for a frame). */
+    visibility: hidden;
   }
   /* keep inner content at fixed width so it doesn't reflow during animation */
   .sidebar-container > * {
