@@ -719,10 +719,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   messages={messages}
                   entryIds={entryIds}
                   onSelect={(entryId) => {
-                    const el = scrollContainerRef.current?.querySelector(`[data-entry-id="${CSS.escape(entryId)}"]`);
-                    if (el instanceof HTMLElement) {
-                      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }
+                    if (sessionBusy) return;
+                    void handleNavigate(entryId);
                   }}
                   t={t}
                 />

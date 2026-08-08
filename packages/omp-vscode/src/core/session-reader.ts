@@ -244,10 +244,13 @@ function messageEntryToUiMessage(entry: Record<string, unknown>): AgentMessage |
   return msg;
 }
 
-/** Parse a session file into a linear message list + metadata. */
+/** Parse a session file into the ACTIVE-branch message list: omp's leaf is
+ * the file's last message entry, and the branch is its parentId chain — old
+ * branches stay in the file (full tree, never deleted) but are not shown. */
 export function loadSessionContext(filePath: string): SessionContext {
   const messages: AgentMessage[] = [];
   const entryIds: string[] = [];
+  const byId = new Map<string, { entry: { id: string; parentId: string | null }; message: AgentMessage }>();
   let leafId: string | null = null;
   let thinkingLevel: string | undefined;
   let model: { provider: string; modelId: string } | null = null;
@@ -265,9 +268,16 @@ export function loadSessionContext(filePath: string): SessionContext {
         case "message": {
           const ui = messageEntryToUiMessage(entry);
           if (!ui) break;
-          if (typeof entry.id === "string") entryIds.push(entry.id);
-          leafId = typeof entry.id === "string" ? entry.id : leafId;
-          messages.push(ui);
+          const id = typeof entry.id === "string" ? entry.id : "";
+          if (id) {
+            byId.set(id, {
+              entry: { id, parentId: typeof entry.parentId === "string" ? entry.parentId : null },
+              message: ui,
+            });
+            // Last message entry in file order = the runtime leaf (omp's
+            // SessionEntryIndex.insert sets leaf = entry.id).
+            leafId = id;
+          }
           break;
         }
         case "model_change": {
@@ -288,6 +298,23 @@ export function loadSessionContext(filePath: string): SessionContext {
           if (typeof entry.level === "string") thinkingLevel = entry.level;
           break;
         }
+      }
+    }
+    // Active branch = leaf's parentId chain (root → leaf), in order.
+    if (leafId) {
+      const chain: Array<{ id: string; message: AgentMessage }> = [];
+      const seen = new Set<string>();
+      let cur: string | null = leafId;
+      while (cur && byId.has(cur) && !seen.has(cur)) {
+        seen.add(cur);
+        const node: { entry: { id: string; parentId: string | null }; message: AgentMessage } = byId.get(cur)!;
+        chain.push({ id: node.entry.id, message: node.message });
+        cur = node.entry.parentId;
+      }
+      chain.reverse();
+      for (const node of chain) {
+        messages.push(node.message);
+        entryIds.push(node.id);
       }
     }
   } catch {
@@ -315,45 +342,72 @@ export function hasSessionContent(filePath: string): boolean {
 }
 
 /**
- * Rewind: drop the given user-message entry and everything after it, keeping
- * the header/metadata lines and all entries before it. The next prompt then
- * rewrites the branch IN THE SAME FILE (same session id) — the in-place
- * rewind equivalent of the TUI's "back to this node and resend". Returns the
- * number of lines removed, or -1 when the entry is missing / not a user msg.
+ * Rewind / branch switch, omp-tree philosophy (no file deletion): rewrite the
+ * session file so the ancestor chain of `entryId` (its parentId path, which is
+ * where a re-prompt must attach) ends up as the LAST lines. omp rebuilds its
+ * in-memory leaf from the file's last entry (SessionEntryIndex.insert sets
+ * #leaf = entry.id), so after a resume the next prompt appends AT the edit
+ * point — a new branch in the SAME file. Everything else (old branches, later
+ * turns) stays in the file, preserving the full tree; the chat view shows only
+ * the active branch via loadSessionContext's leaf-chain filter.
+ * Returns true on success, false if entryId is missing / not a user message.
  */
-export function truncateSessionAt(filePath: string, entryId: string): number {
+export function reorderSessionAt(filePath: string, entryId: string): boolean {
   let lines: string[];
   try {
     lines = readFileSync(filePath, "utf8").split("\n").filter((l) => l.trim().length > 0);
   } catch {
-    return -1;
+    return false;
   }
-  let targetIdx = -1;
-  for (let i = 0; i < lines.length; i++) {
-    let entry: Record<string, unknown>;
+  // Locate the target user message and its parentId chain (the attach point).
+  const entries: Array<{ line: string; id?: string; parentId?: string | null; type?: string; role?: string }> = [];
+  let targetParent: string | null | undefined;
+  let found = false;
+  for (const line of lines) {
+    let e: Record<string, unknown>;
     try {
-      entry = JSON.parse(lines[i]) as Record<string, unknown>;
+      e = JSON.parse(line) as Record<string, unknown>;
     } catch {
       continue;
     }
-    if (entry.type !== "message" || entry.id !== entryId) continue;
-    const msg = entry.message as AgentMessage | undefined;
-    if (!msg || msg.role !== "user") return -1;
-    targetIdx = i;
-    break;
+    entries.push({
+      line,
+      id: typeof e.id === "string" ? e.id : undefined,
+      parentId: typeof e.parentId === "string" ? e.parentId : (e.parentId == null ? null : undefined),
+      type: typeof e.type === "string" ? e.type : undefined,
+      role: (e.message as { role?: string } | undefined)?.role,
+    });
+    if (!found && e.type === "message" && e.id === entryId) {
+      const msg = e.message as { role?: string } | undefined;
+      if (!msg || msg.role !== "user") return false;
+      targetParent = typeof e.parentId === "string" ? e.parentId : null;
+      found = true;
+    }
   }
-  if (targetIdx < 0) return -1;
-  const removed = lines.length - targetIdx;
-  const keep = lines.slice(0, targetIdx).join("\n") + (targetIdx > 0 ? "\n" : "");
+  if (!found || targetParent === undefined) return false;
+
+  // Ancestor chain of the attach point (root → targetParent).
+  const chainIds = new Set<string>();
+  let cur: string | null = targetParent;
+  let guard = 0;
+  while (cur && guard++ < 10_000) {
+    chainIds.add(cur);
+    cur = entries.find((e) => e.id === cur)?.parentId ?? null;
+  }
+
+  const nonMessage = entries.filter((e) => e.type !== "message").map((e) => e.line);
+  const offChain = entries.filter((e) => e.type === "message" && e.id !== undefined && !chainIds.has(e.id)).map((e) => e.line);
+  const chain = entries.filter((e) => e.type === "message" && e.id !== undefined && chainIds.has(e.id)).map((e) => e.line);
+  const reordered = [...nonMessage, ...offChain, ...chain];
   try {
-    writeFileSync(filePath, keep, "utf8");
+    writeFileSync(filePath, reordered.join("\n") + "\n", "utf8");
   } catch {
-    return -1;
+    return false;
   }
-  return removed;
+  return true;
 }
 
-// ---------------------------------------------------------------------------
+/** True if the entry carries conversation context (messages). */
 // Path/id caches (used by the session manager for resolve-by-id)
 // ---------------------------------------------------------------------------
 

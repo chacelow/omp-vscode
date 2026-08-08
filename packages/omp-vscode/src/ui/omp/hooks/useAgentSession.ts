@@ -1541,25 +1541,46 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [ensureEventsConnected, loadContext]);
 
-  const handleNavigate = useCallback(async (entryId: string) => {
-    if (bashRunningRef.current) return;
+  const navigateLeaf = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
-    sendAgentCommand(sid, { type: "navigate_tree", targetId: entryId }).catch(() => {});
+    if (!sid || bashRunningRef.current) return;
+    // Same-file branch switch (Session Tree click): the extension reorders
+    // the session file so this message's ancestor chain is the leaf, restarts
+    // the RPC session on the same file — no new session, no deletion.
+    const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/navigate-leaf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entryId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    ensureEventsConnected(sid).catch(() => {});
     setActiveLeafId(entryId);
     await loadContext(sid, entryId);
-  }, [loadContext]);
+  }, [ensureEventsConnected, loadContext]);
+
+  const handleNavigate = useCallback(async (entryId: string) => {
+    try {
+      await navigateLeaf(entryId);
+    } catch (e) {
+      console.error("Navigate failed:", e);
+    }
+  }, [navigateLeaf]);
 
   const handleLeafChange = useCallback(async (leafId: string | null) => {
     if (bashRunningRef.current) return;
     setActiveLeafId(leafId);
     const sid = sessionIdRef.current;
     if (!sid) return;
-    await loadContext(sid, leafId);
     if (leafId) {
-      sendAgentCommand(sid, { type: "navigate_tree", targetId: leafId }).catch(() => {});
+      try {
+        await navigateLeaf(leafId);
+        return;
+      } catch {
+        // fall through to a plain reload
+      }
     }
-  }, [loadContext]);
+    await loadContext(sid, leafId);
+  }, [loadContext, navigateLeaf]);
 
   const handleModelChange = useCallback(async (provider: string, modelId: string) => {
     saveLastModel(provider, modelId);

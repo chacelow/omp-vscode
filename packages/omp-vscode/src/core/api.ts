@@ -11,7 +11,7 @@ import {
   startRpcSession,
   subscribeRunningSessions,
 } from "./rpc-manager";
-import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, resolveSessionPath, truncateSessionAt } from "./session-reader";
+import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, reorderSessionAt, resolveSessionPath } from "./session-reader";
 import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
 // ============================================================================
@@ -147,6 +147,7 @@ export class ApiHandler {
           const sid = decodeURIComponent(parts[2]);
           if (parts[3] === "state" && method === "GET") return this.sessionState(sid);
           if (parts[3] === "rewind" && method === "POST") return this.sessionRewind(sid, body);
+          if (parts[3] === "navigate-leaf" && method === "POST") return this.sessionNavigateLeaf(sid, body);
           if (method === "GET") return this.sessionDetail(sid);
         }
       }
@@ -271,9 +272,11 @@ export class ApiHandler {
       }
     }
 
-    // 2. Truncate the file at the edited message (drop it + everything after).
-    const removed = truncateSessionAt(filePath, entryId);
-    if (removed < 0) {
+    // 2. Reorder the file: the edit point's ancestor chain becomes the last
+    //    lines, so omp's resumed leaf = the edit point's parent (SessionEntry
+    //    Index.insert sets leaf = last entry). Old branches stay in the file.
+    const ok = reorderSessionAt(filePath, entryId);
+    if (!ok) {
       return { status: 400, body: { error: "Entry not found or not a user message" } };
     }
 
@@ -295,7 +298,47 @@ export class ApiHandler {
       return { status: 500, body: { error: e instanceof Error ? e.message : String(e) } };
     }
 
-    return { status: 200, body: { success: true, sessionId: sid, removedLines: removed } };
+    return { status: 200, body: { success: true, sessionId: sid } };
+  }
+
+  /**
+   * POST /api/sessions/[id]/navigate-leaf { entryId }
+   * Switch the active branch to the given message's branch (Session Tree
+   * click): reorder the file so that message's ancestor chain is last (leaf),
+   * restart the RPC session on the SAME file. Old branches stay in the file.
+   */
+  private async sessionNavigateLeaf(sid: string, body?: string): Promise<HandlerResult> {
+    let req: { entryId?: string };
+    try {
+      req = body ? (JSON.parse(body) as typeof req) : {};
+    } catch {
+      return { status: 400, body: { error: "Invalid request body" } };
+    }
+    const entryId = req.entryId;
+    if (!entryId) {
+      return { status: 400, body: { error: "entryId is required" } };
+    }
+    const filePath = resolveSessionPath(sid);
+    if (!filePath) return { status: 404, body: { error: "Session not found" } };
+
+    const existing = getRpcSession(sid);
+    if (existing?.isAlive()) {
+      try {
+        await existing.shutdown();
+      } catch {
+        // continue anyway
+      }
+    }
+    if (!reorderSessionAt(filePath, entryId)) {
+      return { status: 400, body: { error: "Entry not found or not a user message" } };
+    }
+    try {
+      const { session } = await startRpcSession(sid, filePath, undefined);
+      this.wireSession(sid, session as never);
+    } catch (e) {
+      return { status: 500, body: { error: e instanceof Error ? e.message : String(e) } };
+    }
+    return { status: 200, body: { success: true, sessionId: sid } };
   }
 
   private async sessionState(sid: string): Promise<HandlerResult> {
