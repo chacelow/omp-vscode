@@ -81,10 +81,10 @@ body, #app {
     border-color: var(--border);
   }
   textarea, input, select, button {
-    /* Prevent WebKit from auto-enlarging form controls (>=16px) in
-       narrow webview viewports. */
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+    /* text-size-adjust:100% actually *allows* auto-enlargement (same as
+       auto) — only 'none' disables WebKit's form-control ≥16px bump. */
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
   }
 }
 
