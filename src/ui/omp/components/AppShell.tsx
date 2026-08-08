@@ -1304,35 +1304,9 @@ export function AppShell() {
                 <div>{t("Select a session from the sidebar", "请从侧边栏选择一个历史会话")}</div>
               </div>
             ) : (
-              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, userSelect: "none" }}>
-                {isStarfield ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center", maxWidth: 540 }}>
-                    <StarfieldEmblem size={160} />
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 900, letterSpacing: "0.2em", color: "var(--text)", textTransform: "uppercase" }}>
-                      STARFIELD // CONSTELLATION FIELD
-                    </div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#d99b26", letterSpacing: "0.1em" }}>
-                      SYS.LOC // OMP-WEB-INTERFACE · MISSION AGENT ACTIVE
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.8, background: "rgba(27,54,93,0.3)", border: "1px solid #1e2d45", borderLeft: "3px solid #d99b26", padding: "14px 20px", textAlign: "left", width: "100%" }}>
-                      <span style={{ color: "#e05a2b", fontFamily: "var(--font-mono)", fontWeight: 700 }}>01.</span> {t("Select a project directory from the sidebar", "从左侧边栏选择目标项目目录")}<br />
-                      <span style={{ color: "#e05a2b", fontFamily: "var(--font-mono)", fontWeight: 700 }}>02.</span> {t("Configure provider models via the Models configuration panel", "点击底部“模型”按钮配置 AI 模型")}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "flex-start", gap: 8, pointerEvents: "none" }}>
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
-                      <line x1="20" y1="12" x2="4" y2="12" /><polyline points="10 6 4 12 10 18" />
-                    </svg>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>{t("Get Started", "开始使用")}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.8 }}>
-                        <span style={{ color: "var(--text-dim)", marginRight: 6 }}>1.</span>{t("Select a project directory from the sidebar", "从左侧边栏选择目标项目目录")}<br />
-                        <span style={{ color: "var(--text-dim)", marginRight: 6 }}>2.</span>{t("Add models via the Models button at the bottom", "点击底部“模型”按钮配置 AI 模型")}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 24, userSelect: "none", color: "var(--text-muted)", fontSize: 13 }}>
+                <div style={{ width: 20, height: 20, border: "2px solid var(--border)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "omp-spin 0.8s linear infinite" }} />
+                <div>{t("Initializing…", "正在初始化…")}</div>
               </div>
             )
           ) : null}
