@@ -62,8 +62,8 @@
 ## 开发
 
 ```bash
-npm install
-npm run build        # 或 npm run watch（增量）
+pnpm install
+pnpm build        # 或 pnpm watch（增量）
 ```
 
 按 F5（或 `Run Extension`）打开 Extension Development Host。

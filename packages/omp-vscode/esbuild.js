@@ -22,7 +22,7 @@ const common = {
 function buildCss() {
   console.log("[css] compiling webview.css with Tailwind v4…");
   execSync(
-    `npx @tailwindcss/cli -i src/ui/webview.css -o dist/webview.css ${production ? "--minify" : ""}`,
+    `pnpm exec tailwindcss -i src/ui/webview.css -o dist/webview.css ${production ? "--minify" : ""}`,
     { cwd: __dirname, stdio: "inherit" },
   );
 }
