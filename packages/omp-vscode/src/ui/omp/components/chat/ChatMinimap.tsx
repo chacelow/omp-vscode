@@ -448,12 +448,15 @@ export function ChatMinimap({
       }}
       style={{
         width: MINIMAP_WIDTH,
-        flexShrink: 0,
-        position: "relative",
+        // Floating overlay: no layout space, no background/border — just the
+        // turn nodes and the rail as the hover/drag trigger zone.
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        right: 0,
+        zIndex: 5,
         cursor: "pointer",
         userSelect: "none",
-        borderLeft: "1px solid var(--border)",
-        background: "var(--bg-panel)",
         overflow: "visible",
       }}
     >
