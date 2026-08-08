@@ -102,7 +102,7 @@ export class OmpRpcProcess {
   // -------------------------------------------------------------------------
 
   private spawn(): void {
-    const args = ["--mode", "rpc", "--cwd", this.options.cwd];
+    const args = ["--mode", "rpc", "--offline", "--cwd", this.options.cwd];
     if (this.options.resume) args.push("--resume", this.options.resume);
     if (this.options.noSession) args.push("--no-session");
     if (this.options.model) {

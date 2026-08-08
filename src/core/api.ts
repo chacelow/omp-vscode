@@ -303,16 +303,16 @@ export class ApiHandler {
     for (const live of getRpcSessionList()) {
       if (!live.isAlive()) continue;
       try {
-        const state = (await withTimeout(live.send({ type: "get_state" }), 5000)) as {
+        const state = (await withTimeout(live.send({ type: "get_state" }), 30_000)) as {
           model?: { id: string; provider: string; name?: string };
           fastModeEnabled?: boolean;
           fastModeActive?: boolean;
         };
         const cacheKey = live.sessionId;
         const cached = this.modelsCache.get(cacheKey);
-        let list = cached && Date.now() - cached.at < 10_000 ? cached.list : null;
+        let list = cached && Date.now() - cached.at < 300_000 ? cached.list : null;
         if (!list) {
-          const available = (await withTimeout(live.send({ type: "get_available_models" }), 5000)) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
+          const available = (await withTimeout(live.send({ type: "get_available_models" }), 30_000)) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
           list = (available.models ?? []).map((m) => ({
             id: m.id,
             name: m.name || m.id,
