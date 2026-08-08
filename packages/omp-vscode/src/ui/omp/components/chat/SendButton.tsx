@@ -3,7 +3,8 @@ import { Send, Square } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
-// Round primary send/stop button — one button, two states, icon-only:
+// Round primary send/stop button — one button, two states, icon-only,
+// same size as the toolbar buttons (h-6):
 //   idle      → Send (accent circle, disabled when empty)
 //   streaming → Stop (danger circle, calls onAbort)
 
@@ -22,11 +23,11 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
       <Button
         onClick={onAbort}
         variant="destructive"
-        size="icon"
+        size="sm"
         title="Stop"
-        className="h-8 w-8 rounded-full border border-[#ef4444]/45 bg-[#ef4444]/15 text-[#ef4444] hover:bg-[#ef4444]/25 hover:text-[#ef4444]"
+        className="h-6 w-6 shrink-0 rounded-full border border-[#ef4444]/45 bg-[#ef4444]/15 p-0 text-[#ef4444] hover:bg-[#ef4444]/25 hover:text-[#ef4444]"
       >
-        <Square size={13} fill="currentColor" />
+        <Square size={10} fill="currentColor" />
       </Button>
     );
   }
@@ -35,11 +36,11 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
       onClick={onSend}
       disabled={!canSend}
       variant={canSend ? "default" : "secondary"}
-      size="icon"
+      size="sm"
       title="Send"
-      className={cn("h-8 w-8 rounded-full", !canSend && "shadow-none")}
+      className={cn("h-6 w-6 shrink-0 rounded-full p-0", !canSend && "shadow-none")}
     >
-      <Send size={15} />
+      <Send size={12} />
     </Button>
   );
 });

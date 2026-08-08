@@ -1072,7 +1072,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             />
           )}
           <div
-            className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--bg)] px-3 pb-2 pt-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.10)] transition-[border-color,background,box-shadow] duration-150"
+            className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--bg-panel)] px-3 pb-2 pt-3 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.10)] transition-[border-color,background,box-shadow] duration-150"
             style={{
               border: `1px solid ${bashMode ? "var(--tool-bg)" : isStreaming && (onSteer || onFollowUp)
                 ? "rgba(234,179,8,0.4)"
