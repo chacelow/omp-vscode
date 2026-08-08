@@ -217,7 +217,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     isNew,
     sessionIdRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
-    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
+    handleSend, handleAbort, handleFork, handleEditResend, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
@@ -706,6 +706,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     forking={forkingEntryId === entryIds[idx]}
                     onNavigate={sessionBusy ? undefined : handleNavigate}
                     prevAssistantEntryId={sessionBusy ? undefined : prevAssistantEntryId}
+                    onEditResend={handleEditResend}
                     onEditContent={handleEditContent}
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}

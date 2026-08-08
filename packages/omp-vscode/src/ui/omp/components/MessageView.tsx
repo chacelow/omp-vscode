@@ -66,6 +66,7 @@ interface Props {
   onNavigate?: (entryId: string) => void;
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
+  onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
   showTimestamp?: boolean;
   prevTimestamp?: number;
   sessionId?: string;
@@ -98,9 +99,9 @@ function haveSameRelevantToolResults(
   return true;
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp, sessionId }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, showTimestamp, prevTimestamp, sessionId }: Props) {
   if (message.role === "user") {
-    return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} />;
+    return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} />;
   }
   if (message.role === "assistant") {
     return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} />;
@@ -147,10 +148,13 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   onNavigate?: (entryId: string) => void;
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
+  onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
 }) {
   const { t } = useI18n();
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
 
   const content =
     typeof message.content === "string"
@@ -185,6 +189,12 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
         <div
           className="sf-user-bubble"
+          onClick={() => {
+            if (editing || !entryId || !onEditResend) return;
+            setDraft(content);
+            setEditing(true);
+          }}
+          title={editing ? undefined : (t("i18n.editFromHereTitle") ?? "Click to edit")}
           style={{
             flex: 1,
             minWidth: 0,
@@ -196,34 +206,62 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
             lineHeight: 1.6,
             color: "var(--text)",
             wordBreak: "break-word",
+            cursor: editing || !entryId || !onEditResend ? "default" : "pointer",
           }}
         >
-          {imageBlocks.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
-              {imageBlocks.map((img, i) => {
-                // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
-                // pi-ai on-disk format uses flat {data, mimeType} — handle both
-                const flat = img as unknown as { data?: string; mimeType?: string };
-                const src = img.source
-                  ? img.source.type === "base64"
-                    ? `data:${img.source.media_type};base64,${img.source.data}`
-                    : img.source.url ?? ""
-                  : flat.data
-                    ? `data:${flat.mimeType};base64,${flat.data}`
-                    : "";
-                return (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={src}
-                    alt=""
-                    style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid color-mix(in srgb, var(--accent) 15%, transparent)" }}
-                  />
-                );
-              })}
-            </div>
+          {editing ? (
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  const text = draft.trim();
+                  if (text && entryId && onEditResend) {
+                    setEditing(false);
+                    onEditResend(entryId, text);
+                  }
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  setEditing(false);
+                }
+              }}
+              onBlur={() => setEditing(false)}
+              rows={Math.max(1, Math.min(8, draft.split("\n").length))}
+              className="w-full resize-none border-none bg-transparent font-inherit text-[14px] leading-[1.6] text-[var(--text)] outline-none"
+              placeholder={t("i18n.editMessagePlaceholder") || "Edit message… Enter to resend, Esc to cancel"}
+            />
+          ) : (
+            <>
+              {imageBlocks.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
+                  {imageBlocks.map((img, i) => {
+                    // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
+                    // pi-ai on-disk format uses flat {data, mimeType} — handle both
+                    const flat = img as unknown as { data?: string; mimeType?: string };
+                    const src = img.source
+                      ? img.source.type === "base64"
+                        ? `data:${img.source.media_type};base64,${img.source.data}`
+                        : img.source.url ?? ""
+                      : flat.data
+                        ? `data:${flat.mimeType};base64,${flat.data}`
+                        : "";
+                    return (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={i}
+                        src={src}
+                        alt=""
+                        style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid color-mix(in srgb, var(--accent) 15%, transparent)" }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+              {content && <MarkdownBody className="markdown-user-message" cwd={cwd} onOpenFile={onOpenFile}>{content}</MarkdownBody>}
+            </>
           )}
-          {content && <MarkdownBody className="markdown-user-message" cwd={cwd} onOpenFile={onOpenFile}>{content}</MarkdownBody>}
         </div>
 
       </div>

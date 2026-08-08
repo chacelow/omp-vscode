@@ -1509,6 +1509,33 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [loadContext]);
 
+  const handleEditResend = useCallback(async (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => {
+    if (bashRunningRef.current) return;
+    const sid = sessionIdRef.current;
+    if (!sid || !text.trim()) return;
+    setForkingEntryId(entryId);
+    try {
+      // "Edit from here": branch at the message, then re-prompt with the
+      // edited text — the agent answers from that node in this session.
+      const result = await sendAgentCommand<{ cancelled?: boolean; text?: string }>(sid, {
+        type: "fork",
+        entryId,
+      });
+      if (result?.cancelled) return;
+      setActiveLeafId(entryId);
+      await loadContext(sid, entryId);
+      await sendAgentCommand(sid, {
+        type: "prompt",
+        message: text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (e) {
+      console.error("Edit-from-here failed:", e);
+    } finally {
+      setForkingEntryId(null);
+    }
+  }, [loadContext]);
+
   const handleNavigate = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
     const sid = sessionIdRef.current;
@@ -2168,7 +2195,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
-    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
+    handleSend, handleAbort, handleFork, handleEditResend, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
