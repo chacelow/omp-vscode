@@ -1514,17 +1514,30 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const sid = sessionIdRef.current;
     if (!sid || !text.trim()) return;
     setForkingEntryId(entryId);
-    // Immediate feedback: flip the running state locally so the composer
-    // shows the sending/spinner state before the RPC round-trips (rewind ->
-    // reconnect -> prompt). agent_start arriving later keeps it consistent.
+    // Immediate feedback, in order:
+    // 1. Optimistically show the edited message in the list (keeps every
+    //    ancestor visible; drops everything after the edit point) — the user
+    //    sees "what I confirmed" right away.
+    // 2. Flip running so the composer shows the sending state.
+    // 3. rewind (append anchor + restart same session) -> reconnect SSE ->
+    //    replay prompt. The streamed answer + agent_end refresh reconcile
+    //    the optimistic state with the file.
+    const pos = entryIds.indexOf(entryId);
+    if (pos >= 0) {
+      const editedContent: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string }> = [];
+      if (text.trim()) editedContent.push({ type: "text", text });
+      for (const img of images ?? []) editedContent.push({ type: "image", data: img.data, mimeType: img.mimeType });
+      setMessages((prev) => [
+        ...prev.slice(0, pos),
+        { role: "user", content: editedContent } as AgentMessage,
+      ]);
+    }
     setAgentRunning(true);
     try {
-      // In-place rewind (plugin-built-in, no omp changes): the extension
-      // reorders this session's file so the edited message's ancestor chain
-      // is the leaf, restarts the RPC session on the SAME file (same session
-      // id), and replays the edited text — a new branch in the same file,
-      // old branches preserved. Like the TUI's "back to this node and
-      // resend".
+      // In-place rewind (plugin-built-in): the extension appends an anchor
+      // entry (parent = edited message's parent) so the resumed leaf is the
+      // edit point; the replay prompt then appends a new branch AT that
+      // point — same file, same session id, nothing reordered/deleted.
       const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/rewind`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1536,10 +1549,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // The RPC process was restarted — re-subscribe BEFORE sending the replay
-      // so agent_start/agent_end stream back with normal timing (no lost
-      // events), then reload the reordered transcript, then replay.
+      // so agent_start/agent_end stream back with normal timing, then replay.
       await ensureEventsConnected(sid);
-      await loadContext(sid, null);
       await sendAgentCommand(sid, {
         type: "prompt",
         message: text,
@@ -1551,7 +1562,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally {
       setForkingEntryId(null);
     }
-  }, [ensureEventsConnected, loadContext, setAgentRunning]);
+  }, [ensureEventsConnected, entryIds, setAgentRunning]);
 
   const navigateLeaf = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;

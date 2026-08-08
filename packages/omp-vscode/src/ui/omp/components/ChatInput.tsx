@@ -268,6 +268,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const fileIndexFetchingRef = useRef<string | null>(null);
   const draftKeyRef = useRef(draftKey);
   const valueRef = useRef(value);
+  const dirtyRef = useRef(false);
   const attachedImagesRef = useRef(attachedImages);
   const pendingImageCountRef = useRef(0);
   valueRef.current = value;
@@ -293,9 +294,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   // Keep the collapsed (read-only) message text in sync when the parent
   // refreshes content (e.g. after a branch resend) — the instance is reused,
   // so useState initialization alone would show stale text.
+  // NOTE: deliberately NOT syncing initialValue into value here — cancelling
+  // the edit must keep the user's draft in the composer. After a rewind the
+  // message list is rebuilt with new entry ids, so this instance unmounts and
+  // fresh content initializes cleanly.
   useEffect(() => {
-    if (initialValue === undefined || initialValue === value) return;
-    setValue(initialValue);
+    if (initialValue === undefined) return;
+    if (collapsed && value !== initialValue && !dirtyRef.current) {
+      setValue(initialValue);
+    }
   }, [initialValue]);
 
   useImperativeHandle(ref, () => ({
@@ -1162,6 +1169,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             value={value}
             readOnly={collapsed}
             onChange={(e) => {
+              dirtyRef.current = true;
               setValue(e.target.value);
               setHistoryMenuOpen(false);
               updateAtQuery(e.target.value, e.target.selectionStart);

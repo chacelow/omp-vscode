@@ -265,6 +265,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
               {t("i18n.cancel") ?? "Cancel"}
             </AlertDialogCancel>
             <AlertDialogAction
+              autoFocus
               className="h-7 text-xs"
               onClick={() => {
                 setConfirmOpen(false);
