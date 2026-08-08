@@ -421,7 +421,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   if (loading) {
     return (
-      <LoadingState label={t("chat.loadingSession")} />
+      <LoadingState label={t("chat.loadingSession")}>
+        {messageCwd && (
+          <div className="max-w-[min(720px,100%)] font-mono text-[11px] text-[var(--text-muted)]" style={{ overflowWrap: "anywhere" }}>
+            {messageCwd}
+          </div>
+        )}
+      </LoadingState>
     );
   }
 
