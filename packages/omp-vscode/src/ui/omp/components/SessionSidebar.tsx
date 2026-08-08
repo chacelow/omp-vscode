@@ -1992,6 +1992,25 @@ function SessionItem({
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                 {title}
               </span>
+              {depth > 0 && (
+                <span
+                  title={t("sidebar.forkedFrom", { id: session.parentSessionId ? session.parentSessionId.slice(0, 8) : "" }) || `Fork of ${session.parentSessionId?.slice(0, 8) ?? "parent"}`}
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 9,
+                    lineHeight: 1,
+                    padding: "2px 5px",
+                    borderRadius: 4,
+                    color: "var(--text-dim)",
+                    background: "var(--bg-hover)",
+                    border: "1px solid var(--border)",
+                    whiteSpace: "nowrap",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  fork
+                </span>
+              )}
             </div>
             <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 11, minWidth: 0 }}>
               {isRunning ? (
