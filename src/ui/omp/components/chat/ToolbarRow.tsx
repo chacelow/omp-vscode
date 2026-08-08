@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect, memo } from "react";
 import { Wrench, Check, ImagePlus, Square, Shrink, Volume2, VolumeX, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../ui/dropdown-menu";
 import { RoleSelector, type RoleSelectorProps } from "./RoleSelector";
 import { ModelSelector, type ModelSelectorProps } from "./ModelSelector";
 import { SendButton } from "./SendButton";
@@ -41,11 +48,9 @@ export const ToolbarRow = memo(function ToolbarRow({
   const [toolOpen, setToolOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const toolRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (toolRef.current && !toolRef.current.contains(e.target as Node)) setToolOpen(false);
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -92,46 +97,41 @@ export const ToolbarRow = memo(function ToolbarRow({
           className={`flex items-center ${isMobile ? "absolute right-0 bottom-0 z-[60] w-max max-w-[calc(100vw-32px)] gap-0.5 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--bg-panel)_92%,var(--bg))] p-px shadow-[0_8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[10px]" : "gap-0.5"} ${isMobile && !menuOpen ? "hidden" : "flex"}`}
         >
           {!isStreaming && onToolPresetChange && (
-            <div ref={toolRef} className="relative">
-              <Button
-                onClick={() => setToolOpen((v) => !v)}
-                disabled={isStreaming}
-                variant="ghost"
-                size="sm"
-                title={`${t("chat.changeToolPreset")}: ${toolPresetLabel}`}
-                aria-label={t("chat.changeToolPreset")}
-                className={`${iconBtn} gap-1.5 ${toolOpen ? "bg-[var(--bg-hover)]" : ""}`}
-              >
-                <Wrench size={11} className="shrink-0" />
-                {(!isMobile || menuOpen) && <span className="whitespace-nowrap">{toolPresetLabel}</span>}
-              </Button>
-              {toolOpen && (
-                <div className="absolute right-0 bottom-[calc(100%+6px)] z-[100] min-w-[120px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
-                  {TOOL_PRESETS.map((lvl) => {
-                    const preset = TOOL_PRESET_MAP[lvl];
-                    const isActive = (toolPreset ?? "default") === preset;
-                    const desc = lvl === "off" ? t("chat.noTools") : lvl === "default" ? t("chat.builtInTools", { count: 4 }) : t("chat.allBuiltInTools");
-                    return (
-                      <Button
-                        key={lvl}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { setToolOpen(false); if (!isActive) onToolPresetChange(preset); }}
-                        className={`w-full justify-start gap-2 whitespace-nowrap rounded-none px-3 py-[7px] text-xs ${
-                          isActive ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] hover:bg-[var(--bg-selected)]" : "text-[var(--text-muted)]"
-                        }`}
-                      >
-                        {isActive
-                          ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
-                          : <span className="w-2.5 shrink-0" />}
-                        <span className="flex-1">{lvl}</span>
-                        <span className="ml-2 text-[11px] text-[var(--text-dim)]">{desc}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <DropdownMenu open={toolOpen} onOpenChange={setToolOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  disabled={isStreaming}
+                  variant="ghost"
+                  size="sm"
+                  title={`${t("chat.changeToolPreset")}: ${toolPresetLabel}`}
+                  aria-label={t("chat.changeToolPreset")}
+                  className={`${iconBtn} gap-1.5 data-[state=open]:bg-[var(--bg-hover)]`}
+                >
+                  <Wrench size={11} className="shrink-0" />
+                  {(!isMobile || menuOpen) && <span className="whitespace-nowrap">{toolPresetLabel}</span>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="min-w-[140px] p-1">
+                {TOOL_PRESETS.map((lvl) => {
+                  const preset = TOOL_PRESET_MAP[lvl];
+                  const isActive = (toolPreset ?? "default") === preset;
+                  const desc = lvl === "off" ? t("chat.noTools") : lvl === "default" ? t("chat.builtInTools", { count: 4 }) : t("chat.allBuiltInTools");
+                  return (
+                    <DropdownMenuItem
+                      key={lvl}
+                      onSelect={() => { if (!isActive) onToolPresetChange(preset); }}
+                      className={`gap-2 text-xs ${isActive ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] focus:bg-[var(--bg-selected)]" : "text-[var(--text-muted)]"}`}
+                    >
+                      {isActive
+                        ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
+                        : <span className="w-2.5 shrink-0" />}
+                      <span className="flex-1">{lvl}</span>
+                      <span className="ml-2 text-[11px] text-[var(--text-dim)]">{desc}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {attach && (
@@ -139,9 +139,9 @@ export const ToolbarRow = memo(function ToolbarRow({
               onClick={attach.onAttach}
               disabled={isStreaming}
               variant="ghost"
-              size="icon"
+              size="sm"
               title={t("chat.attachImage")}
-              className={`h-[26px] w-[26px] ${attach.count ? "text-[var(--accent)] hover:text-[var(--accent)]" : "text-[var(--text-muted)]"}`}
+              className={cn("h-6 w-6 shrink-0 rounded-[9px] p-0", attach.count ? "text-[var(--accent)] hover:text-[var(--accent)]" : "text-[var(--text-muted)]")}
             >
               <ImagePlus size={15} strokeWidth={1.8} />
             </Button>
@@ -171,10 +171,10 @@ export const ToolbarRow = memo(function ToolbarRow({
             <Button
               onClick={onSoundToggle}
               variant="ghost"
-              size="icon"
+              size="sm"
               title={soundEnabled ? t("chat.disableSound") : t("chat.enableSound")}
               aria-label={soundEnabled ? t("chat.disableSound") : t("chat.enableSound")}
-              className={`h-6 w-8 ${soundEnabled ? "text-[var(--text-muted)]" : "opacity-55"}`}
+              className={cn("h-6 w-6 shrink-0 rounded-[9px] p-0", soundEnabled ? "text-[var(--text-muted)]" : "opacity-55")}
             >
               {soundEnabled ? (
                 <Volume2 size={12} />

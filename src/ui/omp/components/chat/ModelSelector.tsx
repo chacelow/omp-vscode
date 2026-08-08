@@ -1,6 +1,15 @@
-import { useState, useRef, useMemo, memo } from "react";
+import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { Bot, Check } from "lucide-react";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from "../ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 // Model selector: current model button + searchable provider-grouped list.
 // The effort label next to the model name opens the thinking-level picker.
@@ -58,11 +67,28 @@ export const ModelSelector = memo(function ModelSelector({
   onModelChange, onModelOpen, onThinkingLevelChange, t,
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const [filter, setFilter] = useState("");
   const [thinkingOpen, setThinkingOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<HTMLDivElement>(null);
+
+  // Close the effort picker on outside click / Escape.
+  useEffect(() => {
+    if (!thinkingOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (thinkingRef.current && !thinkingRef.current.contains(e.target as Node)) {
+        setThinkingOpen(false);
+      }
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setThinkingOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [thinkingOpen]);
 
   const modelOptions = useMemo<ModelOption[]>(() => {
     if (modelList && modelList.length > 0) {
@@ -90,43 +116,101 @@ export const ModelSelector = memo(function ModelSelector({
     : null;
 
   return (
-    <div ref={dropdownRef} className="relative min-w-0">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={(e) => {
-          if (isStreaming) return;
-          onModelOpen?.();
-          const el = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          setRect({ top: el.top, left: el.left, width: el.width });
-          setOpen((o) => {
-            if (o) setFilter("");
-            return !o;
-          });
+    <div className="relative min-w-0">
+      <DropdownMenu
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) setFilter("");
+          if (o) onModelOpen?.();
         }}
-        disabled={isStreaming}
-        title={modelOptions.length > 0 ? "Change model" : "No available models"}
-        className={`h-6 max-w-[180px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs ${
-          open ? "bg-[var(--bg-hover)] text-[var(--text)]" : "text-[var(--text-muted)]"
-        } ${isStreaming ? "cursor-not-allowed opacity-50" : "hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"}`}
       >
-        <Bot size={11} className="shrink-0" />
-        <span className="min-w-0 flex-1 truncate">
-          {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
-        </span>
-        <span
-          role="button"
-          title="Switch thinking effort"
-          onClick={(e) => {
-            e.stopPropagation();
-            setThinkingOpen((o) => !o);
-          }}
-          className={`ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80 ${thinkingOpen ? "underline" : ""}`}
-        >
-          {thinkingLevel || "auto"}▾
-        </span>
-      </Button>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isStreaming}
+            title={modelOptions.length > 0 ? "Change model" : "No available models"}
+            className="h-6 max-w-[180px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs text-[var(--text-muted)] data-[state=open]:bg-[var(--bg-hover)] data-[state=open]:text-[var(--text)]"
+          >
+            <Bot size={11} className="shrink-0" />
+            <span className="min-w-0 flex-1 truncate">
+              {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
+            </span>
+            <span
+              role="button"
+              title="Switch thinking effort"
+              onClick={(e) => {
+                e.stopPropagation();
+                setThinkingOpen((o) => !o);
+              }}
+              className={cn(
+                "ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80",
+                thinkingOpen && "underline",
+              )}
+            >
+              {thinkingLevel || "auto"}▾
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent side="top" align="start" className="max-w-[min(60vw,420px)] p-1">
+          {showFilter && (
+            <div className="px-1 pb-1.5">
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={t("chat.filterModels") || "Filter models"}
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+                className="h-7 min-w-[220px] font-mono text-[11px]"
+              />
+            </div>
+          )}
+          <div className="max-h-[min(40vh,320px)] overflow-y-auto">
+            {modelsByProvider.length === 0 ? (
+              <div className="px-3 py-2 text-xs whitespace-nowrap text-[var(--text-dim)]">
+                {filter.trim() ? "No matching models" : "No available models"}
+              </div>
+            ) : modelsByProvider.map((group, gi) => (
+              <div key={group.provider}>
+                {modelsByProvider.length > 1 && (
+                  <DropdownMenuLabel className={cn(
+                    "px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-dim)]",
+                    gi > 0 && "border-t border-[var(--border)]",
+                  )}>
+                    {formatProviderName(group.provider)}
+                  </DropdownMenuLabel>
+                )}
+                {group.options.map((opt) => {
+                  const isActive = opt.modelId === model?.modelId && opt.provider === model?.provider;
+                  return (
+                    <DropdownMenuItem
+                      key={`${opt.provider}:${opt.modelId}`}
+                      onSelect={() => {
+                        if (!isActive) onModelChange?.(opt.provider, opt.modelId);
+                      }}
+                      className={cn(
+                        "gap-2 whitespace-nowrap px-3 py-[7px] text-xs",
+                        isActive
+                          ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] focus:bg-[var(--bg-selected)]"
+                          : "text-[var(--text-muted)]",
+                      )}
+                    >
+                      {isActive
+                        ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
+                        : <span className="w-2.5 shrink-0" />}
+                      {opt.name}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {thinkingOpen && (
         <div
@@ -137,95 +221,25 @@ export const ModelSelector = memo(function ModelSelector({
             const active = thinkingLevel === level;
             return (
               <Button
+                key={level}
                 type="button"
                 variant="ghost"
                 size="sm"
-                key={level}
                 onClick={() => {
                   onThinkingLevelChange?.(level);
                   setThinkingOpen(false);
                 }}
-                className={`w-full justify-start gap-2 rounded-[7px] px-2.5 py-[5px] font-mono text-xs ${
+                className={cn(
+                  "w-full justify-start gap-2 rounded-[7px] px-2.5 py-[5px] font-mono text-xs",
                   active
                     ? "bg-[var(--bg-selected)] text-[var(--text)] hover:bg-[var(--bg-selected)]"
-                    : "text-[var(--text-muted)]"
-                }`}
+                    : "text-[var(--text-muted)]",
+                )}
               >
                 {level}
               </Button>
             );
           })}
-        </div>
-      )}
-
-      {open && rect && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: (window.visualViewport?.height ?? window.innerHeight) - rect.top + 6,
-            left: rect.left,
-            width: "max-content", minWidth: rect.width,
-            maxHeight: Math.max(120, Math.min(rect.top - 8, (window.visualViewport?.height ?? window.innerHeight) * 0.6)),
-          }}
-          className="z-[1000] flex flex-col overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
-        >
-          {showFilter && (
-            <div className="px-1 pb-1.5">
-              <input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder={t("chat.filterModels") || "Filter models"}
-                autoFocus
-                autoComplete="off"
-                spellCheck={false}
-                className={`w-full rounded-[5px] border border-[var(--border)] bg-[var(--bg)] px-2 py-[5px] font-mono text-[11px] text-[var(--text)] outline-none ${
-                  isMobile ? "" : "min-w-[220px]"
-                }`}
-                style={{ boxSizing: "border-box" }}
-              />
-            </div>
-          )}
-          <div className="min-h-0 overflow-y-auto">
-            {modelsByProvider.length === 0 ? (
-              <div className="whitespace-nowrap px-3 py-2 text-xs text-[var(--text-dim)]">
-                {filter.trim() ? "No matching models" : "No available models"}
-              </div>
-            ) : modelsByProvider.map((group, gi) => (
-              <div key={group.provider}>
-                {modelsByProvider.length > 1 && (
-                  <div className={`px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-dim)] ${gi > 0 ? "border-t border-[var(--border)]" : ""}`}>
-                    {formatProviderName(group.provider)}
-                  </div>
-                )}
-                {group.options.map((opt) => {
-                  const isActive = opt.modelId === model?.modelId && opt.provider === model?.provider;
-                  return (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      key={`${opt.provider}:${opt.modelId}`}
-                      onClick={() => {
-                        setOpen(false);
-                        setFilter("");
-                        if (!isActive) onModelChange?.(opt.provider, opt.modelId);
-                      }}
-                      className={`w-full justify-start gap-2 whitespace-nowrap rounded-none px-3 py-[7px] text-xs ${
-                        isActive
-                          ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] hover:bg-[var(--bg-selected)]"
-                          : "text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {isActive
-                        ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
-                        : <span className="w-2.5 shrink-0" />}
-                      {opt.name}
-                    </Button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
