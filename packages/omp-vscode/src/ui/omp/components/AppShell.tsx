@@ -1251,7 +1251,7 @@ export function AppShell() {
         </div>
 
         {/* Chat content */}
-        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+        <div style={{ flex: 1, overflow: "hidden", position: "relative", minHeight: 0 }}>
           {showChat ? (
             <ChatWindow
               key={sessionKey}
