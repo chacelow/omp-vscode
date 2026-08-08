@@ -161,6 +161,72 @@ export function listAllSessions(): SessionInfo[] {
 // Message context (active-branch linear parse)
 // ---------------------------------------------------------------------------
 
+export interface SessionTreeNode {
+  id: string;
+  parentId: string | null;
+  type: string;
+  role: string;
+  summary: string;
+  hasImages: boolean;
+  timestamp?: string;
+  children: SessionTreeNode[];
+}
+
+/** Parse a session file into its real message tree (entry parentId links,
+ * not the linear active-branch view). Branch points show as fork nodes. */
+export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; byId: Map<string, SessionTreeNode> } {
+  const byId = new Map<string, SessionTreeNode>();
+  try {
+    const text = readFileSync(filePath, "utf8");
+    for (const line of text.split("\n")) {
+      if (!line.trim()) continue;
+      let entry: Record<string, unknown>;
+      try {
+        entry = JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+      if (entry.type !== "message") continue;
+      if (typeof entry.id !== "string") continue;
+      const msg = entry.message as AgentMessage | undefined;
+      if (!msg || typeof msg !== "object") continue;
+      let summary = "";
+      let hasImages = false;
+      const blocks = "content" in msg && Array.isArray(msg.content) ? msg.content : [];
+      for (const block of blocks) {
+        if (block.type === "text" && block.text) {
+          if (!summary) summary = block.text.replace(/\s+/g, " ").trim();
+          else summary += " " + block.text.replace(/\s+/g, " ").trim();
+        } else if (block.type === "image") {
+          hasImages = true;
+        }
+        if (summary.length >= 120) { summary = summary.slice(0, 120) + "…"; break; }
+      }
+      byId.set(entry.id, {
+        id: entry.id,
+        parentId: typeof entry.parentId === "string" ? entry.parentId : null,
+        type: "message",
+        role: msg.role,
+        summary,
+        hasImages,
+        timestamp: typeof entry.timestamp === "string" ? entry.timestamp : undefined,
+        children: [],
+      });
+    }
+  } catch {
+    // unreadable — empty tree
+  }
+  const roots: SessionTreeNode[] = [];
+  for (const node of byId.values()) {
+    if (node.parentId && byId.has(node.parentId)) {
+      byId.get(node.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return { roots, byId };
+}
+
 export interface SessionContext {
   messages: AgentMessage[];
   entryIds: string[];

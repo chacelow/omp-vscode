@@ -8,6 +8,7 @@ import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantB
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInput";
 import { ChatFooterBar } from "./chat/ChatFooterBar";
+import { SessionTreePanel } from "./chat/SessionTreePanel";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
@@ -712,6 +713,22 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             <div style={{ width: "100%", minWidth: 0, maxWidth: 820, margin: "0 auto" }}>
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
+            {messages.length > 0 && entryIds.length > 0 && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, paddingRight: CHAT_COLUMN_PADDING }}>
+                <SessionTreePanel
+                  messages={messages}
+                  entryIds={entryIds}
+                  onSelect={(entryId) => {
+                    const el = scrollContainerRef.current?.querySelector(`[data-entry-id="${CSS.escape(entryId)}"]`);
+                    if (el instanceof HTMLElement) {
+                      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                    }
+                  }}
+                  t={t}
+                />
+              </div>
+            )}
+
             {(() => {
               const toolResultsMap = new Map<string, ToolResultMessage>();
               for (const msg of messages) {
@@ -793,7 +810,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 );
                 if (!isVisible || options.attachRef === false || currentRefIdx === undefined) return view;
                 return (
-                  <div key={`${keyPrefix}-${idx}`} ref={attachVisibleRef(idx, currentRefIdx)}>
+                  <div key={`${keyPrefix}-${idx}`} ref={attachVisibleRef(idx, currentRefIdx)} data-entry-id={entryIds[idx]}>
                     {view}
                   </div>
                 );

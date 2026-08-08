@@ -11,7 +11,7 @@ import {
   startRpcSession,
   subscribeRunningSessions,
 } from "./rpc-manager";
-import { getOmpAgentDir, listAllSessions, loadSessionContext, readSessionHeader, resolveSessionPath } from "./session-reader";
+import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, resolveSessionPath } from "./session-reader";
 import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
 // ============================================================================
@@ -252,16 +252,27 @@ export class ApiHandler {
     if (!filePath) return { status: 404, body: { error: "Session not found" } };
     const ctx = loadSessionContext(filePath);
     const header = readSessionHeader(filePath);
-    // Minimal linear tree: one node per message (branch UI is not embedded).
-    const tree = ctx.messages.map((m, i) => ({
+    // Real message tree (entry parentId links) for the lightweight
+    // session-tree view; children populate branch/fork points.
+    const treeInfo = loadSessionTree(filePath);
+    const tree = treeInfo.roots.map((node) => ({
       entry: {
         type: "message",
-        id: ctx.entryIds[i] ?? `msg-${i}`,
-        parentId: i === 0 ? null : ctx.entryIds[i - 1] ?? null,
-        timestamp: new Date().toISOString(),
-        message: m,
+        id: node.id,
+        parentId: node.parentId,
+        timestamp: node.timestamp ?? new Date().toISOString(),
+        message: { role: node.role, content: node.summary ? [{ type: "text", text: node.summary }] : [] },
       },
-      children: [],
+      children: node.children.map((c) => ({
+        entry: {
+          type: "message",
+          id: c.id,
+          parentId: c.parentId,
+          timestamp: c.timestamp ?? new Date().toISOString(),
+          message: { role: c.role, content: c.summary ? [{ type: "text", text: c.summary }] : [] },
+        },
+        children: [],
+      })),
     }));
     return {
       status: 200,
