@@ -5,17 +5,13 @@ import { join } from "path";
 import { resolveOmpBinary } from "./omp-rpc";
 import {
   getRpcSession,
+  getRpcSessionList,
   getRunningRpcSessionIds,
   startRpcSession,
   subscribeRunningSessions,
 } from "./rpc-manager";
-import {
-  getOmpAgentDir,
-  listAllSessions,
-  loadSessionContext,
-  readSessionHeader,
-  resolveSessionPath,
-} from "./session-reader";
+import { getOmpAgentDir, listAllSessions, loadSessionContext, readSessionHeader, resolveSessionPath } from "./session-reader";
+import { parseModelRef, readOmpConfig } from "./omp-models";
 
 // ============================================================================
 // In-memory API handler — replaces the omp-web HTTP service.
@@ -143,9 +139,10 @@ export class ApiHandler {
 
       // /api/models, /api/models-config, /api/skills, /api/plugins, /api/auth,
       // /api/files, /api/cwd — config surfaces are not embedded yet.
-      if (["models", "models-config", "skills", "plugins", "auth", "files", "cwd", "home", "default-cwd", "project-trust"].includes(parts[1] as string)) {
+      if (["models-config", "skills", "plugins", "auth", "files", "cwd", "home", "default-cwd", "project-trust"].includes(parts[1] as string)) {
         return this.configSurface(parts[1] as string, method, parts);
       }
+      if (parts[1] === "models" && method === "GET") return this.models();
 
       return { status: 404, body: { error: `Not found: ${path}` } };
     } catch (err) {
@@ -249,6 +246,86 @@ export class ApiHandler {
         cwd: header?.cwd ?? "",
       },
     };
+  }
+
+  /** GET /api/models — from the OMP runtime (get_available_models), matching
+   *  the TUI's live model view. Roles come from config.yml (the CLI's own
+   *  config surface). No offline fallback: the frontend warms up a session
+   *  before requesting models. */
+  private async models(): Promise<HandlerResult> {
+    const config = readOmpConfig();
+    const roles = config.modelRoles ?? {};
+    const modelRoles: Record<string, { provider: string; modelId: string; thinkingLevel?: string }> = {};
+    for (const [role, ref] of Object.entries(roles)) {
+      if (!ref) continue;
+      const parsed = parseModelRef(ref);
+      if (!parsed) continue;
+      const thinkingIdx = ref.lastIndexOf(":");
+      const thinking = thinkingIdx > 0 ? ref.slice(thinkingIdx + 1) : undefined;
+      if (thinking && ["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(thinking)) {
+        modelRoles[role] = { ...parsed, thinkingLevel: thinking };
+      } else {
+        modelRoles[role] = parsed;
+      }
+    }
+    const defaultModel = parseModelRef(roles.default) ?? null;
+
+    const live = getRpcSessionList().find((s) => s.isAlive());
+    if (!live) {
+      return {
+        status: 200,
+        body: {
+          models: {},
+          modelList: [],
+          defaultModel,
+          currentModel: null,
+          fastModeEnabled: false,
+          fastModeActive: false,
+          modelRoles,
+          thinkingLevels: {},
+          thinkingLevelMaps: {},
+          thinkingLevelPins: {},
+          modelError: null,
+          modelScopeWarnings: [],
+        },
+      };
+    }
+
+    try {
+      const state = (await live.send({ type: "get_state" })) as {
+        model?: { id: string; provider: string; name?: string };
+        fastModeEnabled?: boolean;
+        fastModeActive?: boolean;
+      };
+      const available = (await live.send({ type: "get_available_models" })) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
+      const list = (available.models ?? []).map((m) => ({
+        id: m.id,
+        name: m.name || m.id,
+        provider: m.provider,
+        contextWindow: m.contextWindow,
+      }));
+      const models: Record<string, string> = {};
+      for (const m of list) if (!models[m.id]) models[m.id] = m.name;
+      return {
+        status: 200,
+        body: {
+          models,
+          modelList: list,
+          defaultModel: defaultModel ?? (state.model ? { provider: state.model.provider, modelId: state.model.id } : null),
+          currentModel: state.model ? { provider: state.model.provider, modelId: state.model.id } : null,
+          fastModeEnabled: state.fastModeEnabled ?? false,
+          fastModeActive: state.fastModeActive ?? false,
+          modelRoles,
+          thinkingLevels: {},
+          thinkingLevelMaps: {},
+          thinkingLevelPins: {},
+          modelError: null,
+          modelScopeWarnings: [],
+        },
+      };
+    } catch (err) {
+      return { status: 500, body: { error: err instanceof Error ? err.message : String(err) } };
+    }
   }
 
   // -------------------------------------------------------------------------

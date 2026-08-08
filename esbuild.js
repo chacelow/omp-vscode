@@ -34,7 +34,9 @@ async function main() {
     outfile: path.join(__dirname, "dist/extension.js"),
     format: "cjs",
     platform: "node",
-    external: ["vscode"],
+    // better-sqlite3 is a native addon — it cannot be bundled; it must be
+    // resolved from node_modules at runtime.
+    external: ["vscode", "better-sqlite3"],
   });
 
   const webviewCtx = await esbuild.context({

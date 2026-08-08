@@ -322,6 +322,7 @@ type ModelsResponse = {
   models: Record<string, string>;
   modelList?: ModelEntry[];
   defaultModel?: SelectedModel | null;
+  modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
   thinkingLevels?: Record<string, string[]>;
   thinkingLevelMaps?: Record<string, Record<string, string | null>>;
   thinkingLevelPins?: Record<string, string>;
@@ -359,6 +360,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [pendingBash, setPendingBash] = useState<{ command: string; excludeFromContext: boolean } | null>(null);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelEntry[]>([]);
+  const [modelRoles, setModelRoles] = useState<Record<string, { provider: string; modelId: string; thinkingLevel?: string }>>({});
   const [modelError, setModelError] = useState<string | null>(null);
   const [modelScopeWarnings, setModelScopeWarnings] = useState<string[]>([]);
   const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
@@ -1500,6 +1502,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [isNew, setNewSessionModel]);
 
+  /** Switch to a configured role model (default/smol/plan/…) + its thinking pin. */
+  const handleRoleChange = useCallback(async (role: string) => {
+    const r = modelRoles[role];
+    if (!r) return;
+    await handleModelChange(r.provider, r.modelId);
+    if (r.thinkingLevel) {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      try {
+        await sendAgentCommand(sid, { type: "set_thinking_level", level: r.thinkingLevel });
+      } catch {
+        // thinking level may be unsupported by the model — ignore
+      }
+    }
+  }, [modelRoles, handleModelChange]);
+
   const handleCompact = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid || isCompacting) return;
@@ -1529,6 +1547,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setModelScopeWarnings(d.modelScopeWarnings ?? []);
     setModelThinkingLevels(d.thinkingLevels ?? {});
     setModelThinkingLevelMaps(d.thinkingLevelMaps ?? {});
+    setModelRoles(d.modelRoles ?? {});
     const nextModelList = d.modelList ?? [];
     setModelList(nextModelList);
     if (isNew && !sessionIdRef.current) {
@@ -1944,6 +1963,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (cancelled || !sid) return;
         await loadSession(sid, true);
         if (cancelled) return;
+        // Session is live — pull the authoritative model list from the RPC
+        // runtime (get_available_models), matching the TUI's live model view.
+        void loadModels();
         // Surface the resumed session in the shell (sidebar highlight, header)
         // so the view is a continued conversation, not a blank new-chat page.
         promoteNewSession(1, "");
@@ -1954,7 +1976,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return () => {
       cancelled = true;
     };
-  }, [isNew, newSessionCwd, session, ensureNewSession, loadSession, promoteNewSession]);
+  }, [isNew, newSessionCwd, session, ensureNewSession, loadSession, loadModels, promoteNewSession]);
 
   useEffect(() => {
     onSystemPromptChange?.(systemPrompt);
@@ -2041,7 +2063,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   return {
     // State
     data, loading, error, activeLeafId, messages, entryIds, streamState,
-    agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
+    agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, modelRoles, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage: sessionStats?.contextUsage ?? contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,
@@ -2057,7 +2079,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
-    handleToolPresetChange, handleThinkingLevelChange, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleRoleChange, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     bashRunning, pendingBash,
     // Subscriptions

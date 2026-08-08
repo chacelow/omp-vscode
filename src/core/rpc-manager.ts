@@ -417,6 +417,9 @@ export class AgentSessionWrapper {
       case "get_last_assistant_text":
         return this.rpc.send("get_last_assistant_text");
 
+      case "get_available_models":
+        return this.rpc.send("get_available_models");
+
       case "get_commands": {
         const data = await this.rpc.send<{ commands?: Array<Record<string, unknown>> }>("get_available_commands");
         // Map OMP command sources to the webview's slash palette groups:
@@ -551,6 +554,11 @@ function trackStartingSession(cwd: string): () => void {
 
 export function getRpcSession(sessionId: string): AgentSessionWrapper | undefined {
   return getRegistry().get(sessionId);
+}
+
+/** All live session wrappers (for catalog queries like get_available_models). */
+export function getRpcSessionList(): AgentSessionWrapper[] {
+  return Array.from(getRegistry().values()).filter((s) => s.isAlive());
 }
 
 export function hasBusyRpcSessionForCwd(cwd: string): boolean {

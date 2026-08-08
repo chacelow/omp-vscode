@@ -205,7 +205,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const {
     loading, error, messages, entryIds, streamState,
-    agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
+    agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, handleRoleChange,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,
@@ -383,6 +383,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       modelError={modelError}
       modelScopeWarnings={modelScopeWarnings}
       onModelChange={handleModelChange}
+      modelRoles={modelRoles}
+      onRoleChange={handleRoleChange}
       onCompact={session || isNew ? handleCompact : undefined}
       onAbortCompaction={handleAbortCompaction}
       isCompacting={isCompacting}
@@ -523,10 +525,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 title="Versions reported by the local omp-web service"
               >
                 <span>omp <span style={{ color: "var(--text)" }}>v{serviceVersions.cli || serviceVersions.pi || "0.0.0"}</span></span>
+                {serviceVersions.pi && (
+                  <>
+                    <span style={{ opacity: 0.6 }}>·</span>
+                    <span>pi <span style={{ color: "var(--text)" }}>v{serviceVersions.pi}</span></span>
+                  </>
+                )}
                 <span style={{ opacity: 0.6 }}>·</span>
-                <span>pi <span style={{ color: "var(--text)" }}>v{serviceVersions.pi || "0.0.0"}</span></span>
-                <span style={{ opacity: 0.6 }}>·</span>
-                <span>omp-web <span style={{ color: "var(--text)" }}>v{serviceVersions.omp || "0.0.0"}</span></span>
+                <span>ext <span style={{ color: "var(--text)" }}>v{serviceVersions.omp || "0.0.0"}</span></span>
               </div>
             </div>
 

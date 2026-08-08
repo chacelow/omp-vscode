@@ -45,6 +45,9 @@ interface Props {
   /** Diagnostics from resolving `enabledModels`, e.g. a pattern that matched nothing. */
   modelScopeWarnings?: string[];
   onModelChange?: (provider: string, modelId: string) => void;
+  /** Configured model roles (default/smol/plan/…) from config.yml modelRoles. */
+  modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
+  onRoleChange?: (role: string) => void;
   onCompact?: () => void;
   onAbortCompaction?: () => void;
   isCompacting?: boolean;
@@ -336,7 +339,7 @@ export function ModelScopeWarningBanner({ warnings }: { warnings?: string[] }) {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
-  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange,
+  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, modelRoles, onRoleChange,
   onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo, queuedMessages, inputHistory = [], onRecallQueue,
@@ -353,6 +356,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [modelDropdownRect, setModelDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const [modelFilter, setModelFilter] = useState("");
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [roleDropdownRect, setRoleDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const [toolDropdownOpen, setToolDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [controlsMenuOpen, setControlsMenuOpen] = useState(false);
@@ -382,6 +387,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const roleDropdownRef = useRef<HTMLDivElement | null>(null);
   const modelDropdownPanelRef = useRef<HTMLDivElement>(null);
   const toolDropdownRef = useRef<HTMLDivElement>(null);
   const thinkingDropdownRef = useRef<HTMLDivElement>(null);
@@ -1088,6 +1094,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)?.name ?? model.modelId)
     : null;
   const currentName = displayModelName;
+
+  // Which configured role matches the active model (display grouping).
+  const ROLE_LABELS: Record<string, string> = { default: "Default", smol: "Fast", plan: "Plan", task: "Task", slow: "Slow", commit: "Commit", vision: "Vision", designer: "Designer", advisor: "Advisor", tiny: "Tiny" };
+  const roleNames = Object.keys(modelRoles ?? {});
+  const activeRole = roleNames.find((r) => {
+    const rr = modelRoles?.[r];
+    return rr && model && rr.provider === model.provider && rr.modelId === model.modelId;
+  }) ?? (roleNames.includes("default") ? "default" : undefined);
+  const activeRoleLabel = activeRole ? (ROLE_LABELS[activeRole] ?? activeRole) : undefined;
 
   const compactSavedTokens = compactResult
     ? Math.max(0, compactResult.tokensBefore - compactResult.estimatedTokensAfter)
@@ -1833,6 +1848,86 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <polyline points="21 15 16 10 5 21" />
               </svg>
             </button>
+            {/* Role selector — configured model roles (default/smol/plan/…) */}
+            {roleNames.length > 0 && onRoleChange && (
+              <div ref={roleDropdownRef} style={{ position: "relative" }}>
+                <button
+                  onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setRoleDropdownRect({ top: rect.top, left: rect.left, width: rect.width });
+                    setRoleDropdownOpen((o) => !o);
+                  }}
+                  disabled={isStreaming}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "8px 10px", height: 32, maxWidth: 120, overflow: "hidden",
+                    background: roleDropdownOpen ? "var(--bg-hover)" : "none",
+                    border: "none", borderRadius: 9, color: "var(--text-muted)",
+                    cursor: isStreaming ? "not-allowed" : "pointer", fontSize: 12,
+                    opacity: isStreaming ? 0.5 : 1, transition: "background 0.12s, color 0.12s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isStreaming) return;
+                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.color = "var(--text)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = roleDropdownOpen ? "var(--bg-hover)" : "none";
+                    e.currentTarget.style.color = "var(--text-muted)";
+                  }}
+                  title="Switch model role"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                    <circle cx="12" cy="12" r="4" />
+                  </svg>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {activeRoleLabel ?? "Role"}
+                  </span>
+                </button>
+                {roleDropdownOpen && roleDropdownRect && (
+                  <div
+                    style={{
+                      position: "fixed", top: roleDropdownRect.top - 4, left: roleDropdownRect.left,
+                      minWidth: roleDropdownRect.width, maxHeight: 320, overflowY: "auto",
+                      background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
+                      boxShadow: "0 8px 30px rgba(0,0,0,0.25)", zIndex: 1000, padding: 4,
+                    }}
+                  >
+                    {roleNames.map((role) => {
+                      const rr = modelRoles?.[role];
+                      const isActive = role === activeRole;
+                      return (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            setRoleDropdownOpen(false);
+                            onRoleChange(role);
+                          }}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8, width: "100%",
+                            padding: "6px 10px", border: "none", borderRadius: 7,
+                            background: isActive ? "var(--bg-hover)" : "none",
+                            color: isActive ? "var(--text)" : "var(--text-muted)",
+                            cursor: "pointer", fontSize: 12, textAlign: "left",
+                          }}
+                          title={rr ? `${rr.provider}/${rr.modelId}${rr.thinkingLevel ? ":" + rr.thinkingLevel : ""}` : role}
+                        >
+                          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {ROLE_LABELS[role] ?? role}
+                          </span>
+                          {rr && (
+                            <span style={{ opacity: 0.5, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90 }}>
+                              {rr.modelId}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Model selector — visible always, disabled during streaming */}
             {(modelOptions.length > 0 || currentName || modelError) && onModelChange && (
                 <div ref={dropdownRef} style={{ position: "relative", flex: isMobile ? "1 1 auto" : undefined, minWidth: 0 }}>
