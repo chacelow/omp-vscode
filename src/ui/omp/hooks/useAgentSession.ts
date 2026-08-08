@@ -193,6 +193,27 @@ class EventStreamConnectionError extends Error {
   }
 }
 
+const LAST_MODEL_KEY = "omp.lastModel";
+
+function readLastModel(): { provider: string; modelId: string } | null {
+  try {
+    const raw = localStorage.getItem(LAST_MODEL_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { provider?: string; modelId?: string };
+    return v?.provider && v?.modelId ? { provider: v.provider, modelId: v.modelId } : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastModel(provider: string, modelId: string): void {
+  try {
+    localStorage.setItem(LAST_MODEL_KEY, JSON.stringify({ provider, modelId }));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 function createNoticeId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -612,7 +633,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const promise = (async () => {
       // Only send explicit user overrides. The server resolves the current
       // enabledModels scope atomically with AgentSession construction.
-      const selectedModel = newSessionModelOverrideRef.current;
+      const selectedModel = newSessionModelOverrideRef.current ?? readLastModel();
       const selectedThinkingLevel = thinkingLevelOverrideRef.current;
       if (selectedModel) setPendingModel(selectedModel);
       // OMP enables its full built-in tool set by default; do not pass a Pi
@@ -1478,6 +1499,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [loadContext]);
 
   const handleModelChange = useCallback(async (provider: string, modelId: string) => {
+    saveLastModel(provider, modelId);
     if (isNew) {
       const selectedModel = { provider, modelId };
       newSessionModelOverrideRef.current = selectedModel;
@@ -1553,9 +1575,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (isNew) {
       // Apply even after the warm-up session exists (sessionIdRef set) — the
       // new-chat view derives its displayed model from the default.
-      const match = d.defaultModel
-        ? nextModelList.find((m) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
+      const last = readLastModel();
+      const lastMatch = last
+        ? nextModelList.find((m) => m.id === last.modelId && m.provider === last.provider)
         : undefined;
+      const match = (lastMatch ?? (d.defaultModel
+        ? nextModelList.find((m) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
+        : undefined));
       const displayModel = match ?? nextModelList[0];
       setNewSessionDefaultModel(displayModel ? { provider: displayModel.provider, modelId: displayModel.id } : null);
       // An `enabledModels` pattern may pin a thinking level (`anthropic/*:high`).
