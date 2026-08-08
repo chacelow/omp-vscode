@@ -75,8 +75,7 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
 }
 
 /** First user message text (fallback when the async title is not written). */
-function readFirstUserMessageText(filePath: string): string {
-  try {
+function readFirstUserMessageText(filePath: string): string {  try {
     const text = readFileSync(filePath, "utf8").slice(0, 256 * 1024);
     for (const line of text.split("\n")) {
       if (!line.trim()) continue;
@@ -109,6 +108,20 @@ function readFirstUserMessageText(filePath: string): string {
   return "";
 }
 
+/** Count conversation messages in a session file (line scan, no full parse). */
+function countMessageEntries(filePath: string): number {
+  try {
+    const text = readFileSync(filePath, "utf8");
+    let count = 0;
+    for (const line of text.split("\n")) {
+      if (line.includes('"type":"message"') || line.includes('"type": "message"')) count += 1;
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
 /** Session summary for the sidebar list (all sessions under the agent dir). */
 export function listAllSessions(): SessionInfo[] {
   const sessionsDir = getSessionsDir();
@@ -132,7 +145,7 @@ export function listAllSessions(): SessionInfo[] {
           name: header.name || header.title || fallback || undefined,
           created: header.timestamp ? new Date(header.timestamp).toISOString() : stat.birthtime.toISOString(),
           modified: stat.mtime.toISOString(),
-          messageCount: 1,
+          messageCount: countMessageEntries(filePath),
           firstMessage: header.title || fallback || "(session)",
           parentSessionId: header.parentSession,
         });
@@ -192,7 +205,15 @@ export function loadSessionContext(filePath: string): SessionContext {
           break;
         }
         case "model_change": {
-          if (typeof entry.provider === "string" && typeof entry.modelId === "string") {
+          // TUI writes a single `model` string ("provider/path/modelId").
+          if (typeof entry.model === "string") {
+            const slash = entry.model.indexOf("/");
+            if (slash > 0) {
+              model = { provider: entry.model.slice(0, slash), modelId: entry.model.slice(slash + 1) };
+            } else if (entry.model) {
+              model = { provider: "unknown", modelId: entry.model };
+            }
+          } else if (typeof entry.provider === "string" && typeof entry.modelId === "string") {
             model = { provider: entry.provider, modelId: entry.modelId };
           }
           break;
