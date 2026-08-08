@@ -279,6 +279,63 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     container.scrollTop = restoreScrollTop(container.scrollHeight, prevScrollDistanceRef.current);
     prevScrollDistanceRef.current = null;
   }, [visibleCount, scrollContainerRef]);
+
+  // --- Auto-scroll follow (opencode-style) ---
+  // Lock follow while the user scrolls away from the bottom; unlock when
+  // they scroll back near the bottom. Programmatic scrolls are marked so
+  // they don't trip the lock.
+  const [userScrolled, setUserScrolled] = useState(false);
+  const autoScrollMarkRef = useRef<{ top: number; time: number } | null>(null);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY >= 0) return;
+      const target = e.target instanceof Element ? e.target : undefined;
+      const nested = target?.closest("[data-scrollable]");
+      if (nested && nested !== container) return;
+      if (container.scrollHeight - container.clientHeight <= 1) return;
+      setUserScrolled(true);
+    };
+    container.addEventListener("wheel", onWheel, { passive: true });
+    return () => container.removeEventListener("wheel", onWheel);
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const dist = container.scrollHeight - container.clientHeight - container.scrollTop;
+      if (dist <= 12) setUserScrolled(false);
+    };
+    container.addEventListener("scroll", onScroll);
+    return () => container.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToBottomNow = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    autoScrollMarkRef.current = { top: el.scrollHeight - el.clientHeight, time: Date.now() };
+    el.scrollTop = el.scrollHeight;
+  }, []);
+
+  useEffect(() => {
+    if (userScrolled) return;
+    scrollToBottomNow();
+  }, [messages, userScrolled, sessionBusy, scrollToBottomNow]);
+
+  useEffect(() => {
+    if (!sessionBusy || userScrolled) return;
+    const timer = setInterval(() => {
+      if (userScrolled) return;
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      if (el.scrollHeight - el.clientHeight - el.scrollTop < 2) return;
+      scrollToBottomNow();
+    }, 150);
+    return () => clearInterval(timer);
+  }, [sessionBusy, userScrolled, scrollToBottomNow]);
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
@@ -573,7 +630,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             <NoticeShelf notices={notices} floating align="right" />
           </div>
         </div>
-        <div ref={scrollContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none]">
+        <div ref={scrollContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-16 pt-4 [scrollbar-width:none]">
           <div style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}>
             <div style={{ width: "100%", minWidth: 0, maxWidth: 820, margin: "0 auto" }}>
               <ExtensionWidgets widgets={aboveEditorWidgets} />
