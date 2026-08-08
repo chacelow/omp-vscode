@@ -6,12 +6,11 @@ import {
   TooltipContent,
 } from "../ui/tooltip";
 import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+} from "../ui/dropdown-menu";
 
 // Context-window usage ring: SVG progress circle. Hover shows a brief
 // summary; click opens a card with the full breakdown.
@@ -58,10 +57,10 @@ export function ContextRing({
   if (details?.cost != null && details.cost > 0) rows.push(["cost", `$${details.cost.toFixed(4)}`]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <DialogTrigger asChild>
+          <DropdownMenuTrigger asChild>
             <button
               type="button"
               aria-label={`Context: ${brief}`}
@@ -76,17 +75,15 @@ export function ContextRing({
                 />
               </svg>
             </button>
-          </DialogTrigger>
+          </DropdownMenuTrigger>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-[11px]">
           {brief}
         </TooltipContent>
       </Tooltip>
-      <DialogContent className="max-w-[320px]">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Context usage</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-1.5">
+      <DropdownMenuContent side="top" align="end" className="min-w-[240px] p-2">
+        <DropdownMenuLabel className="text-sm">Context usage</DropdownMenuLabel>
+        <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-xs">
             <span className="text-[var(--text-dim)]">used</span>
             <span className="font-mono text-[var(--text)]">{pct.toFixed(1)}%</span>
@@ -108,7 +105,7 @@ export function ContextRing({
             </div>
           ))}
         </div>
-      </DialogContent>
-    </Dialog>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
