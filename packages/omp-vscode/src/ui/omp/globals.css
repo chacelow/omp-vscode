@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* The webview iframe is width/height 100%; the app must fill it exactly
+   or the body background shows below the chat page. */
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 /* ── Local font: HarmonyOS Sans (UI chrome) ─────────────────────────────── */
 @font-face {
   font-family: 'HarmonyOS Sans';
