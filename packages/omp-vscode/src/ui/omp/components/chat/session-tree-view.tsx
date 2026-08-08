@@ -48,17 +48,20 @@ function buildTreeData(tree: SessionTreeNode[], activeIds: Set<string>) {
     for (const node of nodes) {
       const id = node.entry?.id ?? "";
       if (!id) continue;
+      // Children are assigned HERE, once, from the node's own subtree.
+      const childIds = (node.children ?? []).map((c) => c.entry?.id ?? "").filter(Boolean);
       items[id] = {
         name: entryText(node.entry) || entryRole(node.entry),
         role: entryRole(node.entry),
         isActive: activeIds.has(id),
         hasBranch: node.children.length > 1,
+        ...(childIds.length > 0 ? { children: childIds } : {}),
       };
-      if (node.children.length > 0) {
-        items[id].children = node.children.map((c) => c.entry?.id ?? "").filter(Boolean);
-      }
-      (items[parentId].children ??= []).push(id);
-      walk(node.children, id);
+      // Only the virtual root collects its children by push (it has no own
+      // subtree mapping); every other parent's children list comes from the
+      // explicit assignment above — no double-append.
+      if (parentId === ROOT_ID) (items[ROOT_ID].children ??= []).push(id);
+      walk(node.children ?? [], id);
     }
   };
   walk(tree, ROOT_ID);
@@ -75,10 +78,12 @@ export function SessionTreeNodes({
   onSelect: (entryId: string) => void;
 }) {
   const items = buildTreeData(tree, activeIds);
-  const expanded = Object.keys(items).filter((id) => (items[id].children?.length ?? 0) > 0);
 
   const treeApi = useTree<NodeData>({
-    initialState: { expandedItems: expanded },
+    // Default: only the root expanded — hundreds of entries render as the
+    // top level only, so long sessions (thousands of messages) open
+    // instantly instead of rendering every branch.
+    initialState: { expandedItems: [ROOT_ID] },
     indent: INDENT,
     rootItemId: ROOT_ID,
     getItemName: (item) => item.getItemData().name,
