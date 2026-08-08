@@ -1111,7 +1111,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             }
             rows={1}
             className="min-h-6 max-h-[200px] w-full min-w-0 flex-1 resize-none overflow-auto border-none bg-transparent font-inherit text-[12px] leading-[1.6] text-[var(--text)] outline-none"
-            style={{ fontSize: 12, WebkitTextSizeAdjust: "100%" }}
+            style={{ fontSize: 12, WebkitTextSizeAdjust: "none" }}
           />
 
         {/* Bash mode status label */}

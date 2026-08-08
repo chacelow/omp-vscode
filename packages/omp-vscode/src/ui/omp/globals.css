@@ -4,7 +4,17 @@
    or the body background shows below the chat page. Scrolling happens
    inside the app's own containers; the page itself must never scroll,
    or a hidden scrollbar leaves a dead gap at the bottom. */
-html, body, #app {
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* WebKit auto-enlarges form controls (textarea/input ≥16px) in narrow
+     viewports regardless of per-element font-size; kill it at the root. */
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+body, #app {
   height: 100%;
   margin: 0;
   padding: 0;
