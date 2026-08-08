@@ -35,10 +35,15 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
     <Button
       onClick={onSend}
       disabled={!canSend}
-      variant={canSend ? "default" : "secondary"}
+      variant="ghost"
       size="sm"
       title="Send"
-      className={cn("h-6 w-6 shrink-0 rounded-full p-0", !canSend && "shadow-none")}
+      className={cn(
+        "h-6 w-6 shrink-0 rounded-full p-0",
+        canSend
+          ? "bg-[var(--vscode-button-secondaryBackground,#e5e5e5)] text-[var(--vscode-button-secondaryForeground,#1a1a1a)] hover:bg-[var(--vscode-button-secondaryHoverBackground,#d4d4d4)]"
+          : "cursor-not-allowed bg-[var(--bg-panel)] text-[var(--text-dim)] opacity-100",
+      )}
     >
       <ArrowUp size={13} strokeWidth={2.5} />
     </Button>
