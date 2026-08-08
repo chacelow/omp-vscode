@@ -18,6 +18,59 @@ export interface OmpModelItem {
   provider: string;
 }
 
+/** OMP's own model cache (~/.omp/agent/models.db) — written by the CLI, read
+ *  without network. Used when get_available_models stalls on a remote
+ *  custom provider (e.g. a slow cursor-proxy baseUrl). */
+export function readOmpModelsFromDb(): OmpModelItem[] {
+  const dbPath = join(getOmpAgentDir(), "models.db");
+  if (!existsSync(dbPath)) return [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Database = require("better-sqlite3");
+    const db = new Database(dbPath, { readonly: true });
+    const rows = db.prepare("SELECT provider_id, models FROM model_cache").all() as Array<{ provider_id: string; models: string }>;
+    db.close();
+    const items: OmpModelItem[] = [];
+    for (const row of rows) {
+      try {
+        const parsed = JSON.parse(row.models) as Array<{ id: string; name?: string }>;
+        if (Array.isArray(parsed)) {
+          for (const m of parsed) {
+            if (m && m.id) items.push({ id: m.id, name: m.name || m.id, provider: row.provider_id });
+          }
+        }
+      } catch {
+        // ignore row parse error
+      }
+    }
+    if (items.length > 0) return items;
+  } catch {
+    // fall through to regex parse
+  }
+  try {
+    const fileStr = readFileSync(dbPath).toString("utf8");
+    const items: OmpModelItem[] = [];
+    const jsonMatch = fileStr.match(/\[\s*\{\s*"id"\s*:[\s\S]*?\]/g);
+    if (jsonMatch) {
+      for (const block of jsonMatch) {
+        try {
+          const parsed = JSON.parse(block) as Array<{ id: string; name?: string; provider?: string }>;
+          if (Array.isArray(parsed)) {
+            for (const m of parsed) {
+              if (m && m.id) items.push({ id: m.id, name: m.name || m.id, provider: m.provider || "omp" });
+            }
+          }
+        } catch {
+          // ignore invalid blocks
+        }
+      }
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
 export interface OmpConfig {
   modelRoles?: {
     default?: string;

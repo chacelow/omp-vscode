@@ -12,7 +12,7 @@ import {
   subscribeRunningSessions,
 } from "./rpc-manager";
 import { getOmpAgentDir, listAllSessions, loadSessionContext, readSessionHeader, resolveSessionPath } from "./session-reader";
-import { parseModelRef, readOmpConfig } from "./omp-models";
+import { parseModelRef, readOmpConfig, readOmpModelsFromDb } from "./omp-models";
 
 // ============================================================================
 // In-memory API handler — replaces the omp-web HTTP service.
@@ -341,16 +341,24 @@ export class ApiHandler {
           },
         };
       } catch {
-        // Session is hung — try the next live session.
+        // Session is hung (get_available_models can stall on a slow remote
+        // custom provider) — try the next live session.
         continue;
       }
     }
 
+    // No healthy session answered. Fall back to OMP's own model cache
+    // (~/.omp/agent/models.db, written by the CLI — no network) so the
+    // selector still has the catalog.
+    const items = readOmpModelsFromDb();
+    const fallbackList = items.map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
+    const fallbackModels: Record<string, string> = {};
+    for (const m of items) if (!fallbackModels[m.id]) fallbackModels[m.id] = m.name;
     return {
       status: 200,
       body: {
-        models: {},
-        modelList: [],
+        models: fallbackModels,
+        modelList: fallbackList,
         defaultModel,
         currentModel: null,
         fastModeEnabled: false,
