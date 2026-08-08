@@ -37,7 +37,7 @@ function filterModelOptions(options: ModelOption[], query: string): ModelOption[
   );
 }
 
-interface ModelSelectorProps {
+export interface ModelSelectorProps {
   model?: { provider: string; modelId: string } | null;
   modelList?: Array<{ id: string; name: string; provider: string }>;
   modelNames?: Record<string, string>;

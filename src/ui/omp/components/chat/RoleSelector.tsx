@@ -8,7 +8,7 @@ import type { SlashCommandInfo } from "@/hooks/useAgentSession";
 const ROLE_LABELS: Record<string, string> = { default: "Default", smol: "Fast", plan: "Plan" };
 const ROLE_ORDER = ["default", "smol", "plan"] as const;
 
-interface RoleSelectorProps {
+export interface RoleSelectorProps {
   modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
   model?: { provider: string; modelId: string } | null;
   fastMode?: boolean;
