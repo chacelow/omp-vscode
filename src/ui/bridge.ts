@@ -37,6 +37,11 @@ type PendingRequest = {
 const pending = new Map<number, PendingRequest>();
 let seq = 0;
 
+/** Webview-side log routed to the host's "OMP Chat" output channel. */
+function bridgeLog(message: string): void {
+  ompPost({ type: "log", level: "info", message: `[bridge] ${message}` });
+}
+
 interface BridgeEventSourceLike {
   url: string;
   readyState: number;
@@ -123,6 +128,8 @@ async function bridgedFetch(input: RequestInfo | URL, init?: RequestInit): Promi
     return originalFetch(input, init);
   }
 
+  bridgeLog(`fetch ${method} ${url}`);
+
   const requestId = ++seq;
   const promise = new Promise<{ status: number; body: unknown }>((resolve, reject) => {
     pending.set(requestId, { resolve, reject });
@@ -139,6 +146,7 @@ async function bridgedFetch(input: RequestInfo | URL, init?: RequestInit): Promi
   });
 
   const resp = await promise;
+  bridgeLog(`← ${method} ${url} ${resp.status}`);
   const text = typeof resp.body === "string" ? resp.body : JSON.stringify(resp.body ?? null);
   return new Response(text, {
     status: resp.status,
@@ -171,6 +179,7 @@ class BridgeEventSource implements BridgeEventSourceLike {
   constructor(url: string) {
     this.url = url;
     eventSources.push(this);
+    bridgeLog(`EventSource open ${url}`);
     ompPost({ type: "events", url });
   }
 
