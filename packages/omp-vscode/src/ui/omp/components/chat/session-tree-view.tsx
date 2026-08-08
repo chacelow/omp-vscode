@@ -4,9 +4,9 @@
 // session file's full tree (every branch); clicking a node switches the
 // branch via navigate-leaf (same file, no new session).
 import { Tree, TreeItem, TreeItemLabel } from "@/components/reui/tree";
-import { expandAllFeature, hotkeysCoreFeature, syncDataLoaderFeature } from "@headless-tree/core";
+import { hotkeysCoreFeature, syncDataLoaderFeature } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { Bot, ChevronsDownUp, ChevronsUpDown, User, Wrench } from "lucide-react";
+import { Bot, User, Wrench } from "lucide-react";
 import type { SessionEntry, SessionTreeNode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -87,45 +87,32 @@ export function SessionTreeNodes({
       getItem: (itemId) => items[itemId],
       getChildren: (itemId) => items[itemId].children ?? [],
     },
-    features: [syncDataLoaderFeature, hotkeysCoreFeature, expandAllFeature],
+    features: [syncDataLoaderFeature, hotkeysCoreFeature],
   });
 
-  const folderCount = Object.values(items).filter((i) => (i.children?.length ?? 0) > 0).length;
-
   return (
-    <div className="flex flex-col">
-      <div className="mb-1 flex items-center justify-between px-1">
-        <span className="font-mono text-[10px] text-[var(--text-dim)]">
-          {Object.keys(items).length - 1} entries
-        </span>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => treeApi.expandAll()}
-            title="Expand all"
-            className="flex h-5 items-center gap-1 rounded-[5px] px-1.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-          >
-            <ChevronsUpDown size={10} /> expand
-          </button>
-          <button
-            type="button"
-            onClick={() => treeApi.collapseAll()}
-            title="Collapse all"
-            className="flex h-5 items-center gap-1 rounded-[5px] px-1.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-          >
-            <ChevronsDownUp size={10} /> collapse
-          </button>
-        </div>
-      </div>
-      <Tree
-        className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
-        indent={INDENT}
-        tree={treeApi}
-      >
+    <Tree
+      className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
+      indent={INDENT}
+      tree={treeApi}
+    >
       {treeApi.getItems().map((item) => {
         const id = item.getId();
         const data = item.getItemData();
         if (id === ROOT_ID) return null;
+        // headless-tree's getItems() returns ALL loaded items (folded ones
+        // included) — render only items whose ancestor chain is expanded,
+        // otherwise collapsed subtrees duplicate on screen.
+        let visible = true;
+        let parent = item.getParent();
+        while (parent) {
+          if (parent.getId() !== ROOT_ID && !parent.isExpanded()) {
+            visible = false;
+            break;
+          }
+          parent = parent.getParent();
+        }
+        if (!visible) return null;
         return (
           <TreeItem
             key={id}
@@ -153,7 +140,6 @@ export function SessionTreeNodes({
           </TreeItem>
         );
       })}
-      </Tree>
-    </div>
+    </Tree>
   );
 }
