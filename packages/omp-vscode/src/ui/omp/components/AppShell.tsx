@@ -20,6 +20,9 @@ import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { Spinner, LoadingState } from "./ui/spinner";
+import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { Check, Copy } from "lucide-react";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -1104,12 +1107,7 @@ export function AppShell() {
                 </div>
               )}
               {activeTopPanel === "session" && (
-                <div className="session-info-popover" style={{
-                  background: "var(--bg-panel)",
-                  borderBottom: "1px solid var(--border)",
-                  boxShadow: "0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
-                  padding: "12px 16px",
-                }}>
+                <div className="session-info-popover bg-[var(--bg-panel)] border-b border-[var(--border)] px-4 py-3 shadow-[0_10px_28px_var(--vscode-widget-shadow,rgba(0,0,0,0.10))]">
                   {sessionStats ? (() => {
                     const sessionRows = [
                        ...(sessionStats.sessionName ? [{ label: translate("session.name"), value: sessionStats.sessionName, copyField: null }] : []),
@@ -1142,25 +1140,22 @@ export function AppShell() {
                       valueAlign: "left" | "right" = "left",
                       compact = false,
                     ) => (
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{title}</div>
-                          <div style={{
-                            display: "grid",
-                            gridTemplateColumns: compact ? "max-content max-content" : "auto minmax(0, 1fr)",
-                            columnGap: compact ? 14 : 12,
-                            rowGap: 4,
-                            justifyContent: compact ? "start" : undefined,
-                          }}>
+                        <div className="min-w-0">
+                          <div className="mb-1.5 text-[11px] font-bold text-[var(--text)]">{title}</div>
+                          <div className={cn(
+                            "grid",
+                            compact
+                              ? "grid-cols-[max-content_max-content] justify-start gap-x-3.5 gap-y-1"
+                              : "grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1",
+                          )}>
                             {sectionRows.map(([label, value]) => (
-                              <div key={`${title}:${label}`} style={{ display: "contents" }}>
-                                <div style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>{label}</div>
-                                <div style={{
-                                  color: "var(--text-muted)",
-                                  minWidth: 0,
-                                  overflowWrap: compact ? "normal" : "anywhere",
-                                  textAlign: valueAlign,
-                                  whiteSpace: valueAlign === "right" ? "nowrap" : "normal",
-                                }}>{value}</div>
+                              <div key={`${title}:${label}`} className="contents">
+                                <div className="whitespace-nowrap text-[var(--text-dim)]">{label}</div>
+                                <div className={cn(
+                                  "min-w-0 text-[var(--text-muted)]",
+                                  compact ? "" : "break-anywhere",
+                                  valueAlign === "right" && "text-right whitespace-nowrap",
+                                )}>{value}</div>
                               </div>
                             ))}
                           </div>
@@ -1169,64 +1164,29 @@ export function AppShell() {
                     const copyButton = (field: SessionCopyField, value: string) => {
                       const copied = copiedSessionField === field;
                       return (
-                        <button
+                        <Button
                           type="button"
-                           title={copied ? translate("session.copied") : translate(field === "file" ? "session.copyFile" : "session.copyId")}
+                          variant="ghost"
+                          size="sm"
+                          title={copied ? translate("session.copied") : translate(field === "file" ? "session.copyFile" : "session.copyId")}
                           onClick={() => handleCopySessionField(field, value)}
-                          style={{
-                            alignSelf: "start",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 22,
-                            height: 22,
-                            marginTop: -2,
-                            color: copied ? "var(--accent)" : "var(--text-dim)",
-                            background: "transparent",
-                            border: "1px solid var(--border)",
-                            borderRadius: 4,
-                            cursor: "pointer",
-                            flex: "0 0 auto",
-                            transition: "color 0.12s, border-color 0.12s, background 0.12s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "var(--accent)";
-                            e.currentTarget.style.borderColor = "var(--accent)";
-                            e.currentTarget.style.background = "var(--bg-hover)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = copied ? "var(--accent)" : "var(--text-dim)";
-                            e.currentTarget.style.borderColor = "var(--border)";
-                            e.currentTarget.style.background = "transparent";
-                          }}
-                        >
-                          {copied ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          ) : (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
+                          className={cn(
+                            "mt-[-2px] h-[22px] w-[22px] shrink-0 self-start rounded-[4px] border border-[var(--border)] p-0 text-[var(--text-dim)]",
+                            copied ? "text-[var(--accent)]" : "hover:border-[var(--accent)] hover:bg-[var(--bg-hover)] hover:text-[var(--accent)]",
                           )}
-                        </button>
+                        >
+                          {copied ? <Check size={12} /> : <Copy size={12} />}
+                        </Button>
                       );
                     };
                     const sessionInfoSection = (
-                      <div style={{ minWidth: 0 }}>
-                         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{translate("session.infoSection")}</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", columnGap: 12, rowGap: 8, alignItems: "start" }}>
+                      <div className="min-w-0">
+                         <div className="mb-1.5 text-[11px] font-bold text-[var(--text)]">{translate("session.infoSection")}</div>
+                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2">
                           {sessionRows.map((row) => (
-                            <div key={`session-info:${row.label}`} style={{ display: "contents" }}>
-                              <div style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>{row.label}</div>
-                              <div style={{
-                                color: "var(--text-muted)",
-                                minWidth: 0,
-                                overflowWrap: "anywhere",
-                                wordBreak: "break-word",
-                                whiteSpace: "normal",
-                              }}>{row.value}</div>
+                            <div key={`session-info:${row.label}`} className="contents">
+                              <div className="whitespace-nowrap text-[var(--text-dim)]">{row.label}</div>
+                              <div className="min-w-0 break-words text-[var(--text-muted)]" style={{ overflowWrap: "anywhere" }}>{row.value}</div>
                               <div>{row.copyField ? copyButton(row.copyField, row.value) : null}</div>
                             </div>
                           ))}
@@ -1235,23 +1195,17 @@ export function AppShell() {
                     );
 
                     return (
-                      <div style={{
-                        display: "grid",
-                        gridTemplateColumns: isMobile
-                          ? "1fr"
-                          : "minmax(360px, 1.7fr) minmax(140px, 0.55fr) minmax(190px, 0.75fr)",
-                        gap: isMobile ? 16 : 24,
-                        fontSize: 12,
-                        lineHeight: 1.5,
-                        fontFamily: "var(--font-mono)",
-                      }}>
+                      <div className={cn(
+                        "grid gap-4 font-mono text-xs leading-[1.5]",
+                        isMobile ? "grid-cols-1" : "grid-cols-[minmax(360px,1.7fr)_minmax(140px,0.55fr)_minmax(190px,0.75fr)] gap-x-6",
+                      )}>
                         {sessionInfoSection}
                          {section(translate("session.messages"), messageRows)}
                          {section(translate("session.tokens"), [...tokenRows, ...extraTokenRows], "right", true)}
                       </div>
                     );
                   })() : (
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    <div className="text-xs italic text-[var(--text-muted)]">
                        {translate("session.load")}
                     </div>
                   )}
