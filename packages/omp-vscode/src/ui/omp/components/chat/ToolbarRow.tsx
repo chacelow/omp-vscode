@@ -62,9 +62,9 @@ export const ToolbarRow = memo(function ToolbarRow({
   const iconBtn = "h-6 rounded-[9px] px-2 text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
   return (
-    <div className={`mt-2 flex items-center gap-1.5 ${isMobile ? "grid grid-cols-[minmax(0,1fr)_auto]" : ""}`}>
+    <div className={`mt-2 flex items-center gap-2 ${isMobile ? "grid grid-cols-[minmax(0,1fr)_auto]" : ""}`}>
       {/* LEFT: role + model */}
-      <div className={`flex min-w-0 items-center gap-0.5 ${isMobile ? "col-start-1" : ""}`}>
+      <div className={`flex min-w-0 items-center gap-1.5 ${isMobile ? "col-start-1" : ""}`}>
         <RoleSelector {...role} />
         <ModelSelector {...model} />
       </div>
@@ -94,7 +94,7 @@ export const ToolbarRow = memo(function ToolbarRow({
           </Button>
         )}
         <div
-          className={`flex items-center ${isMobile ? "absolute right-0 bottom-0 z-[60] w-max max-w-[calc(100vw-32px)] gap-0.5 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--bg-panel)_92%,var(--bg))] p-px shadow-[0_8px_24px_var(--vscode-widget-shadow, rgba(0,0,0,0.14))] backdrop-blur-[10px]" : "gap-0.5"} ${isMobile && !menuOpen ? "hidden" : "flex"}`}
+          className={`flex items-center ${isMobile ? "absolute right-0 bottom-0 z-[60] w-max max-w-[calc(100vw-32px)] gap-1.5 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--bg-panel)_92%,var(--bg))] p-px shadow-[0_8px_24px_var(--vscode-widget-shadow, rgba(0,0,0,0.14))] backdrop-blur-[10px]" : "gap-1.5"} ${isMobile && !menuOpen ? "hidden" : "flex"}`}
         >
           {!isStreaming && onToolPresetChange && (
             <DropdownMenu open={toolOpen} onOpenChange={setToolOpen}>
