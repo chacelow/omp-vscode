@@ -78,7 +78,7 @@ interface Props {
   onEditContent?: (content: string) => void;
   onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
   /** Renders the full ChatInput in inline edit mode (edit-from-here). */
-  editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void) => ReactNode;
+  editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void, collapsed?: boolean) => ReactNode;
   showTimestamp?: boolean;
   prevTimestamp?: number;
   sessionId?: string;
@@ -161,7 +161,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
   onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
-  editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void) => ReactNode;
+  editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void, collapsed?: boolean) => ReactNode;
 }) {
   const { t } = useI18n();
   const [hovered, setHovered] = useState(false);
@@ -248,9 +248,38 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   return (
     <div
       style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
+      onClick={!editing && editInputRender ? () => setEditing(true) : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {editInputRender ? (
+        <div style={{ width: "100%", maxWidth: 560 }}>
+          {imageBlocks.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", marginBottom: 6 }}>
+              {imageBlocks.map((img, i) => {
+                const flat = img as unknown as { data?: string; mimeType?: string };
+                const src = img.source
+                  ? img.source.type === "base64"
+                    ? `data:${img.source.media_type};base64,${img.source.data}`
+                    : img.source.url ?? ""
+                  : flat.data
+                    ? `data:${flat.mimeType};base64,${flat.data}`
+                    : "";
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    style={{ maxWidth: 180, maxHeight: 180, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid color-mix(in srgb, var(--accent) 15%, transparent)" }}
+                  />
+                );
+              })}
+            </div>
+          )}
+          {editInputRender(entryId ?? "", content, () => setEditing(false), undefined, true)}
+        </div>
+      ) : (
       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
         <div
           className="sf-user-bubble"
@@ -274,35 +303,8 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
             cursor: editing || !entryId || !onEditResend ? "default" : "pointer",
           }}
         >
-          {editing && editInputRender ? (
-            editInputRender(entryId ?? "", content, () => setEditing(false))
-          ) : editing ? (
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  const text = draft.trim();
-                  if (text && entryId && onEditResend) {
-                    setEditing(false);
-                    onEditResend(entryId, text);
-                  }
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  setEditing(false);
-                }
-              }}
-              onBlur={() => setEditing(false)}
-              rows={Math.max(1, Math.min(8, draft.split("\n").length))}
-              className="w-full resize-none border-none bg-transparent font-inherit text-[14px] leading-[1.6] text-[var(--text)] outline-none"
-              placeholder={t("i18n.editMessagePlaceholder") || "Edit message… Enter to resend, Esc to cancel"}
-            />
-          ) : (
-            <>
-              {imageBlocks.length > 0 && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
+          {imageBlocks.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
                   {imageBlocks.map((img, i) => {
                     // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
                     // pi-ai on-disk format uses flat {data, mimeType} — handle both
@@ -327,11 +329,9 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
                 </div>
               )}
               {content && <MarkdownBody className="markdown-user-message" cwd={cwd} onOpenFile={onOpenFile}>{content}</MarkdownBody>}
-            </>
-          )}
         </div>
-
       </div>
+      )}
 
       {/* Bottom row: action buttons + timestamp */}
       {(time || canFork || canNavigate || true) && (

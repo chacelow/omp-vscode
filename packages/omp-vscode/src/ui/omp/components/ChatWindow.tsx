@@ -512,11 +512,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   );
 
   const renderEditInput = useCallback(
-    (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void) => (
+    (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void, collapsed?: boolean) => (
       <ChatInput
         {...chatInputProps}
         initialValue={content}
         cwd={messageCwd}
+        collapsed={collapsed}
         onSend={(text, images) => {
           onSubmit?.(text, images?.map((img) => ({ data: img.data, mimeType: img.mimeType })));
         }}

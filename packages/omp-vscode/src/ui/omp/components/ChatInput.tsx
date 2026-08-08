@@ -78,6 +78,11 @@ export interface ChatInputProps {
   initialValue?: string;
   /** Edit-from-here: called when the user cancels (Esc while idle). */
   onCancelEdit?: () => void;
+  /** Collapsed read-only state (sent user message): same component, toolbar
+   * animates away, textarea is readonly; click activates editing. */
+  collapsed?: boolean;
+  /** Called when a collapsed message is clicked to enter edit mode. */
+  onActivateEdit?: () => void;
   /** Session working directory — enables the @ file autocomplete menu */
   cwd?: string | null;
 }
@@ -215,6 +220,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   draftKey,
   initialValue,
   onCancelEdit,
+  collapsed,
+  onActivateEdit,
   cwd,
 }: ChatInputProps, ref) {
   const { t } = useI18n();
@@ -1096,11 +1103,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--chat-input-bg)] px-3 pb-2 pt-3 transition-[border-color,background] duration-150"
             style={{
               border: `1px solid ${bashMode ? "var(--tool-bg)" : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
+              cursor: collapsed ? "pointer" : undefined,
             } as React.CSSProperties}
+            onClick={collapsed ? () => onActivateEdit?.() : undefined}
+            title={collapsed ? (t("i18n.editFromHereTitle") ?? "Click to edit") : undefined}
           >
           <textarea
             ref={textareaRef}
             value={value}
+            readOnly={collapsed}
             onChange={(e) => {
               setValue(e.target.value);
               setHistoryMenuOpen(false);
@@ -1144,6 +1155,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         <ToolbarRow
           isMobile={isMobile}
           isStreaming={isStreaming}
+          visible={!collapsed}
           t={t}
           role={{ modelRoles, model, fastMode, slashCommands, isStreaming, onRoleChange }}
           model={{
