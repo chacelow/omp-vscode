@@ -1067,12 +1067,12 @@ export function PluginsConfig({
           }}
         >
           <div style={{ minWidth: 0, flex: 1, fontSize: 11, color: "var(--text-dim)", overflow: "hidden" }}>
-            {data?.diagnostics.length ? (
+            {data?.diagnostics?.length ? (
               <span
-                title={data.diagnostics.map((d) => `${d.type}: ${d.source ? `${d.source}: ` : ""}${d.message}`).join("\n")}
-                style={{ color: data.diagnostics.some((d) => d.type === "error") ? "#ef4444" : "#d97706" }}
+                title={(data.diagnostics ?? []).map((d) => `${d.type}: ${d.source ? `${d.source}: ` : ""}${d.message}`).join("\n")}
+                style={{ color: (data.diagnostics ?? []).some((d) => d.type === "error") ? "#ef4444" : "#d97706" }}
               >
-                {data.diagnostics.length} diagnostic{data.diagnostics.length === 1 ? "" : "s"}
+                {(data.diagnostics ?? []).length} diagnostic{data.diagnostics?.length === 1 ? "" : "s"}
               </span>
             ) : (
               <span>
