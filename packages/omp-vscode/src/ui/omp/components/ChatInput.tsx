@@ -954,7 +954,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
 
   return (
-    <div className="sf-chat-input-wrap shrink-0 bg-transparent px-4 pb-2">
+    <div
+      className="sf-chat-input-wrap shrink-0 bg-transparent px-4 pb-2"
+      onBlur={(e) => {
+        // Edit-from-here: focus leaving the composer collapses it back to
+        // the read-only message (reference interaction).
+        if (onCancelEdit && e.relatedTarget instanceof Node && !e.currentTarget.contains(e.relatedTarget)) {
+          onCancelEdit();
+        }
+      }}
+    >
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
