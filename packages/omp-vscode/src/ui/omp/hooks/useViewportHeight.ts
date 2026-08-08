@@ -36,6 +36,13 @@ function hasFocusedEditableElement(): boolean {
  */
 export function useViewportHeight(): void {
   useEffect(() => {
+    // Desktop / electron webviews: the visualViewport heuristics below are
+    // for on-screen keyboards only. Guard with a touch-capability check so a
+    // misbehaving visualViewport (e.g. innerHeight != viewport.height from
+    // zoom/anchors) can never shrink the app and leave the body background
+    // exposed below the chat page.
+    if (!("ontouchstart" in window) || navigator.maxTouchPoints === 0) return;
+
     const viewport = window.visualViewport;
     if (!viewport) return;
 
