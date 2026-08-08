@@ -162,7 +162,7 @@ const USER_SCROLL_INTENT_MS = 1200;
 const PROMPT_SETTLE_INITIAL_DELAY_MS = 800;
 const PROMPT_SETTLE_POLL_MS = 600;
 const PROMPT_SETTLE_MAX_MS = 20_000;
-const EVENT_STREAM_IDLE_GRACE_MS = 30_000;
+const EVENT_STREAM_IDLE_GRACE_MS = 2_000;
 const AGENT_STATE_RECONCILE_MS = 15_000;
 const BASH_STATE_RECONCILE_MS = 1_000;
 const EVENT_STREAM_CONNECT_TIMEOUT_MS = 5_000;
@@ -995,21 +995,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Bail out before loadSession too: a stale finish for a previous run
     // must not overwrite the messages of the run currently streaming.
     if (promptRunIdRef.current !== runId) return;
+    // Settle the UI immediately — the final chunks are already on screen,
+    // so the input must return to idle now, not after the reload below.
+    const promptWasPending = rpcPromptPendingRef.current;
+    const agentWasActive = sdkAgentActiveRef.current;
+    rpcPromptPendingRef.current = false;
+    sdkAgentActiveRef.current = false;
+    optimisticUserMessageKeyRef.current = null;
+    const wasRunning = settleUiStage();
+    if (promptWasPending) {
+      notifyPromptStage(runId);
+    } else if (agentWasActive && wasRunning) {
+      onAgentEnd?.();
+    }
     try {
+      // Refresh messages in the background; never block the idle switch.
       if (sid) await loadSession(sid);
     } finally {
-      if (promptRunIdRef.current !== runId) return;
-      const promptWasPending = rpcPromptPendingRef.current;
-      const agentWasActive = sdkAgentActiveRef.current;
-      rpcPromptPendingRef.current = false;
-      sdkAgentActiveRef.current = false;
-      optimisticUserMessageKeyRef.current = null;
-      const wasRunning = settleUiStage();
-      if (promptWasPending) {
-        notifyPromptStage(runId);
-      } else if (agentWasActive && wasRunning) {
-        onAgentEnd?.();
-      }
       if (sid) scheduleEventStreamClose(sid);
     }
   }, [loadSession, notifyPromptStage, onAgentEnd, scheduleEventStreamClose, settleUiStage]);
