@@ -102,7 +102,7 @@ export class OmpRpcProcess {
   // -------------------------------------------------------------------------
 
   private spawn(): void {
-    const args = ["--mode", "rpc", "--offline", "--cwd", this.options.cwd];
+    const args = ["--mode", "rpc", "--cwd", this.options.cwd];
     if (this.options.resume) args.push("--resume", this.options.resume);
     if (this.options.noSession) args.push("--no-session");
     if (this.options.model) {
@@ -286,7 +286,7 @@ export class OmpRpcProcess {
       }, timeoutMs);
       this.pending.set(id, {
         resolve: (data: unknown) => {
-          logFn?.(`[${ts()}] [rpc] ← ${type} ok ${JSON.stringify(data).slice(0, 160)}`);
+          logFn?.(`[${ts()}] [rpc] ← ${type} ok ${JSON.stringify(data ?? null).slice(0, 160)}`);
           resolve(data as T);
         },
         reject: (err: Error) => {
