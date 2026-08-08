@@ -9,6 +9,7 @@ import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInput";
 import { ChatFooterBar } from "./chat/ChatFooterBar";
 import { SessionTreePanel } from "./chat/SessionTreePanel";
+import { ChatMinimap } from "./chat/ChatMinimap";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
@@ -940,6 +941,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             </div>
           </div>
         </div>
+        <ChatMinimap
+          messages={messages}
+          streamingMessage={streamState.streamingMessage}
+          scrollContainer={scrollContainerRef}
+          messageRefs={messageRefs}
+          onRevealHistory={revealHistoryForMinimap}
+        />
       </div>
 
       <div className="relative">
