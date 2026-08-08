@@ -1,0 +1,18 @@
+# Unrelated project kept beside the monorepo (separate git history)
+/opencursor/
+
+# pnpm
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+out/
+*.tsbuildinfo
+
+# VS Code
+.vscode-test/
+*.vsix
+
+# logs
+*.log

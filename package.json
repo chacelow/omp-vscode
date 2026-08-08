@@ -1,0 +1,9 @@
+{
+  "name": "omp",
+  "private": true,
+  "scripts": {
+    "build": "pnpm --filter omp-vscode build",
+    "watch": "pnpm --filter omp-vscode watch",
+    "typecheck": "pnpm -r --parallel exec tsc --noEmit"
+  }
+}
