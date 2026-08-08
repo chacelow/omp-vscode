@@ -344,6 +344,7 @@ type ModelsResponse = {
   modelList?: ModelEntry[];
   defaultModel?: SelectedModel | null;
   modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
+  fastModeEnabled?: boolean;
   thinkingLevels?: Record<string, string[]>;
   thinkingLevelMaps?: Record<string, Record<string, string | null>>;
   thinkingLevelPins?: Record<string, string>;
@@ -382,6 +383,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelEntry[]>([]);
   const [modelRoles, setModelRoles] = useState<Record<string, { provider: string; modelId: string; thinkingLevel?: string }>>({});
+  const [fastMode, setFastMode] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
   const [modelScopeWarnings, setModelScopeWarnings] = useState<string[]>([]);
   const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
@@ -1524,21 +1526,42 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [isNew, setNewSessionModel]);
 
-  /** Switch to a configured role model (default/smol/plan/…) + its thinking pin. */
+  /**
+   * Role switch = the TUI's command surface: Fast toggles `set_fast_mode`,
+   * Plan invokes the /plan command, Default sets the configured default model.
+   * The runtime state (fastModeEnabled) is read back so toggling returns.
+   */
   const handleRoleChange = useCallback(async (role: string) => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    if (role === "fast") {
+      try {
+        await sendAgentCommand(sid, { type: "set_fast_mode", enabled: !fastMode });
+        setFastMode(!fastMode);
+      } catch (e) {
+        console.error("Failed to toggle fast mode:", e);
+      }
+      return;
+    }
+    if (role === "plan") {
+      try {
+        await sendAgentCommand(sid, { type: "prompt", message: "/plan" });
+      } catch (e) {
+        console.error("Failed to run /plan:", e);
+      }
+      return;
+    }
     const r = modelRoles[role];
     if (!r) return;
     await handleModelChange(r.provider, r.modelId);
     if (r.thinkingLevel) {
-      const sid = sessionIdRef.current;
-      if (!sid) return;
       try {
         await sendAgentCommand(sid, { type: "set_thinking_level", level: r.thinkingLevel });
       } catch {
         // thinking level may be unsupported by the model — ignore
       }
     }
-  }, [modelRoles, handleModelChange]);
+  }, [modelRoles, handleModelChange, fastMode]);
 
   const handleCompact = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -1570,6 +1593,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setModelThinkingLevels(d.thinkingLevels ?? {});
     setModelThinkingLevelMaps(d.thinkingLevelMaps ?? {});
     setModelRoles(d.modelRoles ?? {});
+    setFastMode(d.fastModeEnabled ?? false);
     const nextModelList = d.modelList ?? [];
     setModelList(nextModelList);
     if (isNew) {
@@ -2097,7 +2121,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   return {
     // State
     data, loading, error, activeLeafId, messages, entryIds, streamState,
-    agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, modelRoles, newSessionModel, toolPreset, thinkingLevel,
+    agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, modelRoles, fastMode, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage: sessionStats?.contextUsage ?? contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,

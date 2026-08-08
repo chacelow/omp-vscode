@@ -420,6 +420,10 @@ export class AgentSessionWrapper {
       case "get_available_models":
         return this.rpc.send("get_available_models");
 
+      case "set_fast_mode":
+        await this.rpc.send("set_fast_mode", { enabled: command.enabled === true });
+        return null;
+
       case "get_commands": {
         const data = await this.rpc.send<{ commands?: Array<Record<string, unknown>> }>("get_available_commands");
         // Map OMP command sources to the webview's slash palette groups:

@@ -205,7 +205,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const {
     loading, error, messages, entryIds, streamState,
-    agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, handleRoleChange, loadModels,
+    agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, fastMode, handleRoleChange, loadModels,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,
@@ -385,6 +385,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       onModelChange={handleModelChange}
       onModelOpen={() => { void loadModels(); }}
       modelRoles={modelRoles}
+      fastMode={fastMode}
       onRoleChange={handleRoleChange}
       onCompact={session || isNew ? handleCompact : undefined}
       onAbortCompaction={handleAbortCompaction}

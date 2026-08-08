@@ -49,6 +49,7 @@ interface Props {
   onModelOpen?: () => void;
   /** Configured model roles (default/smol/plan/…) from config.yml modelRoles. */
   modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
+  fastMode?: boolean;
   onRoleChange?: (role: string) => void;
   onCompact?: () => void;
   onAbortCompaction?: () => void;
@@ -341,7 +342,7 @@ export function ModelScopeWarningBanner({ warnings }: { warnings?: string[] }) {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
-  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, onModelOpen, modelRoles, onRoleChange,
+  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, onModelOpen, modelRoles, fastMode, onRoleChange,
   onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo, queuedMessages, inputHistory = [], onRecallQueue,
@@ -1882,7 +1883,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   >
                     {roleNames.map((role) => {
                       const rr = modelRoles?.[role];
-                      const isActive = role === activeRole;
+                      const isActive = role === activeRole || (role === "smol" && fastMode);
                       return (
                         <button
                           key={role}
