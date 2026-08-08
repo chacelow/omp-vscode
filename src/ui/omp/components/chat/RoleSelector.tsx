@@ -1,5 +1,6 @@
 import { useState, useRef, memo } from "react";
 import { Crosshair } from "lucide-react";
+import { Button } from "../ui/button";
 import type { SlashCommandInfo } from "@/hooks/useAgentSession";
 
 // Role switcher (Default / Fast / Plan) — matches the TUI: a role is
@@ -41,36 +42,26 @@ export const RoleSelector = memo(function RoleSelector({
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
         onClick={(e) => {
           const el = (e.currentTarget as HTMLElement).getBoundingClientRect();
           setRect({ top: el.top, left: el.left, width: el.width });
           setOpen((o) => !o);
         }}
         disabled={isStreaming}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "5px 8px", height: 24, maxWidth: 120, overflow: "hidden",
-          background: open ? "var(--bg-hover)" : "rgba(var(--accent-rgb, 120, 120, 120), 0.12)",
-          border: "1px solid rgba(var(--accent-rgb, 120, 120, 120), 0.35)",
-          borderRadius: 9, color: "var(--text)",
-          cursor: isStreaming ? "not-allowed" : "pointer", fontSize: 12,
-          opacity: isStreaming ? 0.5 : 1, transition: "background 0.12s, color 0.12s",
-        }}
-        onMouseEnter={(e) => {
-          if (isStreaming) return;
-          e.currentTarget.style.background = "var(--bg-hover)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = open ? "var(--bg-hover)" : "rgba(var(--accent-rgb, 120, 120, 120), 0.12)";
-        }}
         title="Switch model role"
+        className={`h-6 max-w-[130px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs ${
+          open ? "bg-[var(--bg-hover)] text-[var(--text)]" : "bg-[rgba(var(--accent-rgb,120,120,120),0.12)] text-[var(--text)]"
+        } ${isStreaming ? "cursor-not-allowed opacity-50" : "hover:bg-[var(--bg-hover)]"}`}
       >
         <Crosshair size={11} className="shrink-0" />
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span className="truncate">
           {activeRoleLabel ?? "Role"}
         </span>
-      </button>
+      </Button>
       {open && rect && (
         <div
           style={{
@@ -84,30 +75,29 @@ export const RoleSelector = memo(function RoleSelector({
             const rr = modelRoles?.[role];
             const isActive = role === activeRole || (role === "smol" && fastMode);
             return (
-              <button
+              <Button
                 key={role}
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setOpen(false);
                   onRoleChange(role);
                 }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8, width: "100%",
-                  padding: "6px 10px", border: "none", borderRadius: 7,
-                  background: isActive ? "var(--bg-hover)" : "none",
-                  color: isActive ? "var(--text)" : "var(--text-muted)",
-                  cursor: "pointer", fontSize: 12, textAlign: "left",
-                }}
+                className={`w-full justify-start gap-2 rounded-[7px] px-2.5 py-1.5 text-xs ${
+                  isActive ? "bg-[var(--bg-hover)] text-[var(--text)] hover:bg-[var(--bg-hover)]" : "text-[var(--text-muted)]"
+                }`}
                 title={rr ? `${rr.provider}/${rr.modelId}${rr.thinkingLevel ? ":" + rr.thinkingLevel : ""}` : role}
               >
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span className="flex-1 truncate">
                   {ROLE_LABELS[role] ?? role}
                 </span>
                 {rr && (
-                  <span style={{ opacity: 0.5, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90 }}>
+                  <span className="max-w-[90px] truncate text-[10px] opacity-50">
                     {rr.modelId}
                   </span>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>

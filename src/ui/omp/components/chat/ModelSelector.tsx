@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, memo } from "react";
-import { Grid3x3, Check } from "lucide-react";
+import { Bot, Check } from "lucide-react";
+import { Button } from "../ui/button";
 
 // Model selector: current model button + searchable provider-grouped list.
 // The effort label next to the model name opens the thinking-level picker.
@@ -89,8 +90,11 @@ export const ModelSelector = memo(function ModelSelector({
     : null;
 
   return (
-    <div ref={dropdownRef} className={`relative min-w-0 ${isMobile ? "flex-1" : ""}`}>
-      <button
+    <div ref={dropdownRef} className="relative min-w-0">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
         onClick={(e) => {
           if (isStreaming) return;
           onModelOpen?.();
@@ -103,13 +107,11 @@ export const ModelSelector = memo(function ModelSelector({
         }}
         disabled={isStreaming}
         title={modelOptions.length > 0 ? "Change model" : "No available models"}
-        className={`flex h-6 items-center gap-1.5 overflow-hidden rounded-[9px] text-xs text-[var(--text-muted)] transition-colors ${
-          isMobile ? "w-full max-w-full justify-start px-2 py-1.5" : "max-w-[220px] px-2 py-[5px]"
-        } ${open ? "bg-[var(--bg-hover)]" : ""} ${
-          isStreaming ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-        }`}
+        className={`h-6 max-w-[180px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs ${
+          open ? "bg-[var(--bg-hover)] text-[var(--text)]" : "text-[var(--text-muted)]"
+        } ${isStreaming ? "cursor-not-allowed opacity-50" : "hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"}`}
       >
-        <Grid3x3 size={11} className="shrink-0" />
+        <Bot size={11} className="shrink-0" />
         <span className="min-w-0 flex-1 truncate">
           {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
         </span>
@@ -124,7 +126,7 @@ export const ModelSelector = memo(function ModelSelector({
         >
           {thinkingLevel || "auto"}▾
         </span>
-      </button>
+      </Button>
 
       {thinkingOpen && (
         <div
@@ -134,20 +136,23 @@ export const ModelSelector = memo(function ModelSelector({
           {THINKING_LEVELS.map((level) => {
             const active = thinkingLevel === level;
             return (
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 key={level}
                 onClick={() => {
                   onThinkingLevelChange?.(level);
                   setThinkingOpen(false);
                 }}
-                className={`flex w-full items-center gap-2 rounded-[7px] px-2.5 py-[5px] text-left font-mono text-xs ${
+                className={`w-full justify-start gap-2 rounded-[7px] px-2.5 py-[5px] font-mono text-xs ${
                   active
-                    ? "bg-[var(--bg-selected)] text-[var(--text)]"
-                    : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                    ? "bg-[var(--bg-selected)] text-[var(--text)] hover:bg-[var(--bg-selected)]"
+                    : "text-[var(--text-muted)]"
                 }`}
               >
                 {level}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -195,24 +200,27 @@ export const ModelSelector = memo(function ModelSelector({
                 {group.options.map((opt) => {
                   const isActive = opt.modelId === model?.modelId && opt.provider === model?.provider;
                   return (
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       key={`${opt.provider}:${opt.modelId}`}
                       onClick={() => {
                         setOpen(false);
                         setFilter("");
                         if (!isActive) onModelChange?.(opt.provider, opt.modelId);
                       }}
-                      className={`flex w-full items-center gap-2 whitespace-nowrap px-3 py-[7px] text-left text-xs ${
+                      className={`w-full justify-start gap-2 whitespace-nowrap rounded-none px-3 py-[7px] text-xs ${
                         isActive
-                          ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)]"
-                          : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                          ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] hover:bg-[var(--bg-selected)]"
+                          : "text-[var(--text-muted)]"
                       }`}
                     >
                       {isActive
                         ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
                         : <span className="w-2.5 shrink-0" />}
                       {opt.name}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
