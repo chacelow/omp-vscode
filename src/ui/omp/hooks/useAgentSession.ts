@@ -2019,9 +2019,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (cancelled || !sid) return;
         await loadSession(sid, !isFresh);
         if (cancelled) return;
-        // Session is live — pull the authoritative model list from the RPC
-        // runtime (get_available_models), matching the TUI's live model view.
+        // Session is live — pull the authoritative model list + command
+        // catalog (roles need get_available_commands to know /fast /plan).
         void loadModels();
+        void loadSlashCommands();
         if (!isFresh) {
           // Surface the resumed session in the shell (sidebar highlight,
           // header) so the view is a continued conversation.
@@ -2034,7 +2035,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return () => {
       cancelled = true;
     };
-  }, [isNew, newSessionCwd, session, ensureNewSession, loadSession, loadModels, promoteNewSession]);
+  }, [isNew, newSessionCwd, session, ensureNewSession, loadSession, loadModels, loadSlashCommands, promoteNewSession]);
 
   useEffect(() => {
     onSystemPromptChange?.(systemPrompt);
