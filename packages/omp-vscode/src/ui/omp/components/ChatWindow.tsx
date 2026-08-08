@@ -427,6 +427,38 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     ? (modelThinkingLevelMaps[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
     : null;
 
+  // Streaming tokens-per-second for the footer (chars/4 estimate, same
+  // heuristic as the message-level badge).
+  const [tps, setTps] = useState<number | null>(null);
+  const tpsWindowRef = useRef<{ start: number; chars: number } | null>(null);
+  useEffect(() => {
+    const msg = streamState.streamingMessage;
+    if (!msg) {
+      setTps(null);
+      tpsWindowRef.current = null;
+      return;
+    }
+    const content = Array.isArray(msg.content) ? msg.content : [];
+    let chars = 0;
+    for (const b of content) {
+      const block = b as { type?: string; text?: string; thinking?: string; input?: unknown };
+      if (block.type === "text") chars += block.text?.length ?? 0;
+      else if (block.type === "thinking") chars += block.thinking?.length ?? 0;
+      else if (block.type === "toolCall") chars += JSON.stringify(block.input ?? {}).length;
+    }
+    const now = Date.now();
+    const w = tpsWindowRef.current;
+    if (!w) {
+      tpsWindowRef.current = { start: now, chars };
+      return;
+    }
+    const elapsed = (now - w.start) / 1000;
+    if (elapsed >= 0.5 && chars > w.chars) {
+      setTps((chars - w.chars) / 4 / elapsed);
+      tpsWindowRef.current = { start: now, chars };
+    }
+  }, [streamState.streamingMessage]);
+
   // Shared props for both the bottom composer and inline edit-from-here.
   const chatInputProps: ChatInputProps = {
     onSend: handleSend,
@@ -512,7 +544,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         cost: sessionStats.cost ?? null,
       } : null}
       contextUsage={contextUsage}
-      tps={null}
+      tps={tps}
     />
   );
 
