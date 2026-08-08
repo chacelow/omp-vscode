@@ -1875,7 +1875,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 {roleDropdownOpen && roleDropdownRect && (
                   <div
                     style={{
-                      position: "fixed", top: roleDropdownRect.top - 4, left: roleDropdownRect.left,
+                      position: "fixed", bottom: (window.visualViewport?.height ?? window.innerHeight) - roleDropdownRect.top + 6, left: roleDropdownRect.left,
                       minWidth: roleDropdownRect.width, maxHeight: 320, overflowY: "auto",
                       background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
                       boxShadow: "0 8px 30px rgba(0,0,0,0.25)", zIndex: 1000, padding: 4,
@@ -1987,7 +1987,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     <div
                       ref={thinkingDropdownRef}
                       style={{
-                        position: "absolute", top: "100%", right: 0, marginTop: 4,
+                        position: "absolute", bottom: "100%", right: 0, marginBottom: 4,
                         minWidth: 120, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
                         boxShadow: "0 8px 30px rgba(0,0,0,0.25)", zIndex: 1001, padding: 4,
                       }}
