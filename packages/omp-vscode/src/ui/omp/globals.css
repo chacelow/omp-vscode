@@ -52,6 +52,12 @@
 
 /* shadcn/ui semantic tokens — mapped onto the omp theme so standard
    shadcn components (Button, Badge, …) render with VS Code colors. */
+@layer base {
+  *, ::before, ::after {
+    border-color: var(--border);
+  }
+}
+
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text);
