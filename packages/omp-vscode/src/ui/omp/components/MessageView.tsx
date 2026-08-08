@@ -3,6 +3,16 @@
 import { memo, useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import { useI18n } from "@/hooks/useI18n";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
 import { getAssistantErrorMessage, isEmptyThinkingBlock } from "@/lib/message-display";
@@ -68,7 +78,7 @@ interface Props {
   onEditContent?: (content: string) => void;
   onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
   /** Renders the full ChatInput in inline edit mode (edit-from-here). */
-  editInputRender?: (entryId: string, content: string, onCancel: () => void) => ReactNode;
+  editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void) => ReactNode;
   showTimestamp?: boolean;
   prevTimestamp?: number;
   sessionId?: string;
@@ -151,13 +161,15 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
   onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
-  editInputRender?: (entryId: string, content: string, onCancel: () => void) => ReactNode;
+  editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void) => ReactNode;
 }) {
   const { t } = useI18n();
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState<{ text: string; images?: Array<{ data: string; mimeType: string }> } | null>(null);
 
   const content =
     typeof message.content === "string"
@@ -188,7 +200,47 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   if (editing && editInputRender) {
     return (
       <div style={{ marginBottom: 16, width: "100%" }}>
-        {editInputRender(entryId ?? "", content, () => setEditing(false))}
+        {editInputRender(
+          entryId ?? "",
+          content,
+          () => setEditing(false),
+          (text, images) => {
+            if (!text.trim() && !(images && images.length > 0)) return;
+            setPendingSubmit({ text, images });
+            setConfirmOpen(true);
+          },
+        )}
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent className="max-w-[380px]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm">
+                {t("i18n.editFromHereTitle") ?? "Edit and resend"}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs">
+                {t("i18n.editFromHereConfirm") ?? "This rewinds the conversation to this message and regenerates from your edited text."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="h-7 text-xs">
+                {t("i18n.cancel") ?? "Cancel"}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="h-7 text-xs"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  const p = pendingSubmit;
+                  setPendingSubmit(null);
+                  if (p && entryId) {
+                    onEditResend?.(entryId, p.text, p.images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType })));
+                    setEditing(false);
+                  }
+                }}
+              >
+                {t("i18n.editFromHere") ?? "Resend"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }

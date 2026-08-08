@@ -1,4 +1,5 @@
 import { useState, memo } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Wrench, Check, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
@@ -22,6 +23,8 @@ const TOOL_PRESET_MAP: Record<"off" | "default" | "full", "none" | "default" | "
 interface ToolbarRowProps {
   isMobile: boolean;
   isStreaming: boolean;
+  /** AnimatePresence: false collapses the toolbar with a height animation. */
+  visible?: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
   role: RoleSelectorProps;
   model: ModelSelectorProps;
@@ -37,6 +40,7 @@ export const ToolbarRow = memo(function ToolbarRow({
   isMobile, isStreaming, t, role, model, attach,
   toolPreset, onToolPresetChange,
   canSend, onSend, onAbort,
+  visible = true,
 }: ToolbarRowProps) {
   const [toolOpen, setToolOpen] = useState(false);
 
@@ -45,7 +49,17 @@ export const ToolbarRow = memo(function ToolbarRow({
   const iconBtn = "h-6 rounded-[9px] px-2 text-[13px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
   return (
-    <div className="mt-2 flex items-center gap-2">
+    <AnimatePresence initial={false}>
+      {visible && (
+        <motion.div
+          key="toolbar"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.12, ease: "easeOut" }}
+          className="overflow-hidden"
+        >
+          <div className="mt-2 flex items-center gap-2">
       {/* LEFT: role + model */}
       <div className="flex min-w-0 items-center gap-1.5">
         <RoleSelector {...role} />
@@ -116,7 +130,10 @@ export const ToolbarRow = memo(function ToolbarRow({
           onSend={onSend}
           onAbort={onAbort}
         />
+        </div>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 });
