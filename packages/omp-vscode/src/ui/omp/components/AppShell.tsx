@@ -19,6 +19,7 @@ import { StarfieldEmblem } from "./StarfieldEmblem";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
+import { Spinner, LoadingState } from "./ui/spinner";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -785,6 +786,9 @@ export function AppShell() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar with sidebar toggle */}
         <div ref={topBarRef} style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
+          {initialCwdStatus === "validating" && (
+            <Spinner size={12} className="ml-3 shrink-0 text-[var(--text-dim)]" />
+          )}
           <button
             onClick={handleSidebarToggle}
              title={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
@@ -1270,15 +1274,14 @@ export function AppShell() {
               forceNewSession={forceNewSessionRef.current}
             />
           ) : initialCwdStatus === "validating" ? (
-            <div
-              role="status"
-              style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 24, color: "var(--text-muted)", textAlign: "center" }}
+            <LoadingState
+              label={translate("workspace.opening")}
+              className="gap-3"
             >
-               <div style={{ fontSize: 14, color: "var(--text)" }}>{translate("workspace.opening")}</div>
-              <div style={{ maxWidth: "min(720px, 100%)", overflowWrap: "anywhere", fontFamily: "var(--font-mono)", fontSize: 12 }}>
+              <div style={{ maxWidth: "min(720px, 100%)", overflowWrap: "anywhere", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>
                 {initialNavigation.requestedCwd}
               </div>
-            </div>
+            </LoadingState>
           ) : initialCwdStatus === "error" ? (
             <div
               role="alert"
