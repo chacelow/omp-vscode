@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState, useCallback, useMemo, type RefObject } from "react";
 import { Locate } from "lucide-react";
 import type { AgentMessage, UserMessage } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { styles } from "./minimap-styles";
 import { getUserPreview, buildAssistantPreviews, AssistantOutline, type TurnInfo } from "./minimap-preview";
 
@@ -17,7 +18,6 @@ interface Props {
   onRevealHistory: () => void;
 }
 
-const MINIMAP_WIDTH = 36;
 const MAX_NODE_GAP = 50;
 const MINIMAP_PADDING = 12;
 const PREVIEW_HIDE_DELAY = 250;
@@ -446,31 +446,13 @@ export function ChatMinimap({
         const rect = event.currentTarget.getBoundingClientRect();
         setMouseYRatio((event.clientY - rect.top) / rect.height);
       }}
-      style={{
-        width: MINIMAP_WIDTH,
-        // Floating overlay: no layout space, no background/border — just the
-        // turn nodes and the rail as the hover/drag trigger zone.
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        right: 0,
-        zIndex: 5,
-        cursor: "pointer",
-        userSelect: "none",
-        overflow: "visible",
-      }}
+      // Floating overlay: no layout space, no background/border — just the
+      // turn nodes and the rail as the hover/drag trigger zone.
+      className="absolute top-0 bottom-0 right-0 z-[5] w-9 cursor-pointer overflow-visible select-none"
     >
       <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: MINIMAP_PADDING,
-          height: railHeight,
-          width: 1,
-          background: "var(--border)",
-          transform: "translateX(-50%)",
-          zIndex: 0,
-        }}
+        className="absolute left-1/2 z-0 w-px -translate-x-1/2 bg-[var(--border)]"
+        style={{ top: MINIMAP_PADDING, height: railHeight }}
       />
 
       {positionedNodes.map((node) => {
@@ -482,35 +464,17 @@ export function ChatMinimap({
             key={node.index}
             data-minimap-node-index={node.index}
             data-minimap-node-active={isActive ? "" : undefined}
-            style={{
-              position: "absolute",
-              top: `${node.topRatio * 100}%`,
-              transform: "translateY(-50%)",
-              left: 0,
-              right: 0,
-              height: Math.max(1, nodeGap),
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              pointerEvents: "none",
-              zIndex: 2,
-            }}
+            className="absolute top-0 left-0 right-0 z-[2] flex -translate-y-1/2 items-center justify-center pointer-events-none"
+            style={{ top: `${node.topRatio * 100}%`, height: Math.max(1, nodeGap) }}
           >
             <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 2,
-                background: isActive
-                  ? "color-mix(in srgb, var(--text) 42%, transparent)"
-                  : "color-mix(in srgb, var(--text) 16%, transparent)",
-                border: `1.5px solid ${isActive
-                  ? "color-mix(in srgb, var(--text-muted) 95%, transparent)"
-                  : "color-mix(in srgb, var(--text-muted) 58%, transparent)"}`,
-                boxShadow: isActive ? "0 0 0 2px var(--bg-panel)" : "none",
-                transition: "transform 0.1s, background 0.1s",
-                transform: isNearest ? "scale(1.25)" : "scale(1)",
-              }}
+              className={cn(
+                "h-2 w-2 rounded-[2px] border-[1.5px] transition-[transform,background] duration-100",
+                isActive
+                  ? "border-[color-mix(in_srgb,var(--text-muted)_95%,transparent)] bg-[color-mix(in_srgb,var(--text)_42%,transparent)] shadow-[0_0_0_2px_var(--bg-panel)]"
+                  : "border-[color-mix(in_srgb,var(--text-muted)_58%,transparent)] bg-[color-mix(in_srgb,var(--text)_16%,transparent)]",
+                isNearest ? "scale-125" : "scale-100",
+              )}
             />
           </div>
         );
