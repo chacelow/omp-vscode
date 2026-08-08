@@ -4,9 +4,9 @@
 // session file's full tree (every branch); clicking a node switches the
 // branch via navigate-leaf (same file, no new session).
 import { Tree, TreeItem, TreeItemLabel } from "@/components/reui/tree";
-import { hotkeysCoreFeature, syncDataLoaderFeature } from "@headless-tree/core";
+import { expandAllFeature, hotkeysCoreFeature, syncDataLoaderFeature } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { Bot, User, Wrench } from "lucide-react";
+import { Bot, ChevronsDownUp, ChevronsUpDown, User, Wrench } from "lucide-react";
 import type { SessionEntry, SessionTreeNode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -87,15 +87,41 @@ export function SessionTreeNodes({
       getItem: (itemId) => items[itemId],
       getChildren: (itemId) => items[itemId].children ?? [],
     },
-    features: [syncDataLoaderFeature, hotkeysCoreFeature],
+    features: [syncDataLoaderFeature, hotkeysCoreFeature, expandAllFeature],
   });
 
+  const folderCount = Object.values(items).filter((i) => (i.children?.length ?? 0) > 0).length;
+
   return (
-    <Tree
-      className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
-      indent={INDENT}
-      tree={treeApi}
-    >
+    <div className="flex flex-col">
+      <div className="mb-1 flex items-center justify-between px-1">
+        <span className="font-mono text-[10px] text-[var(--text-dim)]">
+          {Object.keys(items).length - 1} entries
+        </span>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => treeApi.expandAll()}
+            title="Expand all"
+            className="flex h-5 items-center gap-1 rounded-[5px] px-1.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+          >
+            <ChevronsUpDown size={10} /> expand
+          </button>
+          <button
+            type="button"
+            onClick={() => treeApi.collapseAll()}
+            title="Collapse all"
+            className="flex h-5 items-center gap-1 rounded-[5px] px-1.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+          >
+            <ChevronsDownUp size={10} /> collapse
+          </button>
+        </div>
+      </div>
+      <Tree
+        className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
+        indent={INDENT}
+        tree={treeApi}
+      >
       {treeApi.getItems().map((item) => {
         const id = item.getId();
         const data = item.getItemData();
@@ -127,6 +153,7 @@ export function SessionTreeNodes({
           </TreeItem>
         );
       })}
-    </Tree>
+      </Tree>
+    </div>
   );
 }

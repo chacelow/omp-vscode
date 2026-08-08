@@ -174,9 +174,15 @@ export interface SessionTreeNode {
 }
 
 /** Parse a session file into its real message tree (entry parentId links,
- * not the linear active-branch view). Branch points show as fork nodes. */
+ * not the linear active-branch view). Branch points show as fork nodes.
+ * Non-message entries (model_change / thinking_level_change / custom) are
+ * tree nodes too — the first user message's parent is a thinking entry —
+ * so they are traversed as structure but FOLDED (not shown): their message
+ * children re-parent onto the nearest message ancestor / the root, keeping
+ * the visible tree single-rooted per conversation. */
 export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; byId: Map<string, SessionTreeNode> } {
   const byId = new Map<string, SessionTreeNode>();
+  const raw = new Map<string, { id: string; parentId: string | null; message?: AgentMessage }>();
   try {
     const text = readFileSync(filePath, "utf8");
     for (const line of text.split("\n")) {
@@ -187,42 +193,92 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
       } catch {
         continue;
       }
-      if (entry.type !== "message") continue;
       if (typeof entry.id !== "string") continue;
-      const msg = entry.message as AgentMessage | undefined;
-      if (!msg || typeof msg !== "object") continue;
-      let summary = "";
-      let hasImages = false;
-      const blocks = "content" in msg && Array.isArray(msg.content) ? msg.content : [];
-      for (const block of blocks) {
-        if (block.type === "text" && block.text) {
-          if (!summary) summary = block.text.replace(/\s+/g, " ").trim();
-          else summary += " " + block.text.replace(/\s+/g, " ").trim();
-        } else if (block.type === "image") {
-          hasImages = true;
+      const parentId = typeof entry.parentId === "string" ? entry.parentId : null;
+      if (entry.type === "message") {
+        const msg = entry.message as AgentMessage | undefined;
+        if (!msg || typeof msg !== "object") continue;
+        let summary = "";
+        let hasImages = false;
+        const blocks = "content" in msg && Array.isArray(msg.content) ? msg.content : [];
+        for (const block of blocks) {
+          if (block.type === "text" && block.text) {
+            if (!summary) summary = block.text.replace(/\s+/g, " ").trim();
+            else summary += " " + block.text.replace(/\s+/g, " ").trim();
+          } else if (block.type === "image") {
+            hasImages = true;
+          }
+          if (summary.length >= 120) { summary = summary.slice(0, 120) + "…"; break; }
         }
-        if (summary.length >= 120) { summary = summary.slice(0, 120) + "…"; break; }
+        raw.set(entry.id, { id: entry.id, parentId, message: msg });
+        byId.set(entry.id, {
+          id: entry.id,
+          parentId,
+          type: "message",
+          role: msg.role,
+          summary,
+          hasImages,
+          timestamp: typeof entry.timestamp === "string" ? entry.timestamp : undefined,
+          children: [],
+        });
+      } else if (entry.type === "model_change" || entry.type === "thinking_level_change" || entry.type === "custom") {
+        // Structure-only node (folded, not shown).
+        raw.set(entry.id, { id: entry.id, parentId });
       }
-      byId.set(entry.id, {
-        id: entry.id,
-        parentId: typeof entry.parentId === "string" ? entry.parentId : null,
-        type: "message",
-        role: msg.role,
-        summary,
-        hasImages,
-        timestamp: typeof entry.timestamp === "string" ? entry.timestamp : undefined,
-        children: [],
-      });
     }
   } catch {
     // unreadable — empty tree
   }
-  const roots: SessionTreeNode[] = [];
-  for (const node of byId.values()) {
-    if (node.parentId && byId.has(node.parentId)) {
-      byId.get(node.parentId)!.children.push(node);
+
+  // Build the visible tree: message nodes only; non-message nodes are
+  // traversed but folded — their message children attach to the nearest
+  // message ancestor (or the root if none).
+  const attachMessage = (
+    nodeId: string,
+    parentMessageNode: SessionTreeNode | null,
+    seen: Set<string>,
+  ) => {
+    if (seen.has(nodeId)) return; // cycle guard
+    seen.add(nodeId);
+    const node = raw.get(nodeId);
+    if (!node) return;
+    if (node.message) {
+      const visible = byId.get(nodeId)!;
+      if (parentMessageNode) {
+        parentMessageNode.children.push(visible);
+      } else {
+        roots.push(visible);
+      }
+      // Recurse into children with THIS message as the new parent.
+      for (const [id, candidate] of raw) {
+        if (candidate.parentId === nodeId && id !== nodeId) {
+          attachMessage(id, visible, seen);
+        }
+      }
     } else {
-      roots.push(node);
+      // Fold: recurse into children with the SAME message parent.
+      for (const [id, candidate] of raw) {
+        if (candidate.parentId === nodeId && id !== nodeId) {
+          attachMessage(id, parentMessageNode, seen);
+        }
+      }
+    }
+  };
+
+  const roots: SessionTreeNode[] = [];
+  // Start from entries with no parent in the file (file roots: header chain).
+  const hasParent = new Set<string>();
+  for (const n of raw.values()) if (n.parentId) hasParent.add(n.parentId);
+  const visited = new Set<string>();
+  for (const [id, node] of raw) {
+    if (node.parentId && raw.has(node.parentId)) continue;
+    if (visited.has(id)) continue;
+    attachMessage(id, null, visited);
+  }
+  // Any message not reached via a root chain (dangling) goes to the root list.
+  for (const [id, node] of raw) {
+    if (node.message && !visited.has(id) && !roots.some((r) => r.id === id)) {
+      roots.push(byId.get(id)!);
     }
   }
   return { roots, byId };
