@@ -11,7 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground shadow hover:bg-[var(--accent-hover)]",
         highlight:
-          "bg-[var(--highlight-bg)] text-[var(--text)] shadow-[0_1px_3px_var(--vscode-widget-shadow,rgba(0,0,0,0.15))] hover:brightness-[0.96]",
+          "bg-[var(--highlight-bg)] text-[var(--input-fg)] shadow-[0_1px_3px_var(--vscode-widget-shadow,rgba(0,0,0,0.15))] hover:brightness-[0.97]",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:brightness-[1.08]",
         outline:

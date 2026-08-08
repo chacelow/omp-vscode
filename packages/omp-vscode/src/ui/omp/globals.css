@@ -59,6 +59,12 @@
   *, ::before, ::after {
     border-color: var(--border);
   }
+  textarea, input, select, button {
+    /* Prevent WebKit from auto-enlarging form controls (>=16px) in
+       narrow webview viewports. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
 }
 
 @theme inline {
@@ -107,8 +113,9 @@
   --input-fg: var(--vscode-input-foreground, #1a1a1a);
   --input-border: var(--vscode-input-border, #e0e0e0);
   /* Active/highlight surface: bright neutral (near-white), no hue —
-     used for the send button and primary dropdown entry when lit. */
-  --highlight-bg: color-mix(in srgb, var(--input-bg) 55%, #ffffff);
+     used for the send button and primary dropdown entry when lit.
+     Content flips to dark for maximum contrast (white bg + black icon). */
+  --highlight-bg: #ffffff;
   --bg-subtle: color-mix(in srgb, var(--vscode-editor-foreground) 4%, transparent);
 }
 
