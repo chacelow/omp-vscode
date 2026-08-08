@@ -10,6 +10,9 @@ import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInpu
 import { ChatFooterBar } from "./chat/ChatFooterBar";
 import { SessionTreePanel } from "./chat/SessionTreePanel";
 import { ChatMinimap } from "./chat/ChatMinimap";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
+import { PanelRight } from "lucide-react";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
@@ -245,6 +248,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // Only render the last N messages initially. When the user scrolls to the
   // top, load another page while keeping the scroll position stable.
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
+  const [minimapOpen, setMinimapOpen] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   // Message DOM refs for scroll-into-view (minimap was removed for the
   // sidebar; the refs are still used for auto-scroll to the latest message).
@@ -713,7 +717,21 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
             {messages.length > 0 && entryIds.length > 0 && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, paddingRight: CHAT_COLUMN_PADDING }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginBottom: 8, paddingRight: CHAT_COLUMN_PADDING }}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  title={t("i18n.sessionMap") ?? "Conversation map"}
+                  className={cn(
+                    "h-6 gap-1.5 rounded-[9px] px-2 text-[11px] text-[var(--text-dim)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)]",
+                    minimapOpen && "bg-[var(--bg-selected)] text-[var(--text)]",
+                  )}
+                  onClick={() => setMinimapOpen((o) => !o)}
+                >
+                  <PanelRight size={12} className="shrink-0" />
+                  <span className="font-mono">{minimapOpen ? "on" : "off"}</span>
+                </Button>
                 <SessionTreePanel
                   tree={data?.tree ?? []}
                   activeEntryIds={entryIds}
@@ -939,13 +957,15 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             </div>
           </div>
         </div>
-        <ChatMinimap
-          messages={messages}
-          streamingMessage={streamState.streamingMessage}
-          scrollContainer={scrollContainerRef}
-          messageRefs={messageRefs}
-          onRevealHistory={revealHistoryForMinimap}
-        />
+        {minimapOpen && (
+          <ChatMinimap
+            messages={messages}
+            streamingMessage={streamState.streamingMessage}
+            scrollContainer={scrollContainerRef}
+            messageRefs={messageRefs}
+            onRevealHistory={revealHistoryForMinimap}
+          />
+        )}
       </div>
 
       <div className="relative">
