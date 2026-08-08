@@ -461,8 +461,9 @@ export class AgentSessionWrapper {
         return null;
 
       case "fork": {
-        // OMP RPC fork: branch at the given entry (returns {text, cancelled}).
-        const result = await this.rpc.send<Record<string, unknown>>("fork", {
+        // OMP RPC branch: branch at the given entry within the same
+        // session (returns {text, cancelled}); 'fork' is not a command.
+        const result = await this.rpc.send<Record<string, unknown>>("branch", {
           ...(command.entryId ? { entryId: command.entryId } : {}),
         });
         return result ?? { cancelled: false };

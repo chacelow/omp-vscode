@@ -1492,20 +1492,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!sid) return;
     setForkingEntryId(entryId);
     try {
-      const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(sid, {
+      // OMP branch: forks within the same session at entryId (no new
+      // session id). Refresh context to the branch point.
+      const result = await sendAgentCommand<{ cancelled?: boolean; text?: string }>(sid, {
         type: "fork",
         entryId,
       });
-      const { cancelled, newSessionId } = result ?? {};
-      if (!cancelled && newSessionId) {
-        onSessionForked?.(newSessionId);
+      if (!result?.cancelled) {
+        setActiveLeafId(entryId);
+        await loadContext(sid, entryId);
       }
     } catch (e) {
       console.error("Fork failed:", e);
     } finally {
       setForkingEntryId(null);
     }
-  }, [onSessionForked]);
+  }, [loadContext]);
 
   const handleNavigate = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
