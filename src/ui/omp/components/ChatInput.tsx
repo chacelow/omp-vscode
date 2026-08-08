@@ -1971,19 +1971,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                       {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
                     </span>
-                    {(thinkingLevel && thinkingLevel !== "off" && thinkingLevel !== "auto") && (
-                      <span
-                        role="button"
-                        title="Switch thinking effort"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setThinkingDropdownOpen((o) => !o);
-                        }}
-                        style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.8, fontFamily: "var(--font-mono)", flexShrink: 0, marginLeft: 2, cursor: "pointer", textDecoration: thinkingDropdownOpen ? "underline" : "none" }}
-                      >
-                        {thinkingLevel}▾
-                      </span>
-                    )}
+                    <span
+                      role="button"
+                      title="Switch thinking effort"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setThinkingDropdownOpen((o) => !o);
+                      }}
+                      style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.8, fontFamily: "var(--font-mono)", flexShrink: 0, marginLeft: 2, cursor: "pointer", textDecoration: thinkingDropdownOpen ? "underline" : "none" }}
+                    >
+                      {thinkingLevel || "auto"}▾
+                    </span>
                   </button>
                   {thinkingDropdownOpen && (
                     <div
