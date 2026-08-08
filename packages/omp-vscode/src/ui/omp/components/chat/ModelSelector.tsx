@@ -141,8 +141,10 @@ export const ModelSelector = memo(function ModelSelector({
             <span
               role="button"
               title="Switch thinking effort"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
+                setOpen(false);
                 setThinkingOpen((o) => !o);
               }}
               className={cn(
