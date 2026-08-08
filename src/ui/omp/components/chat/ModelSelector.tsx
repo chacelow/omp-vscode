@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, memo } from "react";
+import { Grid3x3, Check } from "lucide-react";
 
 // Model selector: current model button + searchable provider-grouped list.
 // The effort label next to the model name opens the thinking-level picker.
@@ -108,14 +109,7 @@ export const ModelSelector = memo(function ModelSelector({
           isStreaming ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
         }`}
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-          <rect x="4" y="4" width="16" height="16" rx="2" />
-          <rect x="9" y="9" width="6" height="6" />
-          <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-          <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-          <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-          <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-        </svg>
+        <Grid3x3 size={11} className="shrink-0" />
         <span className="min-w-0 flex-1 truncate">
           {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
         </span>
@@ -162,7 +156,9 @@ export const ModelSelector = memo(function ModelSelector({
       {open && rect && (
         <div
           style={{
-            position: "fixed", top: rect.top - 4, left: rect.left,
+            position: "fixed",
+            bottom: (window.visualViewport?.height ?? window.innerHeight) - rect.top + 6,
+            left: rect.left,
             width: "max-content", minWidth: rect.width,
             maxHeight: Math.max(120, Math.min(rect.top - 8, (window.visualViewport?.height ?? window.innerHeight) * 0.6)),
           }}
@@ -213,7 +209,7 @@ export const ModelSelector = memo(function ModelSelector({
                       }`}
                     >
                       {isActive
-                        ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
+                        ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
                         : <span className="w-2.5 shrink-0" />}
                       {opt.name}
                     </button>

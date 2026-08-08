@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, memo } from "react";
+import { Wrench, Check, ImagePlus, Square, Shrink, Volume2, VolumeX, X } from "lucide-react";
 import { RoleSelector, type RoleSelectorProps } from "./RoleSelector";
 import { ModelSelector, type ModelSelectorProps } from "./ModelSelector";
 import { SendButton } from "./SendButton";
@@ -96,9 +97,7 @@ export const ToolbarRow = memo(function ToolbarRow({
                 aria-label={t("chat.changeToolPreset")}
                 className={`${iconBtn} flex items-center gap-1.5 disabled:cursor-not-allowed ${toolOpen ? "bg-[var(--bg-hover)]" : ""}`}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                </svg>
+                <Wrench size={11} className="shrink-0" />
                 {(!isMobile || menuOpen) && <span className="whitespace-nowrap">{toolPresetLabel}</span>}
               </button>
               {toolOpen && (
@@ -116,7 +115,7 @@ export const ToolbarRow = memo(function ToolbarRow({
                         }`}
                       >
                         {isActive
-                          ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
+                          ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
                           : <span className="w-2.5 shrink-0" />}
                         <span className="flex-1">{lvl}</span>
                         <span className="ml-2 text-[11px] text-[var(--text-dim)]">{desc}</span>
@@ -135,11 +134,7 @@ export const ToolbarRow = memo(function ToolbarRow({
               title={t("chat.attachImage")}
               className={`${iconBtn} h-[26px] w-[26px] ${attach.count ? "text-[var(--accent)] hover:text-[var(--accent)]" : ""} disabled:cursor-not-allowed`}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
+              <ImagePlus size={15} strokeWidth={1.8} />
             </button>
           )}
 
@@ -154,12 +149,9 @@ export const ToolbarRow = memo(function ToolbarRow({
               }`}
             >
               {isCompacting ? (
-                <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" /></svg>{(!isMobile || menuOpen) && <span className="whitespace-nowrap">{t("chat.compacting")}</span>}</>
+                <><Square size={10} fill="currentColor" />{(!isMobile || menuOpen) && <span className="whitespace-nowrap">{t("chat.compacting")}</span>}</>
               ) : (
-                <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-                  <line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
-                </svg>{(!isMobile || menuOpen) && <span className="whitespace-nowrap">{t("chat.compact")}</span>}</>
+                <><Shrink size={11} className="shrink-0" />{(!isMobile || menuOpen) && <span className="whitespace-nowrap">{t("chat.compact")}</span>}</>
               )}
             </button>
           )}
@@ -172,17 +164,9 @@ export const ToolbarRow = memo(function ToolbarRow({
               className={`${iconBtn} w-8 ${soundEnabled ? "" : "opacity-55"}`}
             >
               {soundEnabled ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                </svg>
+                <Volume2 size={12} />
               ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  <line x1="23" y1="9" x2="17" y2="15" />
-                  <line x1="17" y1="9" x2="23" y2="15" />
-                </svg>
+                <VolumeX size={12} />
               )}
             </button>
           )}
@@ -196,10 +180,7 @@ export const ToolbarRow = memo(function ToolbarRow({
               onClick={() => { setToolOpen(false); setMenuOpen(false); }}
               className="flex h-6 w-9 items-center justify-center rounded-r-[9px] border-l border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[var(--bg-hover)] text-[var(--text)] transition-colors hover:bg-[var(--bg-selected)]"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <X size={13} strokeWidth={2} />
             </button>
           )}
         </div>

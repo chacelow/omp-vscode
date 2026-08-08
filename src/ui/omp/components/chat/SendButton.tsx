@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { Send, Square } from "lucide-react";
 
 // Round primary send/stop button — one button, two states, icon-only:
 //   idle      → Send (accent circle, disabled when empty)
@@ -13,23 +14,6 @@ interface SendButtonProps {
   stopLabel?: string;
 }
 
-function SendIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="2" y1="7.5" x2="12" y2="7.5" />
-      <polyline points="8 3.5 12.5 7.5 8 11.5" />
-    </svg>
-  );
-}
-
-function StopIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor">
-      <rect x="1" y="1" width="10" height="10" rx="2" />
-    </svg>
-  );
-}
-
 export const SendButton = memo(function SendButton({ isStreaming, canSend, onSend, onAbort }: SendButtonProps) {
   if (isStreaming) {
     return (
@@ -38,7 +22,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
         title="Stop"
         className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#ef4444]/45 bg-[#ef4444]/15 text-[#ef4444] transition-colors hover:bg-[#ef4444]/25"
       >
-        <StopIcon />
+        <Square size={13} fill="currentColor" />
       </button>
     );
   }
@@ -53,7 +37,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
           : "cursor-not-allowed bg-[var(--bg-panel)] text-[var(--text-dim)]"
       }`}
     >
-      <SendIcon />
+      <Send size={15} />
     </button>
   );
 });

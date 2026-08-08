@@ -1,4 +1,5 @@
 import { useState, useRef, memo } from "react";
+import { Crosshair } from "lucide-react";
 import type { SlashCommandInfo } from "@/hooks/useAgentSession";
 
 // Role switcher (Default / Fast / Plan) — matches the TUI: a role is
@@ -65,10 +66,7 @@ export const RoleSelector = memo(function RoleSelector({
         }}
         title="Switch model role"
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-          <circle cx="12" cy="12" r="4" />
-        </svg>
+        <Crosshair size={11} className="shrink-0" />
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {activeRoleLabel ?? "Role"}
         </span>

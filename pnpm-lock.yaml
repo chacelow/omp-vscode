@@ -17,6 +17,9 @@ importers:
       katex:
         specifier: ^0.18.1
         version: 0.18.1
+      lucide-react:
+        specifier: ^1.30.0
+        version: 1.30.0(react@19.2.8)
       mermaid:
         specifier: ^11.16.1
         version: 11.16.1
@@ -4771,7 +4774,7 @@ snapshots:
       remark-parse: 11.0.0
       remark-rehype: 11.1.2
       source-map: 0.7.0
-      unified: 11.0.5
+      unified: 11.0.0
       unist-util-position-from-estree: 2.0.0
       unist-util-stringify-position: 4.0.0
       unist-util-visit: 5.1.0
@@ -7395,7 +7398,7 @@ snapshots:
 
   micromark-util-character@2.1.1:
     dependencies:
-      micromark-util-symbol: 2.0.1
+      micromark-util-symbol: 2.0.0
       micromark-util-types: 2.0.0
 
   micromark-util-chunked@2.0.0:
@@ -7404,7 +7407,7 @@ snapshots:
 
   micromark-util-chunked@2.0.1:
     dependencies:
-      micromark-util-symbol: 2.0.1
+      micromark-util-symbol: 2.0.0
 
   micromark-util-classify-character@2.0.0:
     dependencies:
@@ -7877,20 +7880,20 @@ snapshots:
       estree-util-to-js: 2.0.0
       recma-parse: 1.0.0
       recma-stringify: 1.0.0
-      unified: 11.0.5
+      unified: 11.0.0
 
   recma-parse@1.0.0:
     dependencies:
       '@types/estree': 1.0.9
       esast-util-from-js: 2.0.1
-      unified: 11.0.5
+      unified: 11.0.0
       vfile: 6.0.3
 
   recma-stringify@1.0.0:
     dependencies:
       '@types/estree': 1.0.9
       estree-util-to-js: 2.0.0
-      unified: 11.0.5
+      unified: 11.0.0
       vfile: 6.0.3
 
   refractor@5.0.0:
@@ -7950,7 +7953,7 @@ snapshots:
     dependencies:
       '@types/mdast': 4.0.4
       mdast-util-newline-to-break: 2.0.0
-      unified: 11.0.5
+      unified: 11.0.0
 
   remark-cjk-friendly@2.3.1(@types/mdast@4.0.4)(micromark-util-types@2.0.0)(micromark@4.0.0)(unified@11.0.5):
     dependencies:
@@ -8004,7 +8007,7 @@ snapshots:
       '@types/mdast': 4.0.4
       mdast-util-from-markdown: 2.0.3
       micromark-util-types: 2.0.0
-      unified: 11.0.5
+      unified: 11.0.0
     transitivePeerDependencies:
       - supports-color
 
@@ -8013,7 +8016,7 @@ snapshots:
       '@types/hast': 3.0.5
       '@types/mdast': 4.0.4
       mdast-util-to-hast: 13.2.1
-      unified: 11.0.5
+      unified: 11.0.0
       vfile: 6.0.3
 
   remark-stringify@11.0.0:
