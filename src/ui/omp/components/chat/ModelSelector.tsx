@@ -88,7 +88,7 @@ export const ModelSelector = memo(function ModelSelector({
     : null;
 
   return (
-    <div ref={dropdownRef} style={{ position: "relative", flex: isMobile ? "1 1 auto" : undefined, minWidth: 0 }}>
+    <div ref={dropdownRef} className={`relative min-w-0 ${isMobile ? "flex-1" : ""}`}>
       <button
         onClick={(e) => {
           if (isStreaming) return;
@@ -101,35 +101,14 @@ export const ModelSelector = memo(function ModelSelector({
           });
         }}
         disabled={isStreaming}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          justifyContent: isMobile ? "flex-start" : undefined,
-          padding: isMobile ? "6px 8px" : "5px 8px",
-          height: 24,
-          width: isMobile ? "100%" : undefined,
-          maxWidth: isMobile ? "100%" : 220,
-          overflow: "hidden",
-          background: open ? "var(--bg-hover)" : "none",
-          border: "none",
-          borderRadius: 9,
-          color: "var(--text-muted)",
-          cursor: isStreaming ? "not-allowed" : "pointer",
-          fontSize: 12,
-          opacity: isStreaming ? 0.5 : 1,
-          transition: "background 0.12s, color 0.12s",
-        }}
-        onMouseEnter={(e) => {
-          if (isStreaming) return;
-          e.currentTarget.style.background = "var(--bg-hover)";
-          e.currentTarget.style.color = "var(--text)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = open ? "var(--bg-hover)" : "none";
-          e.currentTarget.style.color = "var(--text-muted)";
-        }}
         title={modelOptions.length > 0 ? "Change model" : "No available models"}
+        className={`flex h-6 items-center gap-1.5 overflow-hidden rounded-[9px] text-xs text-[var(--text-muted)] transition-colors ${
+          isMobile ? "w-full max-w-full justify-start px-2 py-1.5" : "max-w-[220px] px-2 py-[5px]"
+        } ${open ? "bg-[var(--bg-hover)]" : ""} ${
+          isStreaming ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+        }`}
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
           <rect x="4" y="4" width="16" height="16" rx="2" />
           <rect x="9" y="9" width="6" height="6" />
           <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
@@ -137,7 +116,7 @@ export const ModelSelector = memo(function ModelSelector({
           <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
           <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
         </svg>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+        <span className="min-w-0 flex-1 truncate">
           {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
         </span>
         <span
@@ -147,7 +126,7 @@ export const ModelSelector = memo(function ModelSelector({
             e.stopPropagation();
             setThinkingOpen((o) => !o);
           }}
-          style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.8, fontFamily: "var(--font-mono)", flexShrink: 0, marginLeft: 2, cursor: "pointer", textDecoration: thinkingOpen ? "underline" : "none" }}
+          className={`ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80 ${thinkingOpen ? "underline" : ""}`}
         >
           {thinkingLevel || "auto"}▾
         </span>
@@ -156,11 +135,7 @@ export const ModelSelector = memo(function ModelSelector({
       {thinkingOpen && (
         <div
           ref={thinkingRef}
-          style={{
-            position: "absolute", bottom: "100%", right: 0, marginBottom: 4,
-            minWidth: 120, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
-            boxShadow: "0 8px 30px rgba(0,0,0,0.25)", zIndex: 1001, padding: 4,
-          }}
+          className="absolute bottom-full right-0 z-[1001] mb-1 min-w-[120px] rounded-[10px] border border-[var(--border)] bg-[var(--bg)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
         >
           {THINKING_LEVELS.map((level) => {
             const active = thinkingLevel === level;
@@ -171,13 +146,11 @@ export const ModelSelector = memo(function ModelSelector({
                   onThinkingLevelChange?.(level);
                   setThinkingOpen(false);
                 }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8, width: "100%",
-                  padding: "5px 10px", border: "none", borderRadius: 7,
-                  background: active ? "var(--bg-selected)" : "none",
-                  color: active ? "var(--text)" : "var(--text-muted)",
-                  cursor: "pointer", fontSize: 12, fontFamily: "var(--font-mono)", textAlign: "left",
-                }}
+                className={`flex w-full items-center gap-2 rounded-[7px] px-2.5 py-[5px] text-left font-mono text-xs ${
+                  active
+                    ? "bg-[var(--bg-selected)] text-[var(--text)]"
+                    : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                }`}
               >
                 {level}
               </button>
@@ -192,14 +165,11 @@ export const ModelSelector = memo(function ModelSelector({
             position: "fixed", top: rect.top - 4, left: rect.left,
             width: "max-content", minWidth: rect.width,
             maxHeight: Math.max(120, Math.min(rect.top - 8, (window.visualViewport?.height ?? window.innerHeight) * 0.6)),
-            overflowY: "auto",
-            background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
-            boxShadow: "0 8px 30px rgba(0,0,0,0.25)", zIndex: 1000, padding: 4,
-            display: "flex", flexDirection: "column",
           }}
+          className="z-[1000] flex flex-col overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] p-1 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
         >
           {showFilter && (
-            <div style={{ padding: "0 4px 6px" }}>
+            <div className="px-1 pb-1.5">
               <input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
@@ -207,29 +177,22 @@ export const ModelSelector = memo(function ModelSelector({
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
-                style={{
-                  width: "100%", minWidth: isMobile ? 0 : 220,
-                  fontSize: 11, fontFamily: "var(--font-mono)",
-                  padding: "5px 8px", border: "1px solid var(--border)", borderRadius: 5,
-                  outline: "none", background: "var(--bg)", color: "var(--text)",
-                  boxSizing: "border-box",
-                }}
+                className={`w-full rounded-[5px] border border-[var(--border)] bg-[var(--bg)] px-2 py-[5px] font-mono text-[11px] text-[var(--text)] outline-none ${
+                  isMobile ? "" : "min-w-[220px]"
+                }`}
+                style={{ boxSizing: "border-box" }}
               />
             </div>
           )}
-          <div style={{ minHeight: 0, overflowY: "auto" }}>
+          <div className="min-h-0 overflow-y-auto">
             {modelsByProvider.length === 0 ? (
-              <div style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: 12, whiteSpace: "nowrap" }}>
+              <div className="whitespace-nowrap px-3 py-2 text-xs text-[var(--text-dim)]">
                 {filter.trim() ? "No matching models" : "No available models"}
               </div>
             ) : modelsByProvider.map((group, gi) => (
               <div key={group.provider}>
                 {modelsByProvider.length > 1 && (
-                  <div style={{
-                    padding: "6px 12px 4px", fontSize: 10, fontWeight: 600, color: "var(--text-dim)",
-                    textTransform: "uppercase", letterSpacing: "0.07em",
-                    borderTop: gi > 0 ? "1px solid var(--border)" : "none",
-                  }}>
+                  <div className={`px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-dim)] ${gi > 0 ? "border-t border-[var(--border)]" : ""}`}>
                     {formatProviderName(group.provider)}
                   </div>
                 )}
@@ -243,22 +206,15 @@ export const ModelSelector = memo(function ModelSelector({
                         setFilter("");
                         if (!isActive) onModelChange?.(opt.provider, opt.modelId);
                       }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        width: "100%", padding: "7px 12px",
-                        background: isActive ? "var(--bg-selected)" : "none",
-                        border: "none",
-                        color: isActive ? "var(--text)" : "var(--text-muted)",
-                        cursor: "pointer", fontSize: 12, textAlign: "left",
-                        fontWeight: isActive ? 600 : 400,
-                        whiteSpace: "nowrap",
-                      }}
-                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--bg-hover)"; }}
-                      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}
+                      className={`flex w-full items-center gap-2 whitespace-nowrap px-3 py-[7px] text-left text-xs ${
+                        isActive
+                          ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)]"
+                          : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                      }`}
                     >
                       {isActive
-                        ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
-                        : <span style={{ width: 10, flexShrink: 0 }} />}
+                        ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
+                        : <span className="w-2.5 shrink-0" />}
                       {opt.name}
                     </button>
                   );
