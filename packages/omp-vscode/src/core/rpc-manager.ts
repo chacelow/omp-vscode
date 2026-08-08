@@ -313,9 +313,29 @@ export class AgentSessionWrapper {
 
       case "get_state": {
         const state = (await this.rpc.send<Record<string, unknown>>("get_state")) ?? {};
+        // The omp process can switch sessions at runtime (branch creates a
+        // new session id + file). Surface the REAL rpc session id so callers
+        // can follow it, and migrate the registry key so the new id resolves
+        // to THIS process instead of spawning a second omp.
+        if (typeof state.sessionId === "string" && state.sessionId !== this._sessionId) {
+          const oldId = this._sessionId;
+          this._sessionId = state.sessionId;
+          const registry = getRegistry();
+          for (const [k, v] of Array.from(registry)) {
+            if (v === this) registry.delete(k);
+          }
+          registry.set(state.sessionId, this);
+          if (oldId) notifyRunningChange();
+        }
+        if (typeof state.sessionFile === "string" && state.sessionFile !== this._sessionFile) {
+          this._sessionFile = state.sessionFile;
+          if (this._sessionId && state.sessionFile) {
+            cacheSessionPath(this._sessionId, state.sessionFile);
+          }
+        }
         return {
           ...state,
-          sessionId: this.sessionId,
+          sessionId: (typeof state.sessionId === "string" ? state.sessionId : null) ?? this.sessionId,
           isStreaming: this.promptRunning || state.isStreaming === true,
           isPromptRunning: this.promptRunning,
           isBashRunning: this.bashRunning,

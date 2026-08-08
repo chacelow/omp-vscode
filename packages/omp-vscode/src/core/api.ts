@@ -11,7 +11,7 @@ import {
   startRpcSession,
   subscribeRunningSessions,
 } from "./rpc-manager";
-import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, resolveSessionPath } from "./session-reader";
+import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, resolveSessionPath, truncateSessionAt } from "./session-reader";
 import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
 // ============================================================================
@@ -146,6 +146,7 @@ export class ApiHandler {
         if (parts.length >= 3) {
           const sid = decodeURIComponent(parts[2]);
           if (parts[3] === "state" && method === "GET") return this.sessionState(sid);
+          if (parts[3] === "rewind" && method === "POST") return this.sessionRewind(sid, body);
           if (method === "GET") return this.sessionDetail(sid);
         }
       }
@@ -235,6 +236,66 @@ export class ApiHandler {
     if (!session?.isAlive()) return { status: 200, body: { running: false } };
     const state = await session.send({ type: "get_state" });
     return { status: 200, body: { running: true, state } };
+  }
+
+  /**
+   * POST /api/sessions/[id]/rewind { entryId, text, images? }
+   * In-place rewind (plugin-built-in, no omp changes): truncate the session
+   * file at the given user message, restart the RPC session on the SAME file
+   * (same session id), then prompt with the edited text. The branch is
+   * rewritten in the same file — no new session, no fork, nothing visible in
+   * the sidebar. Verified end-to-end against omp 17.2.11.
+   */
+  private async sessionRewind(sid: string, body?: string): Promise<HandlerResult> {
+    let req: { entryId?: string; text?: string; images?: Array<{ type: "image"; data: string; mimeType: string }> };
+    try {
+      req = body ? (JSON.parse(body) as typeof req) : {};
+    } catch {
+      return { status: 400, body: { error: "Invalid request body" } };
+    }
+    const entryId = req.entryId;
+    const text = req.text;
+    if (!entryId || !text || !text.trim()) {
+      return { status: 400, body: { error: "entryId and text are required" } };
+    }
+    const filePath = resolveSessionPath(sid);
+    if (!filePath) return { status: 404, body: { error: "Session not found" } };
+
+    // 1. Stop the RPC process so the file can be rewritten safely (flush done).
+    const existing = getRpcSession(sid);
+    if (existing?.isAlive()) {
+      try {
+        await existing.shutdown();
+      } catch {
+        // continue anyway
+      }
+    }
+
+    // 2. Truncate the file at the edited message (drop it + everything after).
+    const removed = truncateSessionAt(filePath, entryId);
+    if (removed < 0) {
+      return { status: 400, body: { error: "Entry not found or not a user message" } };
+    }
+
+    // 3. Restart on the SAME file → same session id, context rebuilt from the
+    //    truncated transcript.
+    try {
+      const { session } = await startRpcSession(sid, filePath, undefined);
+      this.wireSession(sid, session as never);
+
+      // 4. Replay: send the edited text as a fresh prompt (events stream to
+      //    the webview via the existing SSE subscription on sid).
+      const images = req.images;
+      await session.send({
+        type: "prompt",
+        message: text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (e) {
+      return { status: 500, body: { error: e instanceof Error ? e.message : String(e) } };
+    }
+
+    return { status: 200, body: { success: true, sessionId: sid, removedLines: removed } };
   }
 
   private async sessionState(sid: string): Promise<HandlerResult> {

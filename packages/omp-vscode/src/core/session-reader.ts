@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import type { AgentMessage, SessionInfo } from "./types";
@@ -298,8 +298,7 @@ export function loadSessionContext(filePath: string): SessionContext {
 
 /** True if the entry carries conversation context (messages). */
 export function hasSessionContent(filePath: string): boolean {
-  try {
-    const text = readFileSync(filePath, "utf8").slice(0, 512 * 1024);
+  try {    const text = readFileSync(filePath, "utf8").slice(0, 512 * 1024);
     for (const line of text.split("\n")) {
       if (!line.trim()) continue;
       try {
@@ -313,6 +312,45 @@ export function hasSessionContent(filePath: string): boolean {
     // ignore
   }
   return false;
+}
+
+/**
+ * Rewind: drop the given user-message entry and everything after it, keeping
+ * the header/metadata lines and all entries before it. The next prompt then
+ * rewrites the branch IN THE SAME FILE (same session id) — the in-place
+ * rewind equivalent of the TUI's "back to this node and resend". Returns the
+ * number of lines removed, or -1 when the entry is missing / not a user msg.
+ */
+export function truncateSessionAt(filePath: string, entryId: string): number {
+  let lines: string[];
+  try {
+    lines = readFileSync(filePath, "utf8").split("\n").filter((l) => l.trim().length > 0);
+  } catch {
+    return -1;
+  }
+  let targetIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    let entry: Record<string, unknown>;
+    try {
+      entry = JSON.parse(lines[i]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    if (entry.type !== "message" || entry.id !== entryId) continue;
+    const msg = entry.message as AgentMessage | undefined;
+    if (!msg || msg.role !== "user") return -1;
+    targetIdx = i;
+    break;
+  }
+  if (targetIdx < 0) return -1;
+  const removed = lines.length - targetIdx;
+  const keep = lines.slice(0, targetIdx).join("\n") + (targetIdx > 0 ? "\n" : "");
+  try {
+    writeFileSync(filePath, keep, "utf8");
+  } catch {
+    return -1;
+  }
+  return removed;
 }
 
 // ---------------------------------------------------------------------------

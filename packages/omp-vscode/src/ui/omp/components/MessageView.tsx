@@ -252,7 +252,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
         <AlertDialogContent className="max-w-[380px]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm">
-              {t("i18n.editFromHereTitle") ?? "Edit and resend"}
+              {t("i18n.resendTitle") ?? "Resend edited message"}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
               {t("i18n.editFromHereConfirm") ?? "This rewinds the conversation to this message and regenerates from your edited text."}
@@ -274,7 +274,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
                 }
               }}
             >
-              {t("i18n.editFromHere") ?? "Resend"}
+              {t("i18n.resend") ?? "Resend"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1515,37 +1515,31 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!sid || !text.trim()) return;
     setForkingEntryId(entryId);
     try {
-      // "Edit from here": branch at the message, then re-prompt with the
-      // edited text — the agent answers from that node.
-      const result = await sendAgentCommand<{ cancelled?: boolean; text?: string }>(sid, {
-        type: "fork",
-        entryId,
+      // In-place rewind (plugin-built-in, no omp changes): the extension
+      // truncates this session's file at the message, restarts the RPC
+      // session on the SAME file (same session id), and replays the edited
+      // text. No new session, no fork — like the TUI's "back to this node
+      // and resend", the transcript is rewritten in place.
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/rewind`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entryId,
+          text,
+          ...(images?.length ? { images } : {}),
+        }),
       });
-      if (result?.cancelled) return;
-      await sendAgentCommand(sid, {
-        type: "prompt",
-        message: text,
-        ...(images?.length ? { images } : {}),
-      });
-      // OMP 17.2.11 (verified end-to-end): branch+prompt moves to a NEW
-      // session file + id containing the branch point and the replay
-      // (the original session file is untouched). Follow it so the chat
-      // shows branch-point + new answer, not a stale empty refresh of the
-      // old session.
-      const state = await sendAgentCommand<{ sessionId?: string }>(sid, { type: "get_state" });
-      if (state?.sessionId && state.sessionId !== sid) {
-        sessionIdRef.current = state.sessionId;
-        onSessionForked?.(state.sessionId);
-      } else {
-        setActiveLeafId(entryId);
-        await loadContext(sid, entryId);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // The RPC process was restarted — re-subscribe so the replay streams
+      // in, then reload the rewritten transcript (edited point + replay).
+      ensureEventsConnected(sid).catch(() => {});
+      await loadContext(sid, null);
     } catch (e) {
       console.error("Edit-from-here failed:", e);
     } finally {
       setForkingEntryId(null);
     }
-  }, [loadContext, onSessionForked]);
+  }, [ensureEventsConnected, loadContext]);
 
   const handleNavigate = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
