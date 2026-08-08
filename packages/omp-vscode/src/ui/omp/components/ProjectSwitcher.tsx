@@ -4,6 +4,8 @@
 // picker for this view.
 
 import { useEffect, useRef, useState } from "react";
+import { Folder, ChevronDown } from "lucide-react";
+import { Button } from "./ui/button";
 import type { SessionInfo } from "@/lib/types";
 
 interface Project {
@@ -68,37 +70,22 @@ export function ProjectSwitcher({
 
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
-      <button
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen((v) => !v)}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         title={cwdName ?? "Select project"}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "5px 10px",
-          background: "var(--bg-hover)",
-          border: "1px solid var(--border)",
-          borderRadius: 7,
-          cursor: "pointer",
-          fontSize: 12,
-          fontWeight: 500,
-          color: "var(--text)",
-          transition: "border-color 0.15s, background 0.15s",
-        }}
+        className="h-6 max-w-[200px] gap-1.5 rounded-[9px] px-2 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] data-[state=open]:bg-[var(--bg-hover)]"
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        </svg>
-        <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <Folder size={11} className="shrink-0" />
+        <span className="min-w-0 max-w-[160px] truncate">
           {cwdName ?? "Select project"}
         </span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
+        <ChevronDown size={10} strokeWidth={2.2} className="shrink-0" />
+      </Button>
 
       {/* Hover hint card */}
       {hover && !open && cwdName && (
