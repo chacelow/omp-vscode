@@ -1,8 +1,9 @@
+import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 import { spawn } from "child_process";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { resolveOmpBinary } from "./omp-rpc";
+import { resolveOmpBinary, setRpcLogFn } from "./omp-rpc";
 import {
   getRpcSession,
   getRpcSessionList,
@@ -28,7 +29,12 @@ export class ApiHandler {
   /** Session-id → subscribed webview listeners (SSE simulation). */
   private sessionListeners = new Map<string, Set<(event: unknown) => void>>();
 
+  private readonly log = vscode.window.createOutputChannel("OMP RPC");
+
   constructor() {
+    // Route RPC wire traffic to the output channel so request/response flow
+    // is visible (View → Output → OMP RPC).
+    setRpcLogFn((line) => this.log.appendLine(line));
     // Forward running-state changes to running-stream subscribers.
     subscribeRunningSessions((ids) => {
       for (const cb of this.runningListeners) {
@@ -99,6 +105,8 @@ export class ApiHandler {
   async handle(url: string, method: string, body?: string): Promise<HandlerResult> {
     const path = url.split("?")[0].replace(/^\/+/, "");
     const parts = path.split("/").filter(Boolean); // ["api", "agent", ...]
+    const bodyBrief = body ? body.slice(0, 140) : "";
+    this.log.appendLine(`[api] ${method} /${path} ${bodyBrief}`);
 
     try {
       if (parts[0] !== "api") return { status: 404, body: { error: "Not found" } };
@@ -140,7 +148,7 @@ export class ApiHandler {
       // /api/models, /api/models-config, /api/skills, /api/plugins, /api/auth,
       // /api/files, /api/cwd — config surfaces are not embedded yet.
       if (["models-config", "skills", "plugins", "auth", "files", "cwd", "home", "default-cwd", "project-trust"].includes(parts[1] as string)) {
-        return this.configSurface(parts[1] as string, method, parts);
+        return this.configSurface(parts[1] as string, method, parts, body);
       }
       if (parts[1] === "models" && method === "GET") return this.models();
 
@@ -332,7 +340,7 @@ export class ApiHandler {
   // Config surfaces (not embedded yet — degrade gracefully)
   // -------------------------------------------------------------------------
 
-  private async configSurface(surface: string, _method: string, parts: string[]): Promise<HandlerResult> {
+  private async configSurface(surface: string, _method: string, parts: string[], body?: string): Promise<HandlerResult> {
     switch (surface) {
       case "models":
         return { status: 200, body: { models: {}, modelList: [], defaultModel: null } };
@@ -346,8 +354,22 @@ export class ApiHandler {
         return { status: 200, body: { providers: [] } };
       case "default-cwd":
         return { status: 200, body: { cwd: getOmpAgentDir() } };
-      case "cwd":
+      case "cwd": {
+        // POST /api/cwd/validate {cwd} → echo the requested directory back
+        // (existence-checked) so the shell adopts the workspace folder.
+        if (parts[2] === "validate" && body) {
+          try {
+            const req = JSON.parse(body) as { cwd?: string };
+            if (typeof req.cwd === "string" && existsSync(req.cwd)) {
+              return { status: 200, body: { cwd: req.cwd } };
+            }
+            return { status: 400, body: { error: "Directory does not exist" } };
+          } catch {
+            return { status: 400, body: { error: "Invalid request" } };
+          }
+        }
         return { status: 200, body: { cwd: getOmpAgentDir() } };
+      }
       case "home":
         return { status: 200, body: { home: process.env.HOME ?? "" } };
       case "project-trust":

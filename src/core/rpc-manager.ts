@@ -426,8 +426,8 @@ export class AgentSessionWrapper {
         // builtin/skill pass through; OMP "file" (prompt templates) → "prompt";
         // "custom" and anything else → "extension".
         const commands = (data?.commands ?? []).map((c) => ({
-          name: c.name,
-          description: c.description,
+          name: typeof c.name === "string" ? c.name : "",
+          description: typeof c.description === "string" ? c.description : undefined,
           source: c.source === "builtin"
             ? "builtin"
             : c.source === "skill"
@@ -435,6 +435,9 @@ export class AgentSessionWrapper {
               : c.source === "file"
                 ? "prompt"
                 : "extension",
+          // OMP commands carry an input hint + subcommands for the palette.
+          ...(c.input && typeof c.input === "object" ? { input: c.input as { hint?: string } } : {}),
+          ...(Array.isArray(c.subcommands) ? { subcommands: c.subcommands as Array<{ name: string; description?: string }> } : {}),
         }));
         return { commands };
       }

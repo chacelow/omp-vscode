@@ -205,7 +205,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const {
     loading, error, messages, entryIds, streamState,
-    agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, handleRoleChange,
+    agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, handleRoleChange, loadModels,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,
@@ -383,6 +383,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       modelError={modelError}
       modelScopeWarnings={modelScopeWarnings}
       onModelChange={handleModelChange}
+      onModelOpen={() => { void loadModels(); }}
       modelRoles={modelRoles}
       onRoleChange={handleRoleChange}
       onCompact={session || isNew ? handleCompact : undefined}
@@ -391,7 +392,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       compactError={compactError}
       compactResult={compactResult}
       toolPreset={toolPreset}
-      onToolPresetChange={session || isNew ? handleToolPresetChange : undefined}
+      onToolPresetChange={undefined}
       thinkingLevel={thinkingLevel}
       onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
       availableThinkingLevels={availableThinkingLevels}

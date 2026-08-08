@@ -27,6 +27,13 @@ export interface RpcEvent {
   [key: string]: unknown;
 }
 
+let logFn: ((line: string) => void) | null = null;
+
+/** Route RPC wire traffic to a logger (e.g. an output channel). */
+export function setRpcLogFn(fn: (line: string) => void | null): void {
+  logFn = fn;
+}
+
 export interface RpcSessionOptions {
   cwd: string;
   /** Session file to resume (else omp picks the cwd's active session). */
@@ -269,12 +276,24 @@ export class OmpRpcProcess {
       return Promise.reject(new Error("omp session process is not running"));
     }
     const id = `req-${++this.seq}`;
+    const brief = JSON.stringify(payload).slice(0, 120);
+    logFn?.(`[rpc] → ${type} ${brief}`);
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`Command ${type} timed out after ${timeoutMs}ms`));
       }, timeoutMs);
-      this.pending.set(id, { resolve: resolve as (d: unknown) => void, reject, timer });
+      this.pending.set(id, {
+        resolve: (data: unknown) => {
+          logFn?.(`[rpc] ← ${type} ok ${JSON.stringify(data).slice(0, 160)}`);
+          resolve(data as T);
+        },
+        reject: (err: Error) => {
+          logFn?.(`[rpc] ← ${type} error: ${err.message}`);
+          reject(err);
+        },
+        timer,
+      });
       try {
         this.proc?.stdin?.write(JSON.stringify({ id, type, ...payload }) + "\n");
       } catch (err) {

@@ -136,12 +136,15 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           break;
 
         case "api": {
+          this.log.appendLine(`[webview] api ${msg.method ?? "GET"} ${msg.url} ${(msg.body ?? "").slice(0, 120)}`);
           const resp = await this.api.handle(msg.url ?? "", msg.method ?? "GET", msg.body);
+          this.log.appendLine(`[webview] ← ${resp.status}`);
           this.post({ type: "apiResponse", requestId: msg.requestId, status: resp.status, body: resp.body });
           break;
         }
 
         case "events":
+          this.log.appendLine(`[webview] events ${msg.url}`);
           this.startEventStream(msg.url ?? "");
           break;
 
@@ -210,6 +213,9 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     });
     entry.closed = false;
     (entry as { unsub?: () => void }).unsub = unsub;
+    // SSE-style initial frame: the webview's connectEvents() settles on the
+    // "connected" event before sending the prompt.
+    this.post({ type: "event", url, event: { type: "connected", sessionId: sid } });
   }
 
   private closeEventStream(url: string): void {

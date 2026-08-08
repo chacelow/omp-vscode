@@ -45,6 +45,8 @@ interface Props {
   /** Diagnostics from resolving `enabledModels`, e.g. a pattern that matched nothing. */
   modelScopeWarnings?: string[];
   onModelChange?: (provider: string, modelId: string) => void;
+  /** Called when the model selector opens — re-query the live model list. */
+  onModelOpen?: () => void;
   /** Configured model roles (default/smol/plan/…) from config.yml modelRoles. */
   modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
   onRoleChange?: (role: string) => void;
@@ -339,7 +341,7 @@ export function ModelScopeWarningBanner({ warnings }: { warnings?: string[] }) {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
-  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, modelRoles, onRoleChange,
+  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, onModelOpen, modelRoles, onRoleChange,
   onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo, queuedMessages, inputHistory = [], onRecallQueue,
@@ -358,6 +360,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [modelFilter, setModelFilter] = useState("");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const [roleDropdownRect, setRoleDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [editingEffort, setEditingEffort] = useState<{ provider: string; modelId: string } | null>(null);
   const [toolDropdownOpen, setToolDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [controlsMenuOpen, setControlsMenuOpen] = useState(false);
@@ -1130,6 +1133,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       if (toolDropdownRef.current && !toolDropdownRef.current.contains(e.target as Node)) {
         setToolDropdownOpen(false);
       }
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
+        setRoleDropdownOpen(false);
+      }
       if (thinkingDropdownRef.current && !thinkingDropdownRef.current.contains(e.target as Node)) {
         setThinkingDropdownOpen(false);
       }
@@ -1818,36 +1824,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
           {/* LEFT: attach + model selector (idle) or steer/followup toggle (streaming) */}
           <div style={{ flex: isMobile ? "1 1 auto" : "0 0 auto", minWidth: 0, display: "flex", alignItems: "center", gap: 2 }}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isStreaming}
-             title={t("chat.attachImage")}
-              style={{
-                flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                width: 32, height: 32, padding: 0,
-                background: "none", border: "none",
-                borderRadius: 9,
-                color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
-                cursor: isStreaming ? "not-allowed" : "pointer",
-                opacity: isStreaming ? 0.5 : 1,
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            </button>
             {/* Role selector — configured model roles (default/smol/plan/…) */}
             {roleNames.length > 0 && onRoleChange && (
               <div ref={roleDropdownRef} style={{ position: "relative" }}>
@@ -1861,8 +1837,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   style={{
                     display: "flex", alignItems: "center", gap: 6,
                     padding: "8px 10px", height: 32, maxWidth: 120, overflow: "hidden",
-                    background: roleDropdownOpen ? "var(--bg-hover)" : "none",
-                    border: "none", borderRadius: 9, color: "var(--text-muted)",
+                    background: roleDropdownOpen ? "var(--bg-hover)" : "rgba(var(--accent-rgb, 120, 120, 120), 0.12)",
+                    border: "1px solid rgba(var(--accent-rgb, 120, 120, 120), 0.35)",
+                    borderRadius: 9, color: "var(--text)",
                     cursor: isStreaming ? "not-allowed" : "pointer", fontSize: 12,
                     opacity: isStreaming ? 0.5 : 1, transition: "background 0.12s, color 0.12s",
                   }}
@@ -1872,8 +1849,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     e.currentTarget.style.color = "var(--text)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = roleDropdownOpen ? "var(--bg-hover)" : "none";
-                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.background = roleDropdownOpen ? "var(--bg-hover)" : "rgba(var(--accent-rgb, 120, 120, 120), 0.12)";
+                    e.currentTarget.style.color = "var(--text)";
                   }}
                   title="Switch model role"
                 >
@@ -1928,11 +1905,45 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 )}
               </div>
             )}
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isStreaming}
+             title={t("chat.attachImage")}
+              style={{
+                flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                width: 32, height: 32, padding: 0,
+                background: "none", border: "none",
+                borderRadius: 9,
+                color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
+                cursor: isStreaming ? "not-allowed" : "pointer",
+                opacity: isStreaming ? 0.5 : 1,
+                transition: "background 0.12s, color 0.12s",
+              }}
+              onMouseEnter={(e) => {
+                if (isStreaming) return;
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
             {/* Model selector — visible always, disabled during streaming */}
             {(modelOptions.length > 0 || currentName || modelError) && onModelChange && (
                 <div ref={dropdownRef} style={{ position: "relative", flex: isMobile ? "1 1 auto" : undefined, minWidth: 0 }}>
                   <button
                     onClick={(e) => {
+                      // Query the live model list on open (TUI /model behavior).
+                      if (isStreaming) return;
+                      onModelOpen?.();
                       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                       setModelDropdownRect({ top: rect.top, left: rect.left, width: rect.width });
                       setModelDropdownOpen((open) => {
@@ -2032,6 +2043,41 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         </div>
                       )}
                       <div style={{ minHeight: 0, overflowY: "auto" }}>
+                        {editingEffort && (
+                          <div style={{ padding: "6px 12px 8px", borderBottom: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-dim)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                              {t("chat.changeReasoning", { level: thinkingDisplayLabel })} · {editingEffort.modelId}
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                              {(["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const).map((level) => {
+                                const active = thinkingLevel === level;
+                                return (
+                                  <button
+                                    key={level}
+                                    onClick={() => {
+                                      if (!(model?.modelId === editingEffort.modelId && model?.provider === editingEffort.provider)) {
+                                        onModelChange(editingEffort.provider, editingEffort.modelId);
+                                      }
+                                      onThinkingLevelChange?.(level);
+                                      setEditingEffort(null);
+                                      setModelDropdownOpen(false);
+                                      setModelFilter("");
+                                    }}
+                                    style={{
+                                      padding: "2px 8px", fontSize: 11, borderRadius: 5,
+                                      border: "1px solid var(--border)",
+                                      background: active ? "var(--bg-selected)" : "none",
+                                      color: active ? "var(--text)" : "var(--text-muted)",
+                                      cursor: "pointer", fontFamily: "var(--font-mono)",
+                                    }}
+                                  >
+                                    {level}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         {modelsByProvider.length === 0 ? (
                           <div style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: 12, whiteSpace: "nowrap" }}>
                             {modelFilter.trim() ? t("chat.noMatchingModels") : "No available models"}
@@ -2074,7 +2120,21 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                                   {isActive
                                     ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
                                     : <span style={{ width: 10, flexShrink: 0 }} />}
-                                  {opt.name}
+                                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.name}</span>
+                                  <span
+                                    role="button"
+                                    aria-label={`Edit effort for ${opt.name}`}
+                                    title="Edit thinking effort"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingEffort({ provider: opt.provider, modelId: opt.modelId });
+                                    }}
+                                    style={{ flexShrink: 0, display: "flex", alignItems: "center", opacity: 0.6, cursor: "pointer", padding: "2px 0 2px 8px" }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg>
+                                  </span>
                                 </button>
                               );
                             })}
@@ -2166,93 +2226,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 backdropFilter: "blur(10px)",
               } : null),
             }}>
-            {!isStreaming && onThinkingLevelChange && (
-              <div ref={thinkingDropdownRef} style={{ position: "relative" }}>
-                <button
-                  onClick={() => !isStreaming && setThinkingDropdownOpen((v) => !v)}
-                  disabled={isStreaming}
-                   title={t("chat.changeReasoning", { level: thinkingDisplayLabel })}
-                   aria-label={t("chat.changeReasoningLabel")}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                    padding: isMobile ? "0 6px" : "8px 12px",
-                    width: isMobile ? "auto" : undefined,
-                    height: 32,
-                    background: thinkingDropdownOpen ? "var(--bg-hover)" : "none",
-                    border: "none",
-                    borderRadius: 9,
-                    color: "var(--text-muted)",
-                    cursor: isStreaming ? "not-allowed" : "pointer",
-                    fontSize: 12,
-                    opacity: isStreaming ? 0.5 : 1,
-                    transition: "background 0.12s, color 0.12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (isStreaming) return;
-                    e.currentTarget.style.background = "var(--bg-hover)";
-                    e.currentTarget.style.color = "var(--text)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = thinkingDropdownOpen ? "var(--bg-hover)" : "none";
-                    e.currentTarget.style.color = "var(--text-muted)";
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
-                    <line x1="7" y1="18" x2="12" y2="18" />
-                    <line x1="8" y1="21" x2="11" y2="21" />
-                  </svg>
-                  {(!isMobile || controlsMenuOpen) && <span style={{ whiteSpace: "nowrap" }}>{thinkingDisplayLabel}</span>}
-                </button>
-                {thinkingDropdownOpen && (
-                  <div style={{
-                    position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-                    zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
-                    overflow: "hidden", minWidth: 180,
-                  }}>
-                    {THINKING_LEVELS.filter((lvl) => {
-                      if (!availableThinkingLevels || availableThinkingLevels.length <= 1) return true;
-                      if (lvl === "auto") return true;
-                      return availableThinkingLevels.includes(lvl);
-                    }).map((lvl) => {
-                      const isActive = (thinkingLevel ?? "auto") === lvl;
-                       const desc = t(THINKING_LEVEL_DESC_KEYS[lvl]);
-                      const mappedVal = (lvl !== "auto" && thinkingLevelMap) ? thinkingLevelMap[lvl] : undefined;
-                      const displayLabel = (mappedVal != null && mappedVal !== lvl) ? mappedVal : lvl;
-                      const showOriginal = mappedVal != null && mappedVal !== lvl;
-                      return (
-                        <button
-                          key={lvl}
-                          onClick={() => { setThinkingDropdownOpen(false); if (!isActive) onThinkingLevelChange(lvl); }}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            width: "100%", padding: "7px 12px",
-                            background: isActive ? "var(--bg-selected)" : "none",
-                            border: "none",
-                            color: isActive ? "var(--text)" : "var(--text-muted)",
-                            cursor: "pointer", fontSize: 12, textAlign: "left",
-                            fontWeight: isActive ? 600 : 400,
-                            whiteSpace: "nowrap",
-                          }}
-                          onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--bg-hover)"; }}
-                          onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}
-                        >
-                          {isActive
-                            ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
-                            : <span style={{ width: 10, flexShrink: 0 }} />}
-                          <span style={{ flex: 1 }}>
-                            {displayLabel}
-                            {showOriginal && <span style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
-                          </span>
-                          <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
             {!isStreaming && onToolPresetChange && (
               <div ref={toolDropdownRef} style={{ position: "relative" }}>
                 <button

@@ -519,7 +519,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (sessionIdRef.current !== sid) return null;
       setData(d);
       setActiveLeafId(d.leafId);
-      setMessages(d.context.messages);
+      setMessages((d.context.messages ?? []).map((m) => normalizeToolCalls(m)));
       setEntryIds(d.context.entryIds ?? []);
       setCurrentModelOverride(null);
       setError(null);
@@ -569,7 +569,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] } };
-      setMessages(d.context.messages);
+      setMessages((d.context.messages ?? []).map((m) => normalizeToolCalls(m)));
       setEntryIds(d.context.entryIds ?? []);
     } catch (e) {
       console.error("Failed to load context:", e);
@@ -615,7 +615,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const selectedModel = newSessionModelOverrideRef.current;
       const selectedThinkingLevel = thinkingLevelOverrideRef.current;
       if (selectedModel) setPendingModel(selectedModel);
-      const toolNames = getToolNamesForPreset(toolPreset);
+      // OMP enables its full built-in tool set by default; do not pass a Pi
+      // preset allow-list (that would disable OMP's extra tools).
       // Sidebar "New Session" remounts with a bumped nonce — that is an
       // explicit request for a fresh session (no resume of the cwd's recent
       // one). Initial open (nonce unchanged) keeps omp's resume behavior.
@@ -626,7 +627,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         body: JSON.stringify({
           cwd: newSessionCwd,
           type: "ensure_session",
-          toolNames,
           ...(forceNewSession ? { forceNewSession: true } : {}),
           ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
           ...(selectedThinkingLevel
@@ -1550,7 +1550,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setModelRoles(d.modelRoles ?? {});
     const nextModelList = d.modelList ?? [];
     setModelList(nextModelList);
-    if (isNew && !sessionIdRef.current) {
+    if (isNew) {
+      // Apply even after the warm-up session exists (sessionIdRef set) — the
+      // new-chat view derives its displayed model from the default.
       const match = d.defaultModel
         ? nextModelList.find((m) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
         : undefined;
@@ -1947,28 +1949,31 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Warm up on the empty (new) chat view: omp --mode rpc --cwd resumes the
-  // cwd's most recent session, so surface its history immediately instead of
-  // only after the first message is sent. Skipped for explicit "New Session":
-  // keep the plain input box — the session is created on the first send.
+  // Warm up a session on the empty (new) chat view: omp --mode rpc --cwd
+  // resumes the cwd's most recent session, so surface its history immediately.
+  // For explicit "New Session" keep the plain input box (no loading, no
+  // session-mode switch) but still create the session so the model/role
+  // selectors have live RPC data.
   useEffect(() => {
     if (session || !isNew || !newSessionCwd) return;
-    if (initialForceNewSessionRef.current) return;
     if (sessionIdRef.current) return;
-    setLoading(true);
+    const isFresh = initialForceNewSessionRef.current;
+    if (!isFresh) setLoading(true);
     let cancelled = false;
     void (async () => {
       try {
         const sid = await ensureNewSession();
         if (cancelled || !sid) return;
-        await loadSession(sid, true);
+        await loadSession(sid, !isFresh);
         if (cancelled) return;
         // Session is live — pull the authoritative model list from the RPC
         // runtime (get_available_models), matching the TUI's live model view.
         void loadModels();
-        // Surface the resumed session in the shell (sidebar highlight, header)
-        // so the view is a continued conversation, not a blank new-chat page.
-        promoteNewSession(1, "");
+        if (!isFresh) {
+          // Surface the resumed session in the shell (sidebar highlight,
+          // header) so the view is a continued conversation.
+          promoteNewSession(1, "");
+        }
       } catch {
         // warm-up failure is non-fatal; handleSend will retry
       }
@@ -2079,7 +2084,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
-    handleToolPresetChange, handleThinkingLevelChange, handleRoleChange, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, handleRoleChange, loadModels, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     bashRunning, pendingBash,
     // Subscriptions
