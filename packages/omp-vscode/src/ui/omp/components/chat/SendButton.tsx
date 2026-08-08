@@ -35,7 +35,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
     <Button
       onClick={onSend}
       disabled={!canSend}
-      variant={canSend ? "secondary" : "ghost"}
+      variant={canSend ? "highlight" : "ghost"}
       size="sm"
       title="Send"
       className={cn("h-6 w-6 shrink-0 rounded-full p-0", !canSend && "cursor-not-allowed")}

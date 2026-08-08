@@ -106,6 +106,9 @@
   --input-bg: var(--vscode-input-background, #ffffff);
   --input-fg: var(--vscode-input-foreground, #1a1a1a);
   --input-border: var(--vscode-input-border, #e0e0e0);
+  /* Active/highlight surface: bright neutral (near-white), no hue —
+     used for the send button and primary dropdown entry when lit. */
+  --highlight-bg: color-mix(in srgb, var(--input-bg) 55%, #ffffff);
   --bg-subtle: color-mix(in srgb, var(--vscode-editor-foreground) 4%, transparent);
 }
 

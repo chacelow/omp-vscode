@@ -49,11 +49,11 @@ export const RoleSelector = memo(function RoleSelector({
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
-          variant="default"
+          variant="highlight"
           size="sm"
           disabled={isStreaming}
           title="Switch model role"
-          className="h-6 max-w-[130px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs text-primary-foreground data-[state=open]:bg-[var(--accent-hover)]"
+          className="h-6 max-w-[130px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs data-[state=open]:brightness-[0.96]"
         >
           <Crosshair size={11} className="shrink-0" />
           <span className="truncate">
