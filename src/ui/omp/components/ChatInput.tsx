@@ -1906,7 +1906,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             )}
 
             {/* Model selector — visible always, disabled during streaming */}
-            {(modelOptions.length > 0 || currentName || modelError) && onModelChange && (
+            {(modelOptions.length > 0 || currentName || modelError || true) && onModelChange && (
                 <div ref={dropdownRef} style={{ position: "relative", flex: isMobile ? "1 1 auto" : undefined, minWidth: 0 }}>
                   <button
                     onClick={(e) => {
@@ -1958,14 +1958,53 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
                     </svg>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                      {currentName ?? (modelOptions.length > 0 ? "Select model" : "No models")}
+                      {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
                     </span>
-                    {thinkingLevel && thinkingLevel !== "off" && thinkingLevel !== "auto" && (
-                      <span style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.8, fontFamily: "var(--font-mono)", flexShrink: 0, marginLeft: 2 }}>
-                        {thinkingLevel}
+                    {(thinkingLevel && thinkingLevel !== "off" && thinkingLevel !== "auto") && (
+                      <span
+                        role="button"
+                        title="Switch thinking effort"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setThinkingDropdownOpen((o) => !o);
+                        }}
+                        style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.8, fontFamily: "var(--font-mono)", flexShrink: 0, marginLeft: 2, cursor: "pointer", textDecoration: thinkingDropdownOpen ? "underline" : "none" }}
+                      >
+                        {thinkingLevel}▾
                       </span>
                     )}
                   </button>
+                  {thinkingDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute", top: "100%", right: 0, marginTop: 4,
+                        minWidth: 120, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
+                        boxShadow: "0 8px 30px rgba(0,0,0,0.25)", zIndex: 1001, padding: 4,
+                      }}
+                    >
+                      {(["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const).map((level) => {
+                        const active = thinkingLevel === level;
+                        return (
+                          <button
+                            key={level}
+                            onClick={() => {
+                              onThinkingLevelChange?.(level);
+                              setThinkingDropdownOpen(false);
+                            }}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 8, width: "100%",
+                              padding: "5px 10px", border: "none", borderRadius: 7,
+                              background: active ? "var(--bg-selected)" : "none",
+                              color: active ? "var(--text)" : "var(--text-muted)",
+                              cursor: "pointer", fontSize: 12, fontFamily: "var(--font-mono)", textAlign: "left",
+                            }}
+                          >
+                            {level}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   {modelDropdownOpen && modelDropdownRect && (() => {
                     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
                     const bottom = viewportHeight - modelDropdownRect.top + 6;
