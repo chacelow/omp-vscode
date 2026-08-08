@@ -7,6 +7,7 @@ import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, splitFinalAssistantBlocks } from "@/lib/message-display";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInput";
+import { ChatFooterBar } from "./chat/ChatFooterBar";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
@@ -493,6 +494,28 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     [chatInputProps, handleEditResend, messageCwd],
   );
 
+  const chatFooterElement = (
+    <ChatFooterBar
+      t={t}
+      isStreaming={sessionBusy}
+      onCompact={session || isNew ? handleCompact : undefined}
+      onAbortCompaction={handleAbortCompaction}
+      isCompacting={isCompacting}
+      soundEnabled={soundEnabled}
+      onSoundToggle={onSoundToggle}
+      stats={sessionStats ? {
+        input: sessionStats.tokens?.input,
+        output: sessionStats.tokens?.output,
+        cacheRead: sessionStats.tokens?.cacheRead,
+        cacheWrite: sessionStats.tokens?.cacheWrite,
+        total: sessionStats.tokens?.total,
+        cost: sessionStats.cost ?? null,
+      } : null}
+      contextUsage={contextUsage}
+      tps={null}
+    />
+  );
+
   const aboveEditorWidgets = extensionWidgets.filter((widget) => widget.placement !== "belowEditor");
   const belowEditorWidgets = extensionWidgets.filter((widget) => widget.placement === "belowEditor");
 
@@ -630,6 +653,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
             <NoticeShelf notices={notices} align="right" />
             {chatInputElement}
+            {chatFooterElement}
           </div>
         </div>
       ) : (
@@ -882,6 +906,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           </div>
         </div>
         {chatInputElement}
+        {chatFooterElement}
         <ExtensionStatusBar statuses={extensionStatuses} />
       </div>
       </>

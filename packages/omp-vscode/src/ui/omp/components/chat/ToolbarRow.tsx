@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo } from "react";
-import { Wrench, Check, ImagePlus, Square, Shrink, Volume2, VolumeX, X } from "lucide-react";
+import { Wrench, Check, ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -28,11 +28,6 @@ interface ToolbarRowProps {
   attach?: { count: number; onAttach: () => void };
   toolPreset?: "none" | "default" | "full";
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
-  onCompact?: () => void;
-  onAbortCompaction?: () => void;
-  isCompacting?: boolean;
-  soundEnabled?: boolean;
-  onSoundToggle?: () => void;
   canSend: boolean;
   onSend: () => void;
   onAbort: () => void;
@@ -41,8 +36,6 @@ interface ToolbarRowProps {
 export const ToolbarRow = memo(function ToolbarRow({
   isMobile, isStreaming, t, role, model, attach,
   toolPreset, onToolPresetChange,
-  onCompact, onAbortCompaction, isCompacting,
-  soundEnabled, onSoundToggle,
   canSend, onSend, onAbort,
 }: ToolbarRowProps) {
   const [toolOpen, setToolOpen] = useState(false);
@@ -144,43 +137,6 @@ export const ToolbarRow = memo(function ToolbarRow({
               className={cn("h-6 w-6 shrink-0 rounded-[9px] p-0", attach.count ? "text-[var(--accent)] hover:text-[var(--accent)]" : "text-[var(--text-muted)]")}
             >
               <ImagePlus size={15} strokeWidth={1.8} />
-            </Button>
-          )}
-
-          {!isStreaming && onCompact && (
-            <Button
-              onClick={isCompacting ? onAbortCompaction : onCompact}
-              disabled={isStreaming && !isCompacting}
-              variant="ghost"
-              size="sm"
-              title={isCompacting ? t("chat.stopCompaction") : t("chat.compactContext")}
-              aria-label={isCompacting ? t("chat.stopCompaction") : t("chat.compactContext")}
-              className={`${iconBtn} gap-1.5 ${
-                isCompacting ? "bg-destructive/8 text-destructive hover:bg-destructive/15 hover:text-destructive" : ""
-              }`}
-            >
-              {isCompacting ? (
-                <><Square size={10} fill="currentColor" />{(!isMobile || menuOpen) && <span className="whitespace-nowrap">{t("chat.compacting")}</span>}</>
-              ) : (
-                <><Shrink size={11} className="shrink-0" />{(!isMobile || menuOpen) && <span className="whitespace-nowrap">{t("chat.compact")}</span>}</>
-              )}
-            </Button>
-          )}
-
-          {onSoundToggle !== undefined && (
-            <Button
-              onClick={onSoundToggle}
-              variant="ghost"
-              size="sm"
-              title={soundEnabled ? t("chat.disableSound") : t("chat.enableSound")}
-              aria-label={soundEnabled ? t("chat.disableSound") : t("chat.enableSound")}
-              className={cn("h-6 w-6 shrink-0 rounded-[9px] p-0", soundEnabled ? "text-[var(--text-muted)]" : "opacity-55")}
-            >
-              {soundEnabled ? (
-                <Volume2 size={12} />
-              ) : (
-                <VolumeX size={12} />
-              )}
             </Button>
           )}
 

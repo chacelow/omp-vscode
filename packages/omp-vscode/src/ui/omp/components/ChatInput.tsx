@@ -1144,11 +1144,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           attach={{ count: attachedImages.length, onAttach: () => fileInputRef.current?.click() }}
           toolPreset={toolPreset}
           onToolPresetChange={onToolPresetChange}
-          onCompact={onCompact}
-          onAbortCompaction={onAbortCompaction}
-          isCompacting={isCompacting}
-          soundEnabled={soundEnabled}
-          onSoundToggle={onSoundToggle}
           canSend={Boolean(value.trim() || attachedImages.length)}
           onSend={handleSend}
           onAbort={onAbort}
