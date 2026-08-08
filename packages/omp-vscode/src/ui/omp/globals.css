@@ -1695,6 +1695,10 @@ span.linenumber {
   .sidebar-container.sidebar-closed {
     transform: translateX(calc(-100% - env(safe-area-inset-left)));
     box-shadow: none;
+    /* Prevent the panel from flashing on screen for a frame when the
+       breakpoint flips (desktop width:0 → fixed 280px+transform):
+       hidden until opened, no paint, no flicker. */
+    visibility: hidden;
   }
 
   .right-panel-container {
