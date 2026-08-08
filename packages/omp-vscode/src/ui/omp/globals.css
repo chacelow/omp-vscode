@@ -144,7 +144,7 @@ body, #app {
      toward white), no hue — used for the send button and primary dropdown
      entry when lit. Content uses --input-fg; in dark themes the mix stays
      mid-gray so light input-foreground keeps contrast. */
-  --highlight-bg: color-mix(in srgb, var(--input-bg) 55%, #ffffff);
+  --highlight-bg: color-mix(in srgb, var(--input-bg) 18%, #ffffff);
   --bg-subtle: color-mix(in srgb, var(--vscode-editor-foreground) 4%, transparent);
 }
 

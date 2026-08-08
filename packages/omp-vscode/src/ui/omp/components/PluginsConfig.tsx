@@ -1076,7 +1076,7 @@ export function PluginsConfig({
               </span>
             ) : (
               <span>
-                {data ? `${data.totals.extensions} ext · ${data.totals.skills} skills · ${data.totals.prompts} prompts · ${data.totals.themes} themes` : ""}
+                {data ? `${data.totals?.extensions ?? 0} ext · ${data.totals?.skills ?? 0} skills · ${data.totals?.prompts ?? 0} prompts · ${data.totals?.themes ?? 0} themes` : ""}
               </span>
             )}
           </div>
