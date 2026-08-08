@@ -1588,6 +1588,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       {/* File Explorer section */}
       {(selectedCwdProp || selectedCwd) && (
         <div
+          className="omp-explorer-section"
           style={{
             borderTop: "1px solid var(--border)",
             display: "flex",

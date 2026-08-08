@@ -75,6 +75,16 @@ body {
   color: var(--text);
 }
 
+/* File browser & file viewer are provided by VS Code itself.
+   Hide the omp-web equivalents entirely (kept in the bundle so the
+   components compile unchanged; can be re-enabled later if needed). */
+#file-panel {
+  display: none !important;
+}
+.omp-explorer-section {
+  display: none !important;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    STARFIELD THEME  —  NASA-punk · Constellation Field · Deep Space HUD
    Applied via `html.starfield`.  All overrides are scoped under this class
