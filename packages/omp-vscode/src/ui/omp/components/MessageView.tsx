@@ -198,12 +198,15 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   // Edit-from-here: the message row becomes the full-width composer —
   // same component as the bottom input, not wrapped in a bubble.
   if (editing && editInputRender) {
+    const cancelEdit = () => {
+      if (!confirmOpen) setEditing(false);
+    };
     return (
       <div style={{ marginBottom: 16, width: "100%" }}>
         {editInputRender(
           entryId ?? "",
           content,
-          () => setEditing(false),
+          cancelEdit,
           (text, images) => {
             if (!text.trim() && !(images && images.length > 0)) return;
             setPendingSubmit({ text, images });
