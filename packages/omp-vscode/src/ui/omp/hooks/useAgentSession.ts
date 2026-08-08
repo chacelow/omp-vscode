@@ -1516,25 +1516,36 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setForkingEntryId(entryId);
     try {
       // "Edit from here": branch at the message, then re-prompt with the
-      // edited text — the agent answers from that node in this session.
+      // edited text — the agent answers from that node.
       const result = await sendAgentCommand<{ cancelled?: boolean; text?: string }>(sid, {
         type: "fork",
         entryId,
       });
       if (result?.cancelled) return;
-      setActiveLeafId(entryId);
-      await loadContext(sid, entryId);
       await sendAgentCommand(sid, {
         type: "prompt",
         message: text,
         ...(images?.length ? { images } : {}),
       });
+      // OMP 17.2.11 (verified end-to-end): branch+prompt moves to a NEW
+      // session file + id containing the branch point and the replay
+      // (the original session file is untouched). Follow it so the chat
+      // shows branch-point + new answer, not a stale empty refresh of the
+      // old session.
+      const state = await sendAgentCommand<{ sessionId?: string }>(sid, { type: "get_state" });
+      if (state?.sessionId && state.sessionId !== sid) {
+        sessionIdRef.current = state.sessionId;
+        onSessionForked?.(state.sessionId);
+      } else {
+        setActiveLeafId(entryId);
+        await loadContext(sid, entryId);
+      }
     } catch (e) {
       console.error("Edit-from-here failed:", e);
     } finally {
       setForkingEntryId(null);
     }
-  }, [loadContext]);
+  }, [loadContext, onSessionForked]);
 
   const handleNavigate = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
