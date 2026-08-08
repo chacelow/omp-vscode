@@ -16,6 +16,48 @@ import { resolveProject, type ProjectInfo } from "./worktree";
 import { getOmpAgentDir } from "./file-paths";
 export { getOmpAgentDir as getAgentDir };
 
+/** First user message text (fallback when OMP's async title is not written). */
+function readFirstUserMessageText(filePath: string): string {
+  try {
+    const fd = openSync(filePath, "r");
+    try {
+      const buffer = Buffer.allocUnsafe(256 * 1024);
+      const bytesRead = readSync(fd, buffer, 0, buffer.length, 0);
+      const lines = buffer.subarray(0, bytesRead).toString("utf8").split("\n");
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const entry = JSON.parse(line) as Record<string, unknown>;
+          if (entry.type !== "message") continue;
+          const m = entry.message as Record<string, unknown> | undefined;
+          if (m?.role !== "user") continue;
+          const content = m.content;
+          if (typeof content === "string" && content.trim()) return content.trim().slice(0, 120);
+          if (Array.isArray(content)) {
+            const text = content
+              .filter((b): b is { type: "text"; text: string } =>
+                typeof b === "object" && b !== null
+                && (b as { type?: string }).type === "text"
+                && typeof (b as { text?: unknown }).text === "string")
+              .map((b) => b.text)
+              .join(" ")
+              .trim();
+            if (text) return text.slice(0, 120);
+          }
+          break;
+        } catch {
+          // skip unparsable entries
+        }
+      }
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    // ignore
+  }
+  return "";
+}
+
 async function loadAllSessions(): Promise<SessionInfo[]> {
   let piSessions: PiSessionInfo[] = [];
   try {
@@ -42,15 +84,18 @@ async function loadAllSessions(): Promise<SessionInfo[]> {
           const header = readSessionHeader(filePath);
           if (header && header.id) {
             const stat = statSync(filePath);
+            const headerName = (header as unknown as Record<string, unknown>).name as string;
+            const headerTitle = (header as unknown as Record<string, unknown>).title as string;
+            const fallback = readFirstUserMessageText(filePath);
             piSessions.push({
               path: filePath,
               id: header.id,
               cwd: header.cwd || "",
-              name: (header as unknown as Record<string, unknown>).name as string || (header as unknown as Record<string, unknown>).title as string,
+              name: headerName || headerTitle || fallback,
               created: header.timestamp ? new Date(header.timestamp) : stat.birthtime,
               modified: stat.mtime,
               messageCount: 1,
-              firstMessage: (header as unknown as Record<string, unknown>).title as string || "(session)",
+              firstMessage: headerTitle || fallback || "(session)",
               parentSessionPath: header.parentSession,
             } as unknown as PiSessionInfo);
             knownPaths.add(sessionPathKey(filePath));
@@ -231,6 +276,16 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
           if (sessionHeader) {
             sessionHeader.name = entry.name.trim();
             sessionHeader.title = entry.name.trim();
+          }
+        } else if (entry && entry.type === "title" && !sessionHeader?.title) {
+          // OMP writes a title entry right after the header (may be empty until
+          // the async title generation finishes).
+          const title = (entry as Record<string, unknown>).title;
+          if (typeof title === "string" && title.trim()) {
+            if (sessionHeader) {
+              sessionHeader.name = title.trim();
+              sessionHeader.title = title.trim();
+            }
           }
         }
       } catch {
