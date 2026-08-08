@@ -19,7 +19,7 @@ import { StarfieldEmblem } from "./StarfieldEmblem";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
-import { Spinner } from "./ui/spinner";
+import { Spinner, LoadingState } from "./ui/spinner";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -1274,15 +1274,11 @@ export function AppShell() {
               forceNewSession={forceNewSessionRef.current}
             />
           ) : initialCwdStatus === "validating" ? (
-            <div
-              role="status"
-              style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 24, color: "var(--text-muted)", textAlign: "center" }}
-            >
-               <div style={{ fontSize: 13, color: "var(--text)" }}>{translate("workspace.opening")}</div>
-              <div style={{ maxWidth: "min(720px, 100%)", overflowWrap: "anywhere", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+            <LoadingState label={translate("workspace.opening")}>
+              <div style={{ maxWidth: "min(720px, 100%)", overflowWrap: "anywhere", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
                 {initialNavigation.requestedCwd}
               </div>
-            </div>
+            </LoadingState>
           ) : initialCwdStatus === "error" ? (
             <div
               role="alert"
