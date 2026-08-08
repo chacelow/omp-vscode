@@ -1550,14 +1550,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
    * The runtime state (fastModeEnabled) is read back so toggling returns.
    */
   const handleRoleChange = useCallback(async (role: string) => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
+    // The session may still be warming up (fresh window/new session) — wait
+    // for it instead of silently ignoring the click.
+    const sid = sessionIdRef.current ?? await ensuringNewSessionRef.current;
+    if (!sid) {
+      addNotice({ type: "warning", message: "Waiting for the session to be ready…" });
+      return;
+    }
     if (role === "fast") {
       try {
         await sendAgentCommand(sid, { type: "set_fast_mode", enabled: !fastMode });
         setFastMode(!fastMode);
       } catch (e) {
-        console.error("Failed to toggle fast mode:", e);
+        addNotice({ type: "error", message: e instanceof Error ? e.message : String(e) });
       }
       return;
     }
@@ -1565,7 +1570,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       try {
         await sendAgentCommand(sid, { type: "prompt", message: "/plan" });
       } catch (e) {
-        console.error("Failed to run /plan:", e);
+        addNotice({ type: "error", message: e instanceof Error ? e.message : String(e) });
       }
       return;
     }
@@ -1579,7 +1584,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // thinking level may be unsupported by the model — ignore
       }
     }
-  }, [modelRoles, handleModelChange, fastMode]);
+  }, [modelRoles, handleModelChange, fastMode, addNotice]);
 
   const handleCompact = useCallback(async () => {
     const sid = sessionIdRef.current;

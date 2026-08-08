@@ -1985,6 +1985,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   </button>
                   {thinkingDropdownOpen && (
                     <div
+                      ref={thinkingDropdownRef}
                       style={{
                         position: "absolute", top: "100%", right: 0, marginTop: 4,
                         minWidth: 120, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
