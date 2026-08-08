@@ -929,8 +929,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (historyMenuRef.current && !historyMenuRef.current.contains(e.target as Node) && !textareaRef.current?.contains(e.target as Node)) {
+      const ta = textareaRef.current;
+      if (ta && !ta.contains(e.target as Node)) {
         setHistoryMenuOpen(false);
+        setSlashMenuOpen(false);
+        setAtMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
