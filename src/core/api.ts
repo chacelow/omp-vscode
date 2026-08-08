@@ -81,8 +81,13 @@ export class ApiHandler {
     }
   }
 
-  /** Wire a session wrapper's events to subscribers once. */
+  private wiredSessions = new Set<string>();
+
+  /** Wire a session wrapper's events to subscribers once (duplicates would
+   *  forward every event N times → duplicated messages in the UI). */
   private wireSession(sid: string, wrapper: { onEvent: (cb: (e: unknown) => void) => () => void }): void {
+    if (this.wiredSessions.has(sid)) return;
+    this.wiredSessions.add(sid);
     wrapper.onEvent((event) => this.emitSessionEvent(sid, event));
   }
 

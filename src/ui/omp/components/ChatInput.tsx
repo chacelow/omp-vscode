@@ -2121,6 +2121,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                                     ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
                                     : <span style={{ width: 10, flexShrink: 0 }} />}
                                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.name}</span>
+                                  {isActive && thinkingLevel && thinkingLevel !== "off" && thinkingLevel !== "auto" && (
+                                    <span style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.75, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
+                                      {thinkingLevel}
+                                    </span>
+                                  )}
                                   <span
                                     role="button"
                                     aria-label={`Edit effort for ${opt.name}`}

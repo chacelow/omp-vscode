@@ -53,6 +53,10 @@ export class ChatProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.buildHtml(webviewView.webview);
     webviewView.webview.onDidReceiveMessage((msg) => {
+      // Single choke point: log every webview → host message here (source of
+      // truth), not per-handler.
+      const bodyBrief = typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
+      this.log.appendLine(`[webview] ${msg.type}${msg.url ? ` ${msg.url}` : ""}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`);
       void this.handleWebviewMessage(msg);
     });
 
@@ -136,15 +140,12 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           break;
 
         case "api": {
-          this.log.appendLine(`[webview] api ${msg.method ?? "GET"} ${msg.url} ${(msg.body ?? "").slice(0, 120)}`);
           const resp = await this.api.handle(msg.url ?? "", msg.method ?? "GET", msg.body);
-          this.log.appendLine(`[webview] ← ${resp.status}`);
           this.post({ type: "apiResponse", requestId: msg.requestId, status: resp.status, body: resp.body });
           break;
         }
 
         case "events":
-          this.log.appendLine(`[webview] events ${msg.url}`);
           this.startEventStream(msg.url ?? "");
           break;
 
