@@ -1910,6 +1910,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     if (session) {
       sessionIdRef.current = session.id;
+      // Live session → pull the model list (roles + current model) so the
+      // model/role selectors render for resumed/history sessions too.
+      void loadModels();
       loadSession(session.id, true, true).then((agentState) => {        if (agentState?.running) {
           loadTools(session.id);
           if (agentState.state?.isStreaming || agentState.state?.isPromptRunning) {

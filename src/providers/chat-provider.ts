@@ -56,7 +56,7 @@ export class ChatProvider implements vscode.WebviewViewProvider {
       // Single choke point: log every webview → host message here (source of
       // truth), not per-handler.
       const bodyBrief = typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
-      this.log.appendLine(`[webview] ${msg.type}${msg.url ? ` ${msg.url}` : ""}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`);
+      this.log.appendLine(`[${new Date().toISOString().slice(11, 23)}] [webview] ${msg.type}${msg.url ? ` ${msg.url}` : ""}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`);
       void this.handleWebviewMessage(msg);
     });
 

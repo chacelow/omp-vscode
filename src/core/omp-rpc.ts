@@ -28,6 +28,7 @@ export interface RpcEvent {
 }
 
 let logFn: ((line: string) => void) | null = null;
+const ts = () => new Date().toISOString().slice(11, 23);
 
 /** Route RPC wire traffic to a logger (e.g. an output channel). */
 export function setRpcLogFn(fn: (line: string) => void | null): void {
@@ -277,7 +278,7 @@ export class OmpRpcProcess {
     }
     const id = `req-${++this.seq}`;
     const brief = JSON.stringify(payload).slice(0, 120);
-    logFn?.(`[rpc] → ${type} ${brief}`);
+    logFn?.(`[${ts()}] [rpc] → ${type} ${brief}`);
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
@@ -285,11 +286,11 @@ export class OmpRpcProcess {
       }, timeoutMs);
       this.pending.set(id, {
         resolve: (data: unknown) => {
-          logFn?.(`[rpc] ← ${type} ok ${JSON.stringify(data).slice(0, 160)}`);
+          logFn?.(`[${ts()}] [rpc] ← ${type} ok ${JSON.stringify(data).slice(0, 160)}`);
           resolve(data as T);
         },
         reject: (err: Error) => {
-          logFn?.(`[rpc] ← ${type} error: ${err.message}`);
+          logFn?.(`[${ts()}] [rpc] ← ${type} error: ${err.message}`);
           reject(err);
         },
         timer,

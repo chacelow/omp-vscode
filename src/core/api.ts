@@ -30,6 +30,7 @@ export class ApiHandler {
   private sessionListeners = new Map<string, Set<(event: unknown) => void>>();
 
   private readonly log = vscode.window.createOutputChannel("OMP RPC");
+  private ts(): string { return new Date().toISOString().slice(11, 23); }
 
   constructor() {
     // Route RPC wire traffic to the output channel so request/response flow
@@ -82,6 +83,7 @@ export class ApiHandler {
   }
 
   private wiredSessions = new Set<string>();
+  private modelsCache = new Map<string, { at: number; list: Array<{ id: string; name: string; provider: string; contextWindow?: number }> }>();
 
   /** Wire a session wrapper's events to subscribers once (duplicates would
    *  forward every event N times → duplicated messages in the UI). */
@@ -111,7 +113,7 @@ export class ApiHandler {
     const path = url.split("?")[0].replace(/^\/+/, "");
     const parts = path.split("/").filter(Boolean); // ["api", "agent", ...]
     const bodyBrief = body ? body.slice(0, 140) : "";
-    this.log.appendLine(`[api] ${method} /${path} ${bodyBrief}`);
+    this.log.appendLine(`[${this.ts()}] [api] ${method} /${path} ${bodyBrief}`);
 
     try {
       if (parts[0] !== "api") return { status: 404, body: { error: "Not found" } };
@@ -310,13 +312,19 @@ export class ApiHandler {
         fastModeEnabled?: boolean;
         fastModeActive?: boolean;
       };
-      const available = (await live.send({ type: "get_available_models" })) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
-      const list = (available.models ?? []).map((m) => ({
-        id: m.id,
-        name: m.name || m.id,
-        provider: m.provider,
-        contextWindow: m.contextWindow,
-      }));
+      const cacheKey = live.sessionId;
+      const cached = this.modelsCache.get(cacheKey);
+      let list = cached && Date.now() - cached.at < 10_000 ? cached.list : null;
+      if (!list) {
+        const available = (await live.send({ type: "get_available_models" })) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
+        list = (available.models ?? []).map((m) => ({
+          id: m.id,
+          name: m.name || m.id,
+          provider: m.provider,
+          contextWindow: m.contextWindow,
+        }));
+        this.modelsCache.set(cacheKey, { at: Date.now(), list });
+      }
       const models: Record<string, string> = {};
       for (const m of list) if (!models[m.id]) models[m.id] = m.name;
       return {
