@@ -59,7 +59,7 @@ export const ToolbarRow = memo(function ToolbarRow({
 
   const toolPresetLabel = Object.entries(TOOL_PRESET_MAP).find(([, v]) => v === (toolPreset ?? "default"))?.[0] ?? "default";
 
-  const iconBtn = "h-6 rounded-[9px] px-2 text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
+  const iconBtn = "h-6 rounded-[9px] px-2 text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
   return (
     <div className={`mt-2 flex items-center gap-1.5 ${isMobile ? "grid grid-cols-[minmax(0,1fr)_auto]" : ""}`}>
@@ -105,7 +105,7 @@ export const ToolbarRow = memo(function ToolbarRow({
                   size="sm"
                   title={`${t("chat.changeToolPreset")}: ${toolPresetLabel}`}
                   aria-label={t("chat.changeToolPreset")}
-                  className={`${iconBtn} gap-1.5 data-[state=open]:bg-[var(--bg-hover)]`}
+                  className={`${iconBtn} gap-1.5 data-[state=open]:bg-[var(--toolbar-hover)]`}
                 >
                   <Wrench size={11} className="shrink-0" />
                   {(!isMobile || menuOpen) && <span className="whitespace-nowrap">{toolPresetLabel}</span>}

@@ -130,6 +130,13 @@ body, #app {
   --user-bg: color-mix(in srgb, var(--vscode-button-background) 10%, var(--vscode-editor-background));
   --assistant-bg: var(--vscode-editor-background, #ffffff);
   --tool-bg: var(--vscode-editorWidget-background, #f9fafb);
+  /* Official semantic tokens (VS Code Chat/Agents + toolbar), matching
+     the native chat panel instead of ad-hoc list/sidebar colors. */
+  --toolbar-hover: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+  --toolbar-active: var(--vscode-toolbar-activeBackground, rgba(99, 102, 103, 0.31));
+  --chat-input-bg: var(--vscode-agentsChatInput-background, var(--vscode-input-background, rgba(228, 228, 228, 0.04)));
+  --chat-input-fg: var(--vscode-agentsChatInput-foreground, var(--vscode-input-foreground, #1a1a1a));
+  --chat-input-border: var(--vscode-agentsChatInput-border, var(--vscode-input-border, #e0e0e0));
   --input-bg: var(--vscode-input-background, #ffffff);
   --input-fg: var(--vscode-input-foreground, #1a1a1a);
   --input-border: var(--vscode-input-border, #e0e0e0);
