@@ -906,8 +906,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             >
               <RefreshCw size={13} className={sessionRefreshDone ? "text-success" : ""} />
             </Button>
-            <button
-            </Button>
           </div>
         </div>
 
