@@ -207,8 +207,8 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
 
   return (
     <div
-      style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
-      onClick={!editing ? () => setEditing(true) : undefined}
+      style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "center" }}
+      onPointerDown={!editing ? () => setEditing(true) : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -282,7 +282,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
       {!editing && (
       <div onClick={(e) => e.stopPropagation()} style={{
         display: "flex", alignItems: "center", justifyContent: "flex-end",
-        gap: 6, marginTop: 3,
+        gap: 6, marginTop: 3, width: "100%", maxWidth: 820, marginLeft: "auto", marginRight: "auto",
       }}>
         <div style={{
           display: "flex", gap: 3,

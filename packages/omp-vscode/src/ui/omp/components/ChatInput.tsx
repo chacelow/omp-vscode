@@ -252,6 +252,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     : {};
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const onCancelEditRef = useRef(onCancelEdit);
+  onCancelEditRef.current = onCancelEdit;
+  const collapsedRef = useRef(!!collapsed);
+  collapsedRef.current = !!collapsed;
   const historyMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
@@ -285,6 +290,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       ta.scrollTop = ta.scrollHeight;
     });
   }, [collapsed, initialValue]);
+
+  // Keep the collapsed (read-only) message text in sync when the parent
+  // refreshes content (e.g. after a branch resend) — the instance is reused,
+  // so useState initialization alone would show stale text.
+  useEffect(() => {
+    if (initialValue === undefined || initialValue === value) return;
+    setValue(initialValue);
+  }, [initialValue]);
 
   useImperativeHandle(ref, () => ({
     insertIfEmpty(text: string) {
@@ -962,7 +975,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (lvl === "auto" || !thinkingLevelMap) return lvl;
     return thinkingLevelMap[lvl] ?? lvl;
   })();
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click; in edit mode a pointerdown anywhere
+  // outside the composer collapses it back to the read-only message
+  // (blur is unreliable: clicking empty space yields relatedTarget = null).
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const ta = textareaRef.current;
@@ -971,18 +986,28 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         setSlashMenuOpen(false);
         setAtMenuOpen(false);
       }
+      if (!collapsedRef.current && onCancelEditRef.current && wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        // Radix portals (model/effort pickers) live in body, not in the wrap —
+        // the picker's own click handler owns the interaction, so don't collapse
+        // while one is open. Closing the picker is what ends the edit state.
+        const targetEl = e.target instanceof Element ? e.target : null;
+        const inRadixPortal = !!targetEl?.closest?.("[data-radix-popper-content-wrapper]");
+        if (!inRadixPortal) onCancelEditRef.current();
+      }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, []);
 
 
   return (
     <div
+      ref={wrapRef}
       className="sf-chat-input-wrap shrink-0 bg-transparent px-4 pb-2"
       onBlur={(e) => {
         // Edit-from-here: focus leaving the composer collapses it back to
-        // the read-only message (reference interaction).
+        // the read-only message (reference interaction). Redundant with the
+        // pointerdown handler above (kept for keyboard-driven focus moves).
         if (onCancelEdit && e.relatedTarget instanceof Node && !e.currentTarget.contains(e.relatedTarget)) {
           onCancelEdit();
         }

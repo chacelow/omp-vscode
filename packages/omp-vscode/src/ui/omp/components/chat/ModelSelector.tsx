@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { Bot, Check } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -68,27 +69,6 @@ export const ModelSelector = memo(function ModelSelector({
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
-  const [thinkingOpen, setThinkingOpen] = useState(false);
-  const thinkingRef = useRef<HTMLDivElement>(null);
-
-  // Close the effort picker on outside click / Escape.
-  useEffect(() => {
-    if (!thinkingOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (thinkingRef.current && !thinkingRef.current.contains(e.target as Node)) {
-        setThinkingOpen(false);
-      }
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setThinkingOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [thinkingOpen]);
 
   const modelOptions = useMemo<ModelOption[]>(() => {
     if (modelList && modelList.length > 0) {
@@ -138,22 +118,48 @@ export const ModelSelector = memo(function ModelSelector({
             <span className="min-w-0 flex-1 truncate">
               {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
             </span>
-            <span
-              role="button"
-              title="Switch thinking effort"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpen(false);
-                setThinkingOpen((o) => !o);
-              }}
-              className={cn(
-                "ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80",
-                thinkingOpen && "underline",
-              )}
-            >
-              {thinkingLevel || "auto"}▾
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <span
+                  role="button"
+                  title="Switch thinking effort"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80",
+                  )}
+                >
+                  {thinkingLevel || "auto"}▾
+                </span>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="end" className="w-auto min-w-[120px] p-1">
+                {THINKING_LEVELS.map((level) => {
+                  const active = thinkingLevel === level;
+                  return (
+                    <Button
+                      key={level}
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        onThinkingLevelChange?.(level);
+                      }}
+                      className={cn(
+                        "w-full justify-start gap-2 rounded-[7px] px-2.5 py-[5px] font-mono text-xs",
+                        active
+                          ? "bg-[var(--bg-selected)] text-[var(--text)] hover:bg-[var(--bg-selected)]"
+                          : "text-[var(--text-muted)]",
+                      )}
+                    >
+                      {level}
+                    </Button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
           </Button>
         </DropdownMenuTrigger>
 
@@ -213,37 +219,6 @@ export const ModelSelector = memo(function ModelSelector({
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {thinkingOpen && (
-        <div
-          ref={thinkingRef}
-          className="absolute bottom-full right-0 z-[1001] mb-1 min-w-[120px] rounded-[10px] border border-[var(--border)] bg-[var(--bg)] p-1 shadow-[0_8px_30px_var(--vscode-widget-shadow, rgba(0,0,0,0.25))]"
-        >
-          {THINKING_LEVELS.map((level) => {
-            const active = thinkingLevel === level;
-            return (
-              <Button
-                key={level}
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onThinkingLevelChange?.(level);
-                  setThinkingOpen(false);
-                }}
-                className={cn(
-                  "w-full justify-start gap-2 rounded-[7px] px-2.5 py-[5px] font-mono text-xs",
-                  active
-                    ? "bg-[var(--bg-selected)] text-[var(--text)] hover:bg-[var(--bg-selected)]"
-                    : "text-[var(--text-muted)]",
-                )}
-              >
-                {level}
-              </Button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 });
