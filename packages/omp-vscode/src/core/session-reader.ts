@@ -386,7 +386,10 @@ export function reorderSessionAt(filePath: string, entryId: string): boolean {
   }
   if (!found || targetParent === undefined) return false;
 
-  // Ancestor chain of the attach point (root → targetParent).
+  // Ancestor chain of the attach point (root → targetParent). omp's tree
+  // includes non-message entries (model_change / thinking_level_change are
+  // tree nodes too — the first user message's parent is a thinking entry),
+  // so the chain must follow ALL entry types, not just messages.
   const chainIds = new Set<string>();
   let cur: string | null = targetParent;
   let guard = 0;
@@ -395,10 +398,12 @@ export function reorderSessionAt(filePath: string, entryId: string): boolean {
     cur = entries.find((e) => e.id === cur)?.parentId ?? null;
   }
 
-  const nonMessage = entries.filter((e) => e.type !== "message").map((e) => e.line);
-  const offChain = entries.filter((e) => e.type === "message" && e.id !== undefined && !chainIds.has(e.id)).map((e) => e.line);
-  const chain = entries.filter((e) => e.type === "message" && e.id !== undefined && chainIds.has(e.id)).map((e) => e.line);
-  const reordered = [...nonMessage, ...offChain, ...chain];
+  const nonChain = entries.filter((e) => (e.id === undefined || !chainIds.has(e.id)) && e.type !== "custom").map((e) => e.line);
+  const chain = entries.filter((e) => e.id !== undefined && chainIds.has(e.id)).map((e) => e.line);
+  // Lifecycle entries (custom/session_exit) must stay at the END — omp stalls
+  // on resume if they land mid-file. Leaf = last line = edit point's parent.
+  const customs = entries.filter((e) => e.type === "custom").map((e) => e.line);
+  const reordered = [...nonChain, ...chain, ...customs];
   try {
     writeFileSync(filePath, reordered.join("\n") + "\n", "utf8");
   } catch {

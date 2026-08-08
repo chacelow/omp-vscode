@@ -1514,12 +1514,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const sid = sessionIdRef.current;
     if (!sid || !text.trim()) return;
     setForkingEntryId(entryId);
+    // Immediate feedback: flip the running state locally so the composer
+    // shows the sending/spinner state before the RPC round-trips (rewind ->
+    // reconnect -> prompt). agent_start arriving later keeps it consistent.
+    setAgentRunning(true);
     try {
       // In-place rewind (plugin-built-in, no omp changes): the extension
-      // truncates this session's file at the message, restarts the RPC
-      // session on the SAME file (same session id), and replays the edited
-      // text. No new session, no fork — like the TUI's "back to this node
-      // and resend", the transcript is rewritten in place.
+      // reorders this session's file so the edited message's ancestor chain
+      // is the leaf, restarts the RPC session on the SAME file (same session
+      // id), and replays the edited text — a new branch in the same file,
+      // old branches preserved. Like the TUI's "back to this node and
+      // resend".
       const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/rewind`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1542,10 +1547,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     } catch (e) {
       console.error("Edit-from-here failed:", e);
+      setAgentRunning(false);
     } finally {
       setForkingEntryId(null);
     }
-  }, [ensureEventsConnected, loadContext]);
+  }, [ensureEventsConnected, loadContext, setAgentRunning]);
 
   const navigateLeaf = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;
