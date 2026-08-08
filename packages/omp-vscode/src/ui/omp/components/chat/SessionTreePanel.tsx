@@ -3,78 +3,15 @@
 // with the active branch highlighted. Clicking a node switches the active
 // branch (same file, reorder + restart, no new session / no deletion).
 import { useState } from "react";
-import { Bot, ListTree, User, Wrench } from "lucide-react";
+import { ListTree } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import type { SessionEntry, SessionTreeNode } from "@/lib/types";
-import { cn } from "@/lib/utils";
-
-function roleIcon(role: string) {
-  if (role === "user") return <User size={11} className="shrink-0 text-[var(--text-dim)]" />;
-  if (role === "assistant") return <Bot size={11} className="shrink-0 text-[var(--accent)]" />;
-  return <Wrench size={11} className="shrink-0 text-[var(--text-dim)]" />;
-}
-
-function entryText(entry?: SessionEntry): string {
-  if (!entry) return "";
-  if (!("message" in entry) || !entry.message) return "";
-  const blocks = "content" in entry.message && Array.isArray(entry.message.content)
-    ? entry.message.content as Array<{ type?: string; text?: string }>
-    : [];
-  const text = blocks.find((c) => c.type === "text" && c.text)?.text ?? "";
-  return text.replace(/\s+/g, " ").trim().slice(0, 80);
-}
-
-function entryRole(entry?: SessionEntry): string {
-  return entry && "message" in entry && entry.message ? entry.message.role : "entry";
-}
-
-function TreeNode({
-  node,
-  depth,
-  activeIds,
-  onSelect,
-}: {
-  node: SessionTreeNode;
-  depth: number;
-  activeIds: Set<string>;
-  onSelect: (entryId: string) => void;
-}) {
-  const id = node.entry?.id ?? "";
-  const role = entryRole(node.entry);
-  const isActive = activeIds.has(id);
-  const hasBranch = node.children.length > 1;
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => onSelect(id)}
-        className={cn(
-          "flex w-full items-center gap-2 rounded-[7px] px-2.5 py-[5px] text-left text-xs",
-          isActive
-            ? "bg-[var(--bg-selected)] text-[var(--text)]"
-            : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]",
-        )}
-        style={{ paddingLeft: 10 + depth * 14 }}
-      >
-        {roleIcon(role)}
-        <span className="min-w-0 flex-1 truncate">{entryText(node.entry) || role}</span>
-        {hasBranch && (
-          <span className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[4px] py-[1px] text-[9px] leading-none whitespace-nowrap text-[var(--text-dim)]">
-            branch
-          </span>
-        )}
-      </button>
-      {node.children.map((child) => (
-        <TreeNode key={child.entry?.id ?? Math.random()} node={child} depth={depth + 1} activeIds={activeIds} onSelect={onSelect} />
-      ))}
-    </>
-  );
-}
+import type { SessionTreeNode } from "@/lib/types";
+import { SessionTreeNodes } from "./session-tree-view";
 
 interface SessionTreePanelProps {
   tree: SessionTreeNode[];
@@ -107,18 +44,14 @@ export function SessionTreePanel({ tree, activeEntryIds, onSelect, t }: SessionT
           {count === 0 ? (
             <div className="px-3 py-2 text-xs text-[var(--text-dim)]">No messages</div>
           ) : (
-            tree.map((node) => (
-              <TreeNode
-                key={node.entry?.id ?? Math.random()}
-                node={node}
-                depth={0}
-                activeIds={activeIds}
-                onSelect={(entryId) => {
-                  onSelect(entryId);
-                  setOpen(false);
-                }}
-              />
-            ))
+            <SessionTreeNodes
+              tree={tree}
+              activeIds={activeIds}
+              onSelect={(entryId) => {
+                onSelect(entryId);
+                setOpen(false);
+              }}
+            />
           )}
         </div>
       </DropdownMenuContent>

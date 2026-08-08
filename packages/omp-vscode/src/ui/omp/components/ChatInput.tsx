@@ -1004,11 +1004,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       ref={wrapRef}
       className={cn(
         "sf-chat-input-wrap shrink-0 bg-transparent pb-2",
-        // Collapsed (sent user message) sits inside the message column: no
-        // extra side padding, the box aligns with the bottom composer via the
-        // column geometry. Expanded (editing/composer) keeps the standard
-        // 16px side padding.
-        collapsed ? "px-0" : "px-4",
+        // Inline (collapsed sent message / edit-from-here) sits inside the
+        // message column: no side padding — the box width equals the column
+        // content width, which is exactly the bottom composer's box geometry.
+        // Only the bottom composer (no initialValue, not collapsed) needs the
+        // standard 16px side padding against the window edge.
+        collapsed || initialValue !== undefined ? "px-0" : "px-4",
       )}
       onBlur={(e) => {
         // Edit-from-here: focus leaving the composer collapses it back to

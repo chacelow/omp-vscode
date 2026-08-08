@@ -12,6 +12,7 @@ import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator } from "./BranchNavigator";
+import { SessionTreeNodes } from "./chat/session-tree-view";
 import { LanguagePicker } from "./LanguagePicker";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -22,7 +23,7 @@ import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { Spinner, LoadingState } from "./ui/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Check, Copy, Gauge, History } from "lucide-react";
+import { Check, Copy, Gauge, History, Map } from "lucide-react";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -79,6 +80,7 @@ export function AppShell() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
   const [minimapOpen, setMinimapOpen] = useState(false);
+  const [treeOpen, setTreeOpen] = useState(false);
   // Set when the user explicitly clicks "New Session"; ChatWindow consumes it
   // on mount to skip the cwd's resume (fresh session, not continue).
   const forceNewSessionRef = useRef(false);
@@ -794,7 +796,7 @@ export function AppShell() {
       {/* Center: chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar with sidebar toggle */}
-        <div ref={topBarRef} style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
+        <div ref={topBarRef} style={{ position: "relative", display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
           {initialCwdStatus === "validating" && (
             <Spinner size={12} className="ml-3 shrink-0 text-[var(--text-dim)]" />
           )}
@@ -868,10 +870,47 @@ export function AppShell() {
           {showChat && (
             <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
               <button
-                onClick={() => setMinimapOpen((o) => !o)}
+                onClick={() => setTreeOpen((o) => !o)}
                 disabled={!selectedSession}
                 title={translate("history.full")}
                 aria-label={translate("history.full")}
+                aria-pressed={treeOpen}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  height: "100%",
+                  padding: "0 12px",
+                  background: treeOpen ? "var(--bg-selected)" : "none",
+                  border: "none",
+                  borderTop: treeOpen ? "2px solid var(--accent)" : "2px solid transparent",
+                  borderRight: "1px solid var(--border)",
+                  color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
+                  cursor: selectedSession ? "pointer" : "not-allowed",
+                  opacity: selectedSession ? 1 : 0.45,
+                  flexShrink: 0,
+                  fontSize: 11,
+                  whiteSpace: "nowrap",
+                  transition: "color 0.1s, background 0.1s, opacity 0.1s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!selectedSession) return;
+                  e.currentTarget.style.color = "var(--text)";
+                  e.currentTarget.style.background = treeOpen ? "var(--bg-selected)" : "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = selectedSession ? "var(--text-muted)" : "var(--text-dim)";
+                  e.currentTarget.style.background = treeOpen ? "var(--bg-selected)" : "none";
+                }}
+              >
+                <History size={12} style={{ color: selectedSession ? "var(--text-muted)" : "var(--text-dim)", flexShrink: 0 }} />
+                <span>{t("Full history", "完整历史")}</span>
+              </button>
+              <button
+                onClick={() => setMinimapOpen((o) => !o)}
+                disabled={!selectedSession}
+                title={translate("i18n.sessionMap") ?? "Conversation map"}
+                aria-label={translate("i18n.sessionMap") ?? "Conversation map"}
                 aria-pressed={minimapOpen}
                 style={{
                   display: "flex",
@@ -901,9 +940,36 @@ export function AppShell() {
                   e.currentTarget.style.background = minimapOpen ? "var(--bg-selected)" : "none";
                 }}
               >
-                <History size={12} style={{ color: selectedSession ? "var(--text-muted)" : "var(--text-dim)", flexShrink: 0 }} />
-                <span>{t("Full history", "完整历史")}</span>
-                </button>
+                <Map size={12} style={{ color: selectedSession ? "var(--text-muted)" : "var(--text-dim)", flexShrink: 0 }} />
+                <span>{translate("i18n.sessionMap") ?? "Map"}</span>
+              </button>
+              {treeOpen && branchTree.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    zIndex: 60,
+                    width: "min(72vw, 460px)",
+                    maxHeight: "min(60vh, 420px)",
+                    overflowY: "auto",
+                    padding: 6,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 30px var(--vscode-widget-shadow, rgba(0,0,0,0.25))",
+                  }}
+                >
+                  <SessionTreeNodes
+                    tree={branchTree}
+                    activeIds={new Set(branchActiveLeafId ? [branchActiveLeafId] : [])}
+                    onSelect={(entryId) => {
+                      handleBranchLeafChange(entryId);
+                      setTreeOpen(false);
+                    }}
+                  />
+                </div>
+              )}
                 <BranchNavigator
                 tree={branchTree}
                 activeLeafId={branchActiveLeafId}

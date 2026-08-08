@@ -416,6 +416,7 @@ export const enLocale: LocalePlugin = {
     "i18n.editFromHereTitle": "Edit from here — branches within this session",
     "i18n.resend": "Resend",
     "i18n.resendTitle": "Resend edited message",
+    "i18n.sessionMap": "Map",
     "i18n.newSession": "New session",
     "i18n.newSessionTitle": "New session — creates an independent copy from here",
     "i18n.estimatedTokens": "Estimated token count while streaming",
