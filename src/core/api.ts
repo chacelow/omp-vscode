@@ -25,6 +25,18 @@ import { parseModelRef, readOmpConfig } from "./omp-models";
 
 type HandlerResult = { status: number; body: unknown };
 
+/** Race a promise against a timeout (the hung omp process keeps its own
+ *  pending entry; this just stops the caller waiting). */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout")), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
 export class ApiHandler {
   /** Session-id → subscribed webview listeners (SSE simulation). */
   private sessionListeners = new Map<string, Set<(event: unknown) => void>>();
@@ -285,68 +297,72 @@ export class ApiHandler {
     }
     const defaultModel = parseModelRef(roles.default) ?? null;
 
-    const live = getRpcSessionList().find((s) => s.isAlive());
-    if (!live) {
-      return {
-        status: 200,
-        body: {
-          models: {},
-          modelList: [],
-          defaultModel,
-          currentModel: null,
-          fastModeEnabled: false,
-          fastModeActive: false,
-          modelRoles,
-          thinkingLevels: {},
-          thinkingLevelMaps: {},
-          thinkingLevelPins: {},
-          modelError: null,
-          modelScopeWarnings: [],
-        },
-      };
+    // A session that resumed with an unfinished tool call can hang the omp
+    // process (verified: get_available_models never responds). Probe each
+    // live session with a short timeout and skip any that don't answer.
+    for (const live of getRpcSessionList()) {
+      if (!live.isAlive()) continue;
+      try {
+        const state = (await withTimeout(live.send({ type: "get_state" }), 5000)) as {
+          model?: { id: string; provider: string; name?: string };
+          fastModeEnabled?: boolean;
+          fastModeActive?: boolean;
+        };
+        const cacheKey = live.sessionId;
+        const cached = this.modelsCache.get(cacheKey);
+        let list = cached && Date.now() - cached.at < 10_000 ? cached.list : null;
+        if (!list) {
+          const available = (await withTimeout(live.send({ type: "get_available_models" }), 5000)) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
+          list = (available.models ?? []).map((m) => ({
+            id: m.id,
+            name: m.name || m.id,
+            provider: m.provider,
+            contextWindow: m.contextWindow,
+          }));
+          this.modelsCache.set(cacheKey, { at: Date.now(), list });
+        }
+        const models: Record<string, string> = {};
+        for (const m of list) if (!models[m.id]) models[m.id] = m.name;
+        return {
+          status: 200,
+          body: {
+            models,
+            modelList: list,
+            defaultModel: defaultModel ?? (state.model ? { provider: state.model.provider, modelId: state.model.id } : null),
+            currentModel: state.model ? { provider: state.model.provider, modelId: state.model.id } : null,
+            fastModeEnabled: state.fastModeEnabled ?? false,
+            fastModeActive: state.fastModeActive ?? false,
+            modelRoles,
+            thinkingLevels: {},
+            thinkingLevelMaps: {},
+            thinkingLevelPins: {},
+            modelError: null,
+            modelScopeWarnings: [],
+          },
+        };
+      } catch {
+        // Session is hung — try the next live session.
+        continue;
+      }
     }
 
-    try {
-      const state = (await live.send({ type: "get_state" })) as {
-        model?: { id: string; provider: string; name?: string };
-        fastModeEnabled?: boolean;
-        fastModeActive?: boolean;
-      };
-      const cacheKey = live.sessionId;
-      const cached = this.modelsCache.get(cacheKey);
-      let list = cached && Date.now() - cached.at < 10_000 ? cached.list : null;
-      if (!list) {
-        const available = (await live.send({ type: "get_available_models" })) as { models?: Array<{ id: string; name?: string; provider: string; contextWindow?: number }> };
-        list = (available.models ?? []).map((m) => ({
-          id: m.id,
-          name: m.name || m.id,
-          provider: m.provider,
-          contextWindow: m.contextWindow,
-        }));
-        this.modelsCache.set(cacheKey, { at: Date.now(), list });
-      }
-      const models: Record<string, string> = {};
-      for (const m of list) if (!models[m.id]) models[m.id] = m.name;
-      return {
-        status: 200,
-        body: {
-          models,
-          modelList: list,
-          defaultModel: defaultModel ?? (state.model ? { provider: state.model.provider, modelId: state.model.id } : null),
-          currentModel: state.model ? { provider: state.model.provider, modelId: state.model.id } : null,
-          fastModeEnabled: state.fastModeEnabled ?? false,
-          fastModeActive: state.fastModeActive ?? false,
-          modelRoles,
-          thinkingLevels: {},
-          thinkingLevelMaps: {},
-          thinkingLevelPins: {},
-          modelError: null,
-          modelScopeWarnings: [],
-        },
-      };
-    } catch (err) {
-      return { status: 500, body: { error: err instanceof Error ? err.message : String(err) } };
-    }
+    return {
+      status: 200,
+      body: {
+        models: {},
+        modelList: [],
+        defaultModel,
+        currentModel: null,
+        fastModeEnabled: false,
+        fastModeActive: false,
+        modelRoles,
+        thinkingLevels: {},
+        thinkingLevelMaps: {},
+        thinkingLevelPins: {},
+        modelError: null,
+        modelScopeWarnings: [],
+      },
+    };
   }
 
   // -------------------------------------------------------------------------
