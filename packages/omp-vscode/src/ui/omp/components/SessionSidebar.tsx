@@ -10,7 +10,7 @@ import { FolderPickerModal } from "./FolderPickerModal";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-import { Plus, RefreshCw } from "lucide-react";
+import { GitFork, Plus, RefreshCw } from "lucide-react";
 
 declare global {
   interface Window {
@@ -1968,12 +1968,7 @@ function SessionItem({
         <>
           {/* Fork indicator for child sessions */}
           {depth > 0 && (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <line x1="6" y1="3" x2="6" y2="15" />
-              <circle cx="18" cy="6" r="3" />
-              <circle cx="6" cy="18" r="3" />
-              <path d="M18 9a9 9 0 0 1-9 9" />
-            </svg>
+            <GitFork size={10} className="shrink-0" style={{ color: "var(--text-dim)" }} />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
@@ -1995,18 +1990,7 @@ function SessionItem({
               {depth > 0 && (
                 <span
                   title={t("sidebar.forkedFrom", { id: session.parentSessionId ? session.parentSessionId.slice(0, 8) : "" }) || `Fork of ${session.parentSessionId?.slice(0, 8) ?? "parent"}`}
-                  style={{
-                    flexShrink: 0,
-                    fontSize: 9,
-                    lineHeight: 1,
-                    padding: "2px 5px",
-                    borderRadius: 4,
-                    color: "var(--text-dim)",
-                    background: "var(--bg-hover)",
-                    border: "1px solid var(--border)",
-                    whiteSpace: "nowrap",
-                    letterSpacing: "0.03em",
-                  }}
+                  className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[5px] py-[2px] text-[9px] leading-none whitespace-nowrap tracking-[0.03em] text-[var(--text-dim)]"
                 >
                   fork
                 </span>
