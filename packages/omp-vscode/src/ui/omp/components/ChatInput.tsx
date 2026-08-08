@@ -21,7 +21,6 @@ import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescript
 import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
 import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
 
 export interface AttachedImage {
@@ -225,7 +224,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   cwd,
 }: ChatInputProps, ref) {
   const { t } = useI18n();
-  const isMobile = useIsMobile();
   const [value, setValue] = useState(() => (initialValue ?? (draftKey ? getDraft(draftKey)?.value ?? "" : "")));
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
@@ -1195,14 +1193,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
         {/* Bottom bar: role/model left, tools right, send far right */}
         <ToolbarRow
-          isMobile={isMobile}
           isStreaming={isStreaming}
           visible={!collapsed}
           t={t}
           role={{ modelRoles, model, fastMode, slashCommands, isStreaming, onRoleChange }}
           model={{
             model, modelList, modelNames, modelError, thinkingLevel,
-            isStreaming, isMobile, onModelChange, onModelOpen, onThinkingLevelChange, t,
+            isStreaming, onModelChange, onModelOpen, onThinkingLevelChange, t,
           }}
           attach={{ count: attachedImages.length, onAttach: () => fileInputRef.current?.click() }}
           toolPreset={toolPreset}

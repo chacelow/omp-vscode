@@ -55,8 +55,7 @@ export interface ModelSelectorProps {
   modelNames?: Record<string, string>;
   modelError?: string | null;
   thinkingLevel?: string;
-  isStreaming?: boolean;
-  isMobile?: boolean;
+  isStreaming: boolean;
   onModelChange?: (provider: string, modelId: string) => void;
   onModelOpen?: () => void;
   onThinkingLevelChange?: (level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") => void;
@@ -64,7 +63,7 @@ export interface ModelSelectorProps {
 }
 
 export const ModelSelector = memo(function ModelSelector({
-  model, modelList, modelNames, modelError, thinkingLevel, isStreaming, isMobile,
+  model, modelList, modelNames, modelError, thinkingLevel, isStreaming,
   onModelChange, onModelOpen, onThinkingLevelChange, t,
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);

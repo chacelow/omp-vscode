@@ -21,7 +21,6 @@ const TOOL_PRESETS = ["off", "default", "full"] as const;
 const TOOL_PRESET_MAP: Record<"off" | "default" | "full", "none" | "default" | "full"> = { off: "none", default: "default", full: "full" };
 
 interface ToolbarRowProps {
-  isMobile: boolean;
   isStreaming: boolean;
   /** AnimatePresence: false collapses the toolbar with a height animation. */
   visible?: boolean;
@@ -37,7 +36,7 @@ interface ToolbarRowProps {
 }
 
 export const ToolbarRow = memo(function ToolbarRow({
-  isMobile, isStreaming, t, role, model, attach,
+  isStreaming, t, role, model, attach,
   toolPreset, onToolPresetChange,
   canSend, onSend, onAbort,
   visible = true,
@@ -67,7 +66,7 @@ export const ToolbarRow = memo(function ToolbarRow({
       </div>
 
       {/* spacer */}
-      {!isMobile && <div className="flex-1" />}
+      <div className="flex-1" />
 
       {/* RIGHT: tools + send */}
       <div className="relative flex shrink-0 items-center justify-end gap-1.5 ml-auto">
