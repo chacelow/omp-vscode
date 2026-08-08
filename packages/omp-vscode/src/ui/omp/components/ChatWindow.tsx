@@ -438,7 +438,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       tpsWindowRef.current = null;
       return;
     }
-    const content = Array.isArray(msg.content) ? msg.content : [];
+    const content = Array.isArray((msg as { content?: unknown }).content) ? (msg as { content: unknown[] }).content : [];
     let chars = 0;
     for (const b of content) {
       const block = b as { type?: string; text?: string; thinking?: string; input?: unknown };
