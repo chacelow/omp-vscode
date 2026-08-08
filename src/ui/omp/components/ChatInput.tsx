@@ -1098,8 +1098,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const currentName = displayModelName;
 
   // Which configured role matches the active model (display grouping).
-  const ROLE_LABELS: Record<string, string> = { default: "Default", smol: "Fast", plan: "Plan", task: "Task", slow: "Slow", commit: "Commit", vision: "Vision", designer: "Designer", advisor: "Advisor", tiny: "Tiny" };
-  const roleNames = Object.keys(modelRoles ?? {});
+  const ROLE_LABELS: Record<string, string> = { default: "Default", smol: "Fast", plan: "Plan" };
+  // TUI lets you switch Default / Fast (smol) / Plan only; the other roles
+  // (task/slow/commit/vision/…) are used internally by their features.
+  const roleNames = (Object.keys(modelRoles ?? {}) as string[])
+    .filter((r) => r === "default" || r === "smol" || r === "plan")
+    .sort((a, b) => ["default", "smol", "plan"].indexOf(a) - ["default", "smol", "plan"].indexOf(b));
   const activeRole = roleNames.find((r) => {
     const rr = modelRoles?.[r];
     return rr && model && rr.provider === model.provider && rr.modelId === model.modelId;
