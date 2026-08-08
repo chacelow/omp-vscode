@@ -53,7 +53,7 @@ export const RoleSelector = memo(function RoleSelector({
           size="sm"
           disabled={isStreaming}
           title="Switch model role"
-          className="h-6 max-w-[130px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs text-primary-foreground hover:brightness-[1.08] data-[state=open]:brightness-[1.08]"
+          className="h-6 max-w-[130px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs text-primary-foreground data-[state=open]:bg-[var(--accent-hover)]"
         >
           <Crosshair size={11} className="shrink-0" />
           <span className="truncate">
