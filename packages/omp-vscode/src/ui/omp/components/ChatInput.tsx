@@ -942,7 +942,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
 
   return (
-    <div className="sf-chat-input-wrap shrink-0 bg-transparent px-4 pb-2" style={{ paddingRight: isMobile ? 16 : 52 }}>
+    <div className="sf-chat-input-wrap shrink-0 bg-transparent px-4 pb-2">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
