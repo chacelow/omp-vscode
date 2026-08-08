@@ -212,7 +212,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ width: "100%", maxWidth: 820, margin: "0 -16px" }}>
+      <div style={{ width: "100%", maxWidth: 820, margin: editing ? "0 -16px" : 0 }}>
         {imageBlocks.length > 0 && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", marginBottom: 6 }}>
             {imageBlocks.map((img, i) => {

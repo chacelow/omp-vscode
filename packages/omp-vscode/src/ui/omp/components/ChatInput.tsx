@@ -22,6 +22,7 @@ import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
 import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
+import { cn } from "@/lib/utils";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -1001,7 +1002,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   return (
     <div
       ref={wrapRef}
-      className="sf-chat-input-wrap shrink-0 bg-transparent px-4 pb-2"
+      className={cn(
+        "sf-chat-input-wrap shrink-0 bg-transparent pb-2",
+        // Collapsed (sent user message) sits inside the message column: no
+        // extra side padding, the box aligns with the bottom composer via the
+        // column geometry. Expanded (editing/composer) keeps the standard
+        // 16px side padding.
+        collapsed ? "px-0" : "px-4",
+      )}
       onBlur={(e) => {
         // Edit-from-here: focus leaving the composer collapses it back to
         // the read-only message (reference interaction). Redundant with the
