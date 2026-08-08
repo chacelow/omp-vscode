@@ -30,7 +30,7 @@ export interface AttachedImage {
   previewUrl: string; // object URL for display
 }
 
-interface Props {
+export interface ChatInputProps {
   onSend: (message: string, images?: AttachedImage[]) => void;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
@@ -74,6 +74,10 @@ interface Props {
   onSoundToggle?: () => void;
   onAudioUnlock?: () => void;
   draftKey?: string;
+  /** Edit-from-here: prefill the input (user message inline editing). */
+  initialValue?: string;
+  /** Edit-from-here: called when the user cancels (Esc while idle). */
+  onCancelEdit?: () => void;
   /** Session working directory — enables the @ file autocomplete menu */
   cwd?: string | null;
 }
@@ -199,7 +203,7 @@ export function ModelScopeWarningBanner({ warnings }: { warnings?: string[] }) {
   );
 }
 
-export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({
   onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, onModelOpen, modelRoles, fastMode, onRoleChange,
   onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
@@ -209,11 +213,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   soundEnabled, onSoundToggle, onAudioUnlock,
   onPromptWithStreamingBehavior,
   draftKey,
+  initialValue,
+  onCancelEdit,
   cwd,
-}: Props, ref) {
+}: ChatInputProps, ref) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
-  const [value, setValue] = useState(() => (draftKey ? getDraft(draftKey)?.value ?? "" : ""));
+  const [value, setValue] = useState(() => (initialValue ?? (draftKey ? getDraft(draftKey)?.value ?? "" : "")));
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
   ));
@@ -824,6 +830,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       if (e.key === "Escape" && !isComposing && isStreaming && onAbort) {
         e.preventDefault();
         onAbort();
+        return;
+      }
+      // Edit-from-here: Esc cancels inline editing when idle.
+      if (e.key === "Escape" && !isComposing && !isStreaming && onCancelEdit) {
+        e.preventDefault();
+        onCancelEdit();
         return;
       }
 

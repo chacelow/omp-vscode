@@ -6,7 +6,7 @@ import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, splitFinalAssistantBlocks } from "@/lib/message-display";
 import { MessageView } from "./MessageView";
-import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInput";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
@@ -426,51 +426,71 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     ? (modelThinkingLevelMaps[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
     : null;
 
+  // Shared props for both the bottom composer and inline edit-from-here.
+  const chatInputProps: ChatInputProps = {
+    onSend: handleSend,
+    onAbort: handleAbort,
+    onSteer: agentRunning ? handleSteer : undefined,
+    onFollowUp: agentRunning ? handleFollowUp : undefined,
+    onPromptWithStreamingBehavior: agentRunning ? handlePromptWithStreamingBehavior : undefined,
+    isStreaming: sessionBusy,
+    model: displayModelValue,
+    isAutoModelSelection,
+    modelNames,
+    modelList,
+    modelError,
+    modelScopeWarnings,
+    onModelChange: handleModelChange,
+    onModelOpen: () => { void loadModels(); },
+    modelRoles,
+    fastMode,
+    onRoleChange: handleRoleChange,
+    onCompact: session || isNew ? handleCompact : undefined,
+    onAbortCompaction: handleAbortCompaction,
+    isCompacting,
+    compactError,
+    compactResult,
+    toolPreset,
+    onToolPresetChange: undefined,
+    thinkingLevel,
+    onThinkingLevelChange: session || isNew ? handleThinkingLevelChange : undefined,
+    availableThinkingLevels,
+    thinkingLevelMap: currentThinkingLevelMap,
+    retryInfo,
+    queuedMessages,
+    inputHistory,
+    onRecallQueue: handleRecallQueue,
+    slashCommands,
+    slashCommandsLoading,
+    onLoadSlashCommands: loadSlashCommands,
+    onBuiltinCommand: handleBuiltinSlashCommand,
+    soundEnabled,
+    onSoundToggle,
+    onAudioUnlock: unlockAudio,
+  };
+
   const chatInputElement = (
     <ChatInput
       ref={chatInputRef}
-      onSend={handleSend}
-      onAbort={handleAbort}
-      onSteer={agentRunning ? handleSteer : undefined}
-      onFollowUp={agentRunning ? handleFollowUp : undefined}
-      onPromptWithStreamingBehavior={agentRunning ? handlePromptWithStreamingBehavior : undefined}
-      isStreaming={sessionBusy}
-      model={displayModelValue}
-      isAutoModelSelection={isAutoModelSelection}
-      modelNames={modelNames}
-      modelList={modelList}
-      modelError={modelError}
-      modelScopeWarnings={modelScopeWarnings}
-      onModelChange={handleModelChange}
-      onModelOpen={() => { void loadModels(); }}
-      modelRoles={modelRoles}
-      fastMode={fastMode}
-      onRoleChange={handleRoleChange}
-      onCompact={session || isNew ? handleCompact : undefined}
-      onAbortCompaction={handleAbortCompaction}
-      isCompacting={isCompacting}
-      compactError={compactError}
-      compactResult={compactResult}
-      toolPreset={toolPreset}
-      onToolPresetChange={undefined}
-      thinkingLevel={thinkingLevel}
-      onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
-      availableThinkingLevels={availableThinkingLevels}
-      thinkingLevelMap={currentThinkingLevelMap}
-      retryInfo={retryInfo}
-      queuedMessages={queuedMessages}
-      inputHistory={inputHistory}
-      onRecallQueue={handleRecallQueue}
-      slashCommands={slashCommands}
-      slashCommandsLoading={slashCommandsLoading}
-      onLoadSlashCommands={loadSlashCommands}
-      onBuiltinCommand={handleBuiltinSlashCommand}
-      soundEnabled={soundEnabled}
-      onSoundToggle={onSoundToggle}
-      onAudioUnlock={unlockAudio}
+      {...chatInputProps}
       draftKey={session?.id ?? (newSessionCwd ? `new:${newSessionCwd}` : undefined)}
-      cwd={session?.cwd ?? newSessionCwd}
+      cwd={messageCwd}
     />
+  );
+
+  const renderEditInput = useCallback(
+    (entryId: string, content: string, onCancel: () => void) => (
+      <ChatInput
+        {...chatInputProps}
+        initialValue={content}
+        cwd={messageCwd}
+        onSend={(text, images) => {
+          void handleEditResend(entryId, text, images?.map((img) => ({ data: img.data, mimeType: img.mimeType })));
+        }}
+        onCancelEdit={onCancel}
+      />
+    ),
+    [chatInputProps, handleEditResend, messageCwd],
   );
 
   const aboveEditorWidgets = extensionWidgets.filter((widget) => widget.placement !== "belowEditor");
@@ -707,6 +727,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     onNavigate={sessionBusy ? undefined : handleNavigate}
                     prevAssistantEntryId={sessionBusy ? undefined : prevAssistantEntryId}
                     onEditResend={handleEditResend}
+                    editInputRender={renderEditInput}
                     onEditContent={handleEditContent}
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}

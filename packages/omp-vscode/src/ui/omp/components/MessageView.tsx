@@ -67,6 +67,8 @@ interface Props {
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
   onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
+  /** Renders the full ChatInput in inline edit mode (edit-from-here). */
+  editInputRender?: (entryId: string, content: string, onCancel: () => void) => ReactNode;
   showTimestamp?: boolean;
   prevTimestamp?: number;
   sessionId?: string;
@@ -99,9 +101,9 @@ function haveSameRelevantToolResults(
   return true;
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, showTimestamp, prevTimestamp, sessionId }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId }: Props) {
   if (message.role === "user") {
-    return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} />;
+    return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} editInputRender={editInputRender} />;
   }
   if (message.role === "assistant") {
     return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} />;
@@ -138,7 +140,7 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.sessionId === next.sessionId;
 });
 
-function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend }: {
+function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender }: {
   message: UserMessage;
   cwd?: string;
   onOpenFile?: (filePath: string) => void;
@@ -149,6 +151,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
   onEditResend?: (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => void;
+  editInputRender?: (entryId: string, content: string, onCancel: () => void) => ReactNode;
 }) {
   const { t } = useI18n();
   const [hovered, setHovered] = useState(false);
@@ -209,7 +212,9 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
             cursor: editing || !entryId || !onEditResend ? "default" : "pointer",
           }}
         >
-          {editing ? (
+          {editing && editInputRender ? (
+            editInputRender(entryId ?? "", content, () => setEditing(false))
+          ) : editing ? (
             <textarea
               autoFocus
               value={draft}
