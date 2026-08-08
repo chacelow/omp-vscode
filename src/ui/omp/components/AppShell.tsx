@@ -12,7 +12,6 @@ import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator } from "./BranchNavigator";
-import { ThemePicker } from "./ThemePicker";
 import { LanguagePicker } from "./LanguagePicker";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -799,7 +798,6 @@ export function AppShell() {
               </svg>
             )}
           </button>
-          <ThemePicker />
           <LanguagePicker />
           {showChat && projectTrust?.requiresTrust && !projectTrust.trusted && (
             <button

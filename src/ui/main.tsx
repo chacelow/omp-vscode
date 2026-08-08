@@ -7,17 +7,6 @@ import "./boot";
 import { ompPost } from "./boot";
 import "./bridge";
 
-// Theme bootstrap (mirrors app/layout.tsx): restore omp-theme preference.
-(function initTheme() {
-  try {
-    const theme = localStorage.getItem("omp-theme");
-    if (theme === "dark") document.documentElement.classList.add("dark");
-    else if (theme === "starfield") document.documentElement.classList.add("starfield");
-  } catch {
-    // ignore
-  }
-})();
-
 ompPost({ type: "log", level: "info", message: "[webview] bridge installed, rendering…" });
 
 // ---------------------------------------------------------------------------
