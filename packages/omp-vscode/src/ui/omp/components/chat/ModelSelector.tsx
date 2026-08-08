@@ -128,11 +128,11 @@ export const ModelSelector = memo(function ModelSelector({
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             size="sm"
             disabled={isStreaming}
             title={modelOptions.length > 0 ? "Change model" : "No available models"}
-            className="h-6 max-w-[180px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs text-[var(--text-muted)] data-[state=open]:bg-[var(--bg-hover)] data-[state=open]:text-[var(--text)]"
+            className="h-6 max-w-[180px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-xs text-[var(--text)] hover:bg-[var(--bg-hover)] data-[state=open]:bg-[var(--bg-hover)] data-[state=open]:text-[var(--text)]"
           >
             <Bot size={11} className="shrink-0" />
             <span className="min-w-0 flex-1 truncate">
