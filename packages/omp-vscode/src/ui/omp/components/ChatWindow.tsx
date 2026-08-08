@@ -9,6 +9,8 @@ import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { LoadingState } from "./ui/spinner";
+import { TriangleAlert } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
@@ -419,15 +421,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-text-muted">
-         {t("chat.loadingSession")}
-      </div>
+      <LoadingState label={t("chat.loadingSession")} />
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center text-red-400">
+      <div className="flex h-full items-center justify-center gap-2 text-xs text-[var(--destructive)]">
+        <TriangleAlert size={14} className="shrink-0" />
         {error}
       </div>
     );
