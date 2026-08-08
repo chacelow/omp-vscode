@@ -54,6 +54,18 @@ export function AppShell() {
   const { locale, t: translate } = useI18n();
   const isMobile = useIsMobile();
   useViewportHeight();
+
+  // VS Code positions the webview overlay via CSS anchor(); it only
+  // re-computes on interaction (e.g. opening a dropdown), which can leave
+  // the iframe a couple of px off after mount. Nudge it once the app has
+  // rendered so the overlay settles at the correct spot immediately.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+      window.scrollTo(0, 0);
+    }, 400);
+    return () => clearTimeout(t);
+  }, []);
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   // When user clicks +, we only store the cwd — no fake session id
   const [newSessionCwd, setNewSessionCwd] = useState<string | null>(null);
