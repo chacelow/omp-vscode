@@ -1074,9 +1074,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           <div
             className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--chat-input-bg)] px-3 pb-2 pt-3 transition-[border-color,background] duration-150"
             style={{
-              border: `1px solid ${bashMode ? "var(--tool-bg)" : isStreaming && (onSteer || onFollowUp)
-                ? "rgba(234,179,8,0.4)"
-                : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
+              border: `1px solid ${bashMode ? "var(--tool-bg)" : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
             } as React.CSSProperties}
           >
           <textarea

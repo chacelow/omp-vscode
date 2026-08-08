@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, OctagonX } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
         title="Stop"
         className="h-6 w-6 shrink-0 rounded-full border border-destructive/45 bg-destructive/15 p-0 text-destructive hover:bg-destructive/25 hover:text-destructive"
       >
-        <Square size={10} fill="currentColor" />
+        <OctagonX size={15} />
       </Button>
     );
   }
