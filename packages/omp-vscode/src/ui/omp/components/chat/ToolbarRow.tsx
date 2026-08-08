@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, memo } from "react";
-import { Wrench, Check, ImagePlus, X } from "lucide-react";
+import { useState, memo } from "react";
+import { Wrench, Check, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -39,25 +39,15 @@ export const ToolbarRow = memo(function ToolbarRow({
   canSend, onSend, onAbort,
 }: ToolbarRowProps) {
   const [toolOpen, setToolOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   const toolPresetLabel = Object.entries(TOOL_PRESET_MAP).find(([, v]) => v === (toolPreset ?? "default"))?.[0] ?? "default";
 
   const iconBtn = "h-6 rounded-[9px] px-2 text-[13px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
   return (
-    <div className={`mt-2 flex items-center gap-2 ${isMobile ? "grid grid-cols-[minmax(0,1fr)_auto]" : ""}`}>
+    <div className="mt-2 flex items-center gap-2">
       {/* LEFT: role + model */}
-      <div className={`flex min-w-0 items-center gap-1.5 ${isMobile ? "col-start-1" : ""}`}>
+      <div className="flex min-w-0 items-center gap-1.5">
         <RoleSelector {...role} />
         <ModelSelector {...model} />
       </div>
@@ -66,29 +56,8 @@ export const ToolbarRow = memo(function ToolbarRow({
       {!isMobile && <div className="flex-1" />}
 
       {/* RIGHT: tools + send */}
-      <div
-        ref={menuRef}
-        className={`relative flex shrink-0 items-center justify-end ${isMobile ? "col-start-2" : "ml-auto"}`}
-      >
-        {isMobile && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            title={menuOpen ? undefined : t("chat.moreControls")}
-            aria-label={t("chat.moreControls")}
-            aria-expanded={menuOpen}
-            aria-hidden={menuOpen || undefined}
-            tabIndex={menuOpen ? -1 : undefined}
-            onClick={() => setMenuOpen(true)}
-            className={`${iconBtn} font-medium ${menuOpen ? "pointer-events-none invisible" : ""}`}
-          >
-            {t("chat.moreControls")}
-          </Button>
-        )}
-        <div
-          className={`flex items-center ${isMobile ? "absolute right-0 bottom-0 z-[60] w-max max-w-[calc(100vw-32px)] gap-1.5 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--bg-panel)_92%,var(--bg))] p-px shadow-[0_8px_24px_var(--vscode-widget-shadow, rgba(0,0,0,0.14))] backdrop-blur-[10px]" : "gap-1.5"} ${isMobile && !menuOpen ? "hidden" : "flex"}`}
-        >
+      <div className="relative flex shrink-0 items-center justify-end gap-1.5 ml-auto">
+        <div className="flex items-center gap-1.5">
           {!isStreaming && onToolPresetChange && (
             <DropdownMenu open={toolOpen} onOpenChange={setToolOpen}>
               <DropdownMenuTrigger asChild>
@@ -101,7 +70,7 @@ export const ToolbarRow = memo(function ToolbarRow({
                   className={`${iconBtn} gap-1.5 data-[state=open]:bg-[var(--toolbar-hover)]`}
                 >
                   <Wrench size={11} className="shrink-0" />
-                  {(!isMobile || menuOpen) && <span className="whitespace-nowrap">{toolPresetLabel}</span>}
+                  <span className="whitespace-nowrap">{toolPresetLabel}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="min-w-[140px] p-1">
@@ -137,21 +106,6 @@ export const ToolbarRow = memo(function ToolbarRow({
               className={cn("h-6 w-6 shrink-0 rounded-[9px] p-0", attach.count ? "text-[var(--accent)] hover:text-[var(--accent)]" : "text-[var(--text-muted)]")}
             >
               <ImagePlus size={15} strokeWidth={1.8} />
-            </Button>
-          )}
-
-          {isMobile && menuOpen && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              title={t("chat.collapseControls")}
-              aria-label={t("chat.collapseControls")}
-              aria-expanded={true}
-              onClick={() => { setToolOpen(false); setMenuOpen(false); }}
-              className="h-6 w-9 rounded-r-[9px] border-l border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[var(--bg-hover)] text-[var(--text)] hover:bg-[var(--bg-selected)]"
-            >
-              <X size={13} strokeWidth={2} />
             </Button>
           )}
         </div>
