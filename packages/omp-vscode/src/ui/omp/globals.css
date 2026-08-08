@@ -41,8 +41,11 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-dim: var(--text-dim);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
+  /* shadcn "accent" = neutral hover/selected surface, NOT the primary
+     hue. Primary is --color-primary (button background). */
+  --color-accent: var(--bg-hover);
+  --color-accent-foreground: var(--text);
+  --color-accent-hover: var(--bg-hover);
   --color-user-bg: var(--user-bg);
   --color-assistant-bg: var(--assistant-bg);
   --color-tool-bg: var(--tool-bg);
