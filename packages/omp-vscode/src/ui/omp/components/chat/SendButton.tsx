@@ -40,7 +40,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
       title="Send"
       className={cn("h-6 w-6 shrink-0 rounded-full p-0", !canSend && "cursor-not-allowed")}
     >
-      <ArrowUp size={13} strokeWidth={2.5} />
+      <ArrowUp size={14} strokeWidth={2.5} />
     </Button>
   );
 });
