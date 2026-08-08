@@ -183,6 +183,16 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
     });
   };
 
+  // Edit-from-here: the message row becomes the full-width composer —
+  // same component as the bottom input, not wrapped in a bubble.
+  if (editing && editInputRender) {
+    return (
+      <div style={{ marginBottom: 16, width: "100%" }}>
+        {editInputRender(entryId ?? "", content, () => setEditing(false))}
+      </div>
+    );
+  }
+
   return (
     <div
       style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
