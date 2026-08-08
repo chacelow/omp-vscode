@@ -8,6 +8,8 @@ import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
 import { StarfieldEmblem } from "./StarfieldEmblem";
 import { FolderPickerModal } from "./FolderPickerModal";
 import { useTheme } from "@/hooks/useTheme";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 declare global {
   interface Window {
@@ -38,41 +40,25 @@ function ToolbarIconButton({
   ariaPressed?: boolean;
   children: ReactNode;
 }) {
-  const enter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (disabled || skipHover) return;
-    e.currentTarget.style.color = "var(--text-muted)";
-    e.currentTarget.style.background = "var(--bg-hover)";
-  };
-  const leave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (disabled || skipHover) return;
-    e.currentTarget.style.color = color;
-    e.currentTarget.style.background = background;
-  };
   return (
-    <button
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
       onClick={onClick}
       disabled={disabled}
       title={title}
       aria-label={title}
       aria-pressed={ariaPressed}
-      style={{
-        position: "relative",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 26, height: 26, padding: 0, marginRight,
-        background,
-        border: "none",
-        color,
-        cursor: disabled ? "default" : "pointer",
-        borderRadius: 5,
-        flexShrink: 0,
-        opacity: disabled ? 0.6 : 1,
-        transition: "color 0.3s, background 0.3s",
-      }}
-      onMouseEnter={enter}
-      onMouseLeave={leave}
+      style={{ color, background, marginRight }}
+      className={cn(
+        "h-[26px] w-[26px] shrink-0 rounded-[5px] p-0",
+        disabled && "cursor-default opacity-60",
+        !disabled && !skipHover && "hover:bg-[var(--toolbar-hover)] hover:text-[var(--text-muted)]",
+      )}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
