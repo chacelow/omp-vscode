@@ -1145,11 +1145,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "agent_end":
         // One logical prompt can emit multiple agent_end events before retrying,
         // compacting, or continuing messages queued by extension handlers.
-        // Keep the stream open until prompt_done/agent_settled and the idle grace.
+        // Keep the event stream open for those, but the UI must return to
+        // idle now: generation is finished (RPC already flipped
+        // promptRunning=false at agent_end, agent_settled arrives seconds
+        // later after session flush). settleUiStage is idempotent.
         if (!agentRunningRef.current) break;
         setAgentPhase(null);
         setRetryInfo(null);
         dispatch({ type: "end" });
+        {
+          const wasRunning = settleUiStage();
+          if (wasRunning) onAgentEnd?.();
+        }
         if (sessionIdRef.current) {
           loadSession(sessionIdRef.current);
           fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
