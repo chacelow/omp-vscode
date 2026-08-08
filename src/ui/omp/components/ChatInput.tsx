@@ -1099,11 +1099,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   // Which configured role matches the active model (display grouping).
   const ROLE_LABELS: Record<string, string> = { default: "Default", smol: "Fast", plan: "Plan" };
-  // TUI lets you switch Default / Fast (smol) / Plan only; the other roles
-  // (task/slow/commit/vision/…) are used internally by their features.
-  const roleNames = (Object.keys(modelRoles ?? {}) as string[])
-    .filter((r) => r === "default" || r === "smol" || r === "plan")
-    .sort((a, b) => ["default", "smol", "plan"].indexOf(a) - ["default", "smol", "plan"].indexOf(b));
+  // Match the TUI: roles are switchable when both the role is configured
+  // (config.yml modelRoles) AND its command exists in get_available_commands
+  // (/fast → smol, /plan → plan). No hard-coded role list — driven by the
+  // runtime's command catalog + the user's config.
+  const roleCmdExists = (name: string) => (slashCommands ?? []).some((c) => c.name === name);
+  const roleNames = (["default", "smol", "plan"] as const)
+    .filter((r) => {
+      if (r === "default") return modelRoles?.default != null;
+      if (!modelRoles?.[r]) return false;
+      return roleCmdExists(r === "smol" ? "fast" : "plan");
+    });
   const activeRole = roleNames.find((r) => {
     const rr = modelRoles?.[r];
     return rr && model && rr.provider === model.provider && rr.modelId === model.modelId;
