@@ -6,6 +6,7 @@
 import "./boot";
 import { ompPost } from "./boot";
 import "./bridge";
+import { TooltipProvider } from "./omp/components/ui/tooltip";
 
 ompPost({ type: "log", level: "info", message: "[webview] bridge installed, rendering…" });
 
@@ -60,7 +61,9 @@ if (!container) throw new Error("missing #app root");
 createRoot(container).render(
   <ErrorBoundary>
     <I18nProvider>
-      <AppShell />
+      <TooltipProvider>
+        <AppShell />
+      </TooltipProvider>
     </I18nProvider>
   </ErrorBoundary>,
 );
