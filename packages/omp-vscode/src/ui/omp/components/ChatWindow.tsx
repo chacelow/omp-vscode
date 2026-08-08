@@ -485,7 +485,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         initialValue={content}
         cwd={messageCwd}
         onSend={(text, images) => {
-          void handleEditResend(entryId, text, images?.map((img) => ({ data: img.data, mimeType: img.mimeType })));
+          void handleEditResend(entryId, text, images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType })));
         }}
         onCancelEdit={onCancel}
       />
