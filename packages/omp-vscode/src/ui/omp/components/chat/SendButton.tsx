@@ -1,6 +1,7 @@
 import { memo } from "react";
-import { ArrowUp, OctagonX } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
 import { cn } from "@/lib/utils";
 
 // Round primary send/stop button — one button, two states, icon-only,
@@ -25,9 +26,9 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
         variant="destructive"
         size="sm"
         title="Stop"
-        className="h-6 w-6 shrink-0 rounded-full border border-destructive/45 bg-destructive/15 p-0 text-destructive hover:bg-destructive/25 hover:text-destructive"
+        className="h-6 w-6 shrink-0 cursor-pointer rounded-full border border-destructive/45 bg-destructive/15 p-0 text-destructive hover:bg-destructive/25"
       >
-        <OctagonX size={15} />
+        <Spinner size={13} className="text-destructive" />
       </Button>
     );
   }
