@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as fs from "fs";
 import { ApiHandler } from "../core/api";
 
 // Sidebar chat view hosting the omp-web React app (AppShell) inside a
@@ -75,8 +76,25 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   }
 
   private buildHtml(webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extUri(), "dist", "webview.js"));
-    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extUri(), "dist", "webview.css"));
+    // VS Code caches webview resources behind a service worker. Without a
+    // version query the webview keeps running a stale dist/webview.js even
+    // after rebuilds — which is why UI fixes "don't apply". Version the
+    // URLs with the built file's mtime so a rebuild is always picked up.
+    const cacheBust = (): string => {
+      try {
+        return String(
+          fs.statSync(vscode.Uri.joinPath(this.extUri(), "dist", "webview.js").fsPath).mtimeMs,
+        );
+      } catch {
+        return Date.now().toString();
+      }
+    };
+    const scriptUri = webview
+      .asWebviewUri(vscode.Uri.joinPath(this.extUri(), "dist", "webview.js"))
+      .with({ query: `v=${cacheBust()}` });
+    const styleUri = webview
+      .asWebviewUri(vscode.Uri.joinPath(this.extUri(), "dist", "webview.css"))
+      .with({ query: `v=${cacheBust()}` });
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
     const csp = [
       "default-src 'none'",
