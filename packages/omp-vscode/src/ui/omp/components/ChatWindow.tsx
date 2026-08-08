@@ -8,7 +8,6 @@ import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantB
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInput";
 import { ChatFooterBar } from "./chat/ChatFooterBar";
-import { SessionTreePanel } from "./chat/SessionTreePanel";
 import { ChatMinimap } from "./chat/ChatMinimap";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
@@ -713,20 +712,6 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
           <div style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}>
             <div style={{ width: "100%", minWidth: 0, maxWidth: 820, margin: "0 auto" }}>
               <ExtensionWidgets widgets={aboveEditorWidgets} />
-
-            {messages.length > 0 && entryIds.length > 0 && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, paddingRight: CHAT_COLUMN_PADDING }}>
-                <SessionTreePanel
-                  tree={data?.tree ?? []}
-                  activeEntryIds={entryIds}
-                  onSelect={(entryId) => {
-                    if (sessionBusy) return;
-                    void handleNavigate(entryId);
-                  }}
-                  t={t}
-                />
-              </div>
-            )}
 
             {(() => {
               const toolResultsMap = new Map<string, ToolResultMessage>();

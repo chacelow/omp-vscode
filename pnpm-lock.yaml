@@ -98,6 +98,15 @@ importers:
 
   packages/omp-vscode:
     dependencies:
+      '@base-ui/react':
+        specifier: ^1.7.0
+        version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@headless-tree/core':
+        specifier: ^1.7.0
+        version: 1.7.0
+      '@headless-tree/react':
+        specifier: ^1.7.0
+        version: 1.7.0(@headless-tree/core@1.7.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@lobehub/icons':
         specifier: ^5.15.0
         version: 5.15.0(@lobehub/ui@5.29.1)(@types/react@19.2.18)(antd@6.5.4(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)
@@ -582,8 +591,35 @@ packages:
       date-fns:
         optional: true
 
+  '@base-ui/react@1.7.0':
+    resolution: {integrity: sha512-j+8QjX44C32jrXD/qyEAGpFr70FRpGL2CY61mQd9nBPWN737CK0xxD1ceJ055rW4RtdvFDT1e7otzdlfxvsYug==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      '@date-fns/tz': ^1.2.0
+      '@types/react': ^17 || ^18 || ^19
+      date-fns: ^4.0.0
+      react: ^17 || ^18 || ^19
+      react-dom: ^17 || ^18 || ^19
+    peerDependenciesMeta:
+      '@date-fns/tz':
+        optional: true
+      '@types/react':
+        optional: true
+      date-fns:
+        optional: true
+
   '@base-ui/utils@0.3.1':
     resolution: {integrity: sha512-gFFiltORVmW/N6IILTGxizP3PBpVpysqML1ALY5Vk0mH+7faVkCknOU31goYHN5Aoek2dkjxva1XOD2Ce9WuIg==}
+    peerDependencies:
+      '@types/react': ^17 || ^18 || ^19
+      react: ^17 || ^18 || ^19
+      react-dom: ^17 || ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
+  '@base-ui/utils@0.3.2':
+    resolution: {integrity: sha512-oWy1aq/I2GmYjpl4PhEAhzflF8VPGKgZeq0xAWTbfD5KBWyxcN0ZP2+WHSUm/5Z6lVMBDLReLcoXwSYoRc/zNQ==}
     peerDependencies:
       '@types/react': ^17 || ^18 || ^19
       react: ^17 || ^18 || ^19
@@ -1244,6 +1280,16 @@ packages:
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
+
+  '@headless-tree/core@1.7.0':
+    resolution: {integrity: sha512-LxcX7LNepwfOPrZcs4PNfDwCzbi326uCAX5jYBfw94jI+pZQA7ANaE/No3LW0XFgcBcQtK/G2bInbVEhLF1C/Q==}
+
+  '@headless-tree/react@1.7.0':
+    resolution: {integrity: sha512-hcnG4mpTP98KVWZYqKsXNOoiv7ZQqZVM2jWwzEWtF+VDSz+1O/juMI+/Q0G4lZM+ez07/tmBBWjvZub/mLAUXQ==}
+    peerDependencies:
+      '@headless-tree/core': '*'
+      react: '*'
+      react-dom: '*'
 
   '@huggingface/jinja@0.5.9':
     resolution: {integrity: sha512-uWTG+l3VJRsl7EXxYizuL3P+cCPoc3cRqbWWRcQN0FhejRfbdq0RNhCmbY/YDtnTcz9icdLYuLDjsnz4d8JMuw==}
@@ -8387,7 +8433,30 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.18
 
+  '@base-ui/react@1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      '@base-ui/utils': 0.3.2(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@floating-ui/react-dom': 2.1.9(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@floating-ui/utils': 0.2.12
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+      use-sync-external-store: 1.6.0(react@19.2.8)
+    optionalDependencies:
+      '@types/react': 19.2.18
+
   '@base-ui/utils@0.3.1(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      '@floating-ui/utils': 0.2.12
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+      reselect: 5.2.0
+      use-sync-external-store: 1.6.0(react@19.2.8)
+    optionalDependencies:
+      '@types/react': 19.2.18
+
+  '@base-ui/utils@0.3.2(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@floating-ui/utils': 0.2.12
@@ -9003,6 +9072,14 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  '@headless-tree/core@1.7.0': {}
+
+  '@headless-tree/react@1.7.0(@headless-tree/core@1.7.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@headless-tree/core': 1.7.0
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   '@huggingface/jinja@0.5.9':
     optional: true
