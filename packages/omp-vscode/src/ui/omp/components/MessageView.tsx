@@ -169,6 +169,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   const [editing, setEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState<{ text: string; images?: Array<{ data: string; mimeType: string }> } | null>(null);
+  const resendBtnRef = useRef<HTMLButtonElement>(null);
 
   const content =
     typeof message.content === "string"
@@ -251,7 +252,16 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
         )}
       </div>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="max-w-[380px]">
+        <AlertDialogContent
+          className="max-w-[380px]"
+          onOpenAutoFocus={(e) => {
+            // Enter in the dialog must confirm (Resend), not hit the Cancel
+            // button which is first in DOM order — Radix focuses the first
+            // tabbable by default.
+            e.preventDefault();
+            resendBtnRef.current?.focus();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm">
               {t("i18n.resendTitle") ?? "Resend edited message"}
@@ -261,11 +271,18 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-7 text-xs">
+            <AlertDialogCancel
+              className="h-7 text-xs"
+              onClick={() => {
+                // Leave edit mode (draft stays in the composer) — the dialog
+                // alone closing would strand the editor open.
+                setEditing(false);
+              }}
+            >
               {t("i18n.cancel") ?? "Cancel"}
             </AlertDialogCancel>
             <AlertDialogAction
-              autoFocus
+              ref={resendBtnRef}
               className="h-7 text-xs"
               onClick={() => {
                 setConfirmOpen(false);

@@ -486,8 +486,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       }
     }
     onSend(msg, attachedImages.length ? attachedImages : undefined);
-    clearInput();
-  }, [value, attachedImages, isStreaming, onBuiltinCommand, onSend, clearInput, onAudioUnlock]);
+    // Only the bottom composer clears after sending. Inline edit (has
+    // initialValue) routes onSend to the resend-confirm dialog: the draft
+    // must survive cancel, and the collapsed message shows the edited text.
+    if (initialValue === undefined) clearInput();
+  }, [value, attachedImages, isStreaming, onBuiltinCommand, onSend, clearInput, onAudioUnlock, initialValue]);
 
   const slashQuery = value.startsWith("/") && !/\s/.test(value.slice(1))
     ? value.slice(1).toLowerCase()
