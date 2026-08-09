@@ -690,7 +690,6 @@ function AssistantMessageView({
             )}
              {copied ? t("i18n.copied") : t("i18n.copy")}
           </button>
-        )}
         {time && !isStreaming && (
           <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
         )}
