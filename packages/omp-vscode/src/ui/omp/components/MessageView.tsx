@@ -464,7 +464,12 @@ function AssistantMessageView({
   // This is the total generation time (thinking + any text before first tool call)
   const thinkingDurationFromFile = useMemo<number | undefined>(() => {
     if (!message.timestamp || !prevTimestamp) return undefined;
-    const secs = Math.round((message.timestamp - prevTimestamp) / 1000);
+    // Timestamps may be ISO strings (session file) or epoch ms (streaming) —
+    // normalize both before subtracting.
+    const end = typeof message.timestamp === "number" ? message.timestamp : Date.parse(message.timestamp);
+    const start = typeof prevTimestamp === "number" ? prevTimestamp : Date.parse(prevTimestamp);
+    if (!Number.isFinite(end) || !Number.isFinite(start)) return undefined;
+    const secs = Math.round((end - start) / 1000);
     return secs > 0 ? secs : undefined;
   }, [message.timestamp, prevTimestamp]);
 
@@ -474,9 +479,13 @@ function AssistantMessageView({
   const toolCallDurations = useMemo<Map<string, number>>(() => {
     const map = new Map<string, number>();
     if (!toolResults || !message.timestamp) return map;
+    const end = typeof message.timestamp === "number" ? message.timestamp : Date.parse(message.timestamp);
+    if (!Number.isFinite(end)) return map;
     for (const [callId, result] of toolResults) {
-      if (result.timestamp && message.timestamp) {
-        const secs = Math.round((result.timestamp - message.timestamp) / 1000);
+      if (result.timestamp) {
+        const start = typeof result.timestamp === "number" ? result.timestamp : Date.parse(result.timestamp);
+        if (!Number.isFinite(start)) continue;
+        const secs = Math.round((end - start) / 1000);
         if (secs > 0) map.set(callId, secs);
       }
     }
