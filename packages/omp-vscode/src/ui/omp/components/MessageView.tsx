@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
+import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import {
   AlertDialog,
