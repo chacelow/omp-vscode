@@ -143,11 +143,12 @@ function withAssistantBlocks(
 
 function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { messageCount: number; toolCallCount: number; children: ReactNode; t: (key: string, params?: Record<string, string | number>) => string }) {
   const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
   const parts = [t("chat.processDetails"), `${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`];
   if (toolCallCount > 0) parts.push(`${toolCallCount} ${t(toolCallCount === 1 ? "chat.toolCall" : "chat.toolCalls")}`);
 
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 7 }}>
       <button
         type="button"
         aria-expanded={expanded}
@@ -182,9 +183,11 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { mes
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="overflow-hidden"
+            onAnimationComplete={() => setOverflowing(true)}
+            onAnimationStart={() => setOverflowing(false)}
+            className={overflowing ? "" : "overflow-hidden"}
           >
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: 4 }}>
               {children}
             </div>
           </motion.div>
@@ -868,6 +871,19 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
 
                 rendered.push(renderMessage(userIdx));
 
+                // Overall turn duration: from this user message to the final
+                // assistant reply (includes all thinking + tool execution).
+                const userTs = (messages[userIdx] as AgentMessage & { timestamp?: string | number }).timestamp;
+                const finalTs = (messages[finalAssistantIdx] as AgentMessage & { timestamp?: string | number }).timestamp;
+                let groupDuration: number | undefined;
+                if (userTs && finalTs) {
+                  const start = typeof userTs === "number" ? userTs : Date.parse(userTs);
+                  const end = typeof finalTs === "number" ? finalTs : Date.parse(finalTs);
+                  if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+                    groupDuration = Math.round((end - start) / 1000);
+                  }
+                }
+
                 const processIndices: number[] = [];
                 for (let processIdx = userIdx + 1; processIdx < finalAssistantIdx; processIdx++) {
                   processIndices.push(processIdx);
@@ -910,6 +926,20 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
 
                 if (finalAnswerMessage) {
                   rendered.push(renderMessage(finalAssistantIdx, { messageOverride: finalAnswerMessage }));
+                  if (groupDuration !== undefined && groupDuration > 0 && !isLiveTail) {
+                    rendered.push(
+                      <div
+                        key={`turn-duration-${userIdx}`}
+                        className="mt-0.5 flex items-center justify-end gap-1 pr-1 font-mono text-[10px] tabular-nums text-[var(--text-dim)]"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        {groupDuration}s
+                      </div>,
+                    );
+                  }
                 }
                 for (let renderIdx = finalAssistantIdx + 1; renderIdx < endIdx; renderIdx++) {
                   rendered.push(renderMessage(renderIdx));

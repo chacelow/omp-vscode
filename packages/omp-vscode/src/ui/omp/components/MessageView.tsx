@@ -470,7 +470,7 @@ function AssistantMessageView({
     >
       {usageTip && (
         <div
-          className="absolute right-0 top-[-6px] z-[200] max-w-[360px] translate-y-[-100%] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
+          className="absolute right-0 top-[-6px] z-[500] max-w-[360px] translate-y-[-100%] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
         >
           {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
