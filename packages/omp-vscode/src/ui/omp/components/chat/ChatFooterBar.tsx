@@ -1,8 +1,7 @@
-import { memo } from "react";
-import { Shrink, Square, Volume2, VolumeX } from "lucide-react";
+import { memo, useEffect, useState } from "react";
+import { GitBranch, Shrink, Square, Volume2, VolumeX } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
-import { ContextRing, type ContextRingDetails } from "./ContextRing";
 
 // Toolbar row BELOW the input card: left = compact + sound (moved out of
 // the composer), right = token usage, context ring, generation rate.
@@ -24,8 +23,7 @@ export const ChatFooterBar = memo(function ChatFooterBar({
   isCompacting,
   soundEnabled,
   onSoundToggle,
-  stats,
-  contextUsage,
+  cwd,
   tps,
 }: {
   t: (key: string) => string;
@@ -35,24 +33,33 @@ export const ChatFooterBar = memo(function ChatFooterBar({
   isCompacting?: boolean;
   soundEnabled?: boolean;
   onSoundToggle?: () => void;
-  stats?: ChatFooterStats | null;
-  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
+  cwd?: string;
   tps?: number | null;
 }) {
-  const fmt = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n));
-  const hasStats = Boolean(stats && (stats.total || stats.cost));
-  const details: ContextRingDetails | null = stats ? {
-    input: stats.input,
-    output: stats.output,
-    cacheRead: stats.cacheRead,
-    cacheWrite: stats.cacheWrite,
-    cost: stats.cost ?? null,
-  } : null;
+  const [branch, setBranch] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!cwd) {
+      setBranch(null);
+      return;
+    }
+    let active = true;
+    void fetch(`/api/cwd/git-branch?cwd=${encodeURIComponent(cwd)}`)
+      .then((res) => res.ok ? res.json() as Promise<{ branch?: string | null }> : null)
+      .then((data) => { if (active) setBranch(data?.branch ?? null); })
+      .catch(() => { if (active) setBranch(null); });
+    return () => { active = false; };
+  }, [cwd]);
   return (
     <div className="flex items-center gap-2 px-4 pb-1 text-[11px] text-[var(--text-muted)]">
       {/* LEFT: compact + sound */}
       <div className="flex items-center gap-1">
+        {branch && (
+          <span className="flex items-center gap-1 px-1.5 font-mono text-[10px] text-[var(--text-dim)]" title={branch}>
+            <GitBranch size={10} strokeWidth={1.8} />
+            {branch}
+          </span>
+        )}
         {!isStreaming && onCompact && (
           <Button
             onClick={isCompacting ? onAbortCompaction : onCompact}
@@ -84,7 +91,7 @@ export const ChatFooterBar = memo(function ChatFooterBar({
 
       <div className="flex-1" />
 
-      {/* RIGHT: tokens / tps / context ring */}
+      {/* RIGHT: tps only — context ring moved into the input toolbar */}
       <div className="flex items-center gap-2">
         {tps !== null && tps !== undefined && (
           <span
@@ -93,20 +100,6 @@ export const ChatFooterBar = memo(function ChatFooterBar({
           >
             {tps.toFixed(1)} t/s
           </span>
-        )}
-        {hasStats && (
-          <span className="font-mono whitespace-nowrap">
-            {stats!.total ? `${fmt(stats!.total!)} tokens` : ""}
-            {stats!.cost ? ` · $${stats!.cost.toFixed(2)}` : ""}
-          </span>
-        )}
-        {contextUsage && (
-          <ContextRing
-            percent={contextUsage.percent}
-            contextWindow={contextUsage.contextWindow}
-            tokens={contextUsage.tokens}
-            details={details}
-          />
         )}
       </div>
     </div>

@@ -229,6 +229,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
     notices, extensionDialog, extensionCustomUi, extensionStatuses, extensionWidgets, respondToExtensionUi, sendExtensionCustomInput,
     isAutoModelSelection,
     agentPhase,
+    liveTps,
     isNew,
     sessionIdRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
@@ -526,6 +527,9 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
     thinkingLevelMap: currentThinkingLevelMap,
     retryInfo,
     queuedMessages,
+    liveTps,
+    contextUsage,
+    stats: sessionStats,
     inputHistory,
     onRecallQueue: handleRecallQueue,
     slashCommands,
@@ -571,15 +575,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
       isCompacting={isCompacting}
       soundEnabled={soundEnabled}
       onSoundToggle={onSoundToggle}
-      stats={sessionStats ? {
-        input: sessionStats.tokens?.input,
-        output: sessionStats.tokens?.output,
-        cacheRead: sessionStats.tokens?.cacheRead,
-        cacheWrite: sessionStats.tokens?.cacheWrite,
-        total: sessionStats.tokens?.total,
-        cost: sessionStats.cost ?? null,
-      } : null}
-      contextUsage={contextUsage}
+      cwd={messageCwd}
       tps={tps}
     />
   );
@@ -782,7 +778,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
                 if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
               };
 
-              const renderMessage = (idx: number, options: { attachRef?: boolean; keyPrefix?: string; messageOverride?: AgentMessage; showTimestamp?: boolean; hideUsageTip?: boolean; hideFork?: boolean } = {}): ReactNode => {
+              const renderMessage = (idx: number, options: { attachRef?: boolean; keyPrefix?: string; messageOverride?: AgentMessage; showTimestamp?: boolean; hideFork?: boolean } = {}): ReactNode => {
                 const msg = options.messageOverride ?? messages[idx];
                 const prevAssistantEntryId =
                   msg.role === "user" && idx > 0 && messages[idx - 1].role === "assistant"
@@ -824,7 +820,6 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
                     showTimestamp={showTimestamp}
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
                     sessionId={session?.id ?? sessionIdRef.current ?? undefined}
-                    hideUsageTip={options.hideUsageTip}
                     hideFork={options.hideFork}
                   />
                 );
@@ -910,7 +905,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
                       toolCallCount={countToolCalls(messages, visibleProcessIndices) + countToolCallBlocks(finalSplit.processBlocks)}
                     >
                       {visibleProcessIndices.map((processIdx) => renderMessage(processIdx, { attachRef: false, keyPrefix: "process", hideFork: true }))}
-                      {finalProcessMessage && renderMessage(finalAssistantIdx, { attachRef: false, keyPrefix: "process-final", messageOverride: finalProcessMessage, showTimestamp: false, hideUsageTip: true, hideFork: true })}
+                      {finalProcessMessage && renderMessage(finalAssistantIdx, { attachRef: false, keyPrefix: "process-final", messageOverride: finalProcessMessage, showTimestamp: false, hideFork: true })}
                     </ProcessDetailsGroup>
                   );
                   rendered.push(

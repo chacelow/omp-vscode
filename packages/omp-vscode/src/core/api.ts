@@ -185,6 +185,11 @@ export class ApiHandler {
         const params = new URL(url, "http://local").searchParams;
         return this.fileIndex(params.get("cwd") ?? "", params.get("q") ?? "");
       }
+      // /api/cwd/git-branch?cwd=... — current git branch for the composer footer
+      if (parts[1] === "cwd" && parts[2] === "git-branch" && method === "GET") {
+        const params = new URL(url, "http://local").searchParams;
+        return this.gitBranch(params.get("cwd") ?? "");
+      }
 
       return { status: 404, body: { error: `Not found: ${path}` } };
     } catch (err) {
@@ -476,6 +481,26 @@ export class ApiHandler {
   // -------------------------------------------------------------------------
   // Config surfaces (not embedded yet — degrade gracefully)
   // -------------------------------------------------------------------------
+
+  /** Resolve the branch through VS Code's built-in Git extension API. */
+  private async gitBranch(cwd: string): Promise<HandlerResult> {
+    if (!cwd || !existsSync(cwd)) return { status: 200, body: { branch: null } };
+    type GitRepository = { rootUri: vscode.Uri; state: { HEAD?: { name?: string } } };
+    type GitApi = { repositories: GitRepository[]; getRepository(uri: vscode.Uri): GitRepository | null };
+    type GitExtension = { getAPI(version: 1): GitApi };
+
+    try {
+      const extension = vscode.extensions.getExtension<GitExtension>("vscode.git");
+      if (!extension) return { status: 200, body: { branch: null } };
+      const git = extension.isActive ? extension.exports : await extension.activate();
+      const api = git.getAPI(1);
+      const repository = api.getRepository(vscode.Uri.file(cwd))
+        ?? api.repositories.find((candidate) => cwd === candidate.rootUri.fsPath || cwd.startsWith(`${candidate.rootUri.fsPath}/`));
+      return { status: 200, body: { branch: repository?.state.HEAD?.name ?? (repository ? "detached" : null) } };
+    } catch {
+      return { status: 200, body: { branch: null } };
+    }
+  }
 
   /** @ file autocomplete index: walk cwd (bounded), return relative paths. */
   private async fileIndex(cwd: string, query: string): Promise<HandlerResult> {

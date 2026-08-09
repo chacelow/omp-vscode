@@ -7,7 +7,7 @@ import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
-import { BrainIcon, Check, ChevronDown, Copy, GitBranch } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BrainIcon, Check, ChevronDown, Clock, Copy, Database, Gauge, GitBranch } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -88,8 +88,6 @@ interface Props {
   showTimestamp?: boolean;
   prevTimestamp?: number;
   sessionId?: string;
-  /** Suppress the usage/model hover card (used for split process blocks). */
-  hideUsageTip?: boolean;
   /** Suppress the new-session (fork) action (used for split process blocks). */
   hideFork?: boolean;
 }
@@ -121,12 +119,12 @@ function haveSameRelevantToolResults(
   return true;
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideUsageTip, hideFork }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideFork }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} editInputRender={editInputRender} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideUsageTip={hideUsageTip} hideFork={hideFork} onFork={onFork} forking={forking} />;
+    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideFork={hideFork} onFork={onFork} forking={forking} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -158,7 +156,6 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.showTimestamp === next.showTimestamp
     && prev.prevTimestamp === next.prevTimestamp
     && prev.sessionId === next.sessionId
-    && prev.hideUsageTip === next.hideUsageTip
     && prev.hideFork === next.hideFork;
 });
 
@@ -311,7 +308,6 @@ function AssistantMessageView({
   prevTimestamp,
   sessionId,
   entryId,
-  hideUsageTip,
   hideFork,
   onFork,
   forking,
@@ -326,7 +322,6 @@ function AssistantMessageView({
   prevTimestamp?: number;
   sessionId?: string;
   entryId?: string;
-  hideUsageTip?: boolean;
   hideFork?: boolean;
   onFork?: (entryId: string) => void;
   forking?: boolean;
@@ -339,7 +334,6 @@ function AssistantMessageView({
     .filter(({ block }) => !isEmptyThinkingBlock(block, { isStreaming }));
   const blocks = blockItems.map(({ block }) => block);
   const providerError = getAssistantErrorMessage(message, { isStreaming });
-  const [hovered, setHovered] = useState(false);
   const streamStartRef = useRef<number | null>(null);
   const [tps, setTps] = useState<number | null>(null);
   const [durationHover, setDurationHover] = useState<number | null>(null);
@@ -453,10 +447,6 @@ function AssistantMessageView({
   const lastBlock = blocks[blocks.length - 1];
   const endsWithTool = lastBlock?.type === "toolCall";
 
-  // Usage/model/time/copy live in a hover card anchored to the message
-  // (fixed position, clickable) instead of taking layout space.
-  const [usageTip, setUsageTip] = useState(false);
-
   // Completed messages: use the engine-computed duration (message.duration,
   // ms) with usage.output — same formula as the TUI status line. Our own
   // timestamp diff was wrong (ISO strings / partial spans → 545 tok/s).
@@ -478,24 +468,7 @@ function AssistantMessageView({
     <div
       className="group"
       style={{ marginBottom: endsWithTool ? 2 : 16, position: "relative" }}
-      onMouseEnter={() => { setHovered(true); if (!hideUsageTip && (message.usage || message.model || time)) setUsageTip(true); }}
-      onMouseLeave={() => { setHovered(false); setUsageTip(false); }}
     >
-      {usageTip && (
-        <div
-          className="absolute right-0 top-[-6px] z-[500] max-w-[360px] translate-y-[-100%] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
-        >
-          {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
-          {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
-          {(tps !== null || completedTps !== null) && <div>{Math.round(tps ?? completedTps ?? 0).toLocaleString()} tok/s</div>}
-          {(engineDurationMs !== undefined || thinkingDurationFromFile !== undefined || durationHover !== null) && (
-            <div className="text-[var(--text-dim)]">
-              {(engineDurationMs !== undefined ? engineDurationMs / 1000 : durationHover ?? thinkingDurationFromFile)?.toFixed(1)}s
-            </div>
-          )}
-          {time && !isStreaming && <div className="text-[var(--text-dim)]">{time}</div>}
-        </div>
-      )}
       {/* Model label / streaming estimate — hidden from layout; the hover
           tooltip above shows model, usage and tok/s instead. */}
       {false && (
@@ -574,8 +547,34 @@ function AssistantMessageView({
           Error: {providerError}
         </div>
       )}
-      {!isStreaming && (time || canFork) && (
-        <div className="mt-1.5 flex items-center justify-end gap-3 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+      {(!isStreaming && (message.usage || time || canFork)) || (isStreaming && (tps !== null || durationHover !== null)) ? (
+        <div className="mt-1 flex items-center justify-end gap-3 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">
+          {!isStreaming && message.usage && (
+            <span className="flex items-center gap-1">
+              <ArrowUpRight size={10} strokeWidth={1.8} />
+              {message.usage.input?.toLocaleString()} in
+              <ArrowDownRight size={10} strokeWidth={1.8} className="ml-1" />
+              {message.usage.output?.toLocaleString()} out
+              {message.usage.cacheRead ? (
+                <span className="ml-1 flex items-center gap-1">
+                  <Database size={10} strokeWidth={1.8} />
+                  {message.usage.cacheRead.toLocaleString()} cache R
+                </span>
+              ) : null}
+            </span>
+          )}
+          {(engineDurationMs !== undefined || durationHover !== null) && (
+            <span className="flex items-center gap-1">
+              <Clock size={10} strokeWidth={1.8} />
+              {(engineDurationMs !== undefined ? engineDurationMs / 1000 : durationHover)?.toFixed(1)}s
+            </span>
+          )}
+          {(tps !== null || completedTps !== null) && (
+            <span className="flex items-center gap-1">
+              <Gauge size={10} strokeWidth={1.8} />
+              {Math.round(tps ?? completedTps ?? 0).toLocaleString()} tok/s
+            </span>
+          )}
           {canFork && (
             <Button
               type="button"
@@ -585,17 +584,17 @@ function AssistantMessageView({
               disabled={forking}
               title={forking ? t("i18n.creatingSession") : t("i18n.newSessionTitle")}
               className={cn(
-                "h-[22px] gap-1 px-2 text-[11px] font-normal",
+                "h-[18px] gap-1 px-1.5 text-[10px] font-normal",
                 forking && "cursor-not-allowed text-[var(--accent)]",
               )}
             >
-              <GitBranch size={11} strokeWidth={1.8} />
+              <GitBranch size={10} strokeWidth={1.8} />
               {forking ? t("i18n.creating") : t("i18n.newSession")}
             </Button>
           )}
-          {time && <span className="text-[10px] text-[var(--text-dim)]">{time}</span>}
+          {time && <span>{time}</span>}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

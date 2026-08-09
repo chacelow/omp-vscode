@@ -12,6 +12,8 @@ import {
 import { RoleSelector, type RoleSelectorProps } from "./RoleSelector";
 import { ModelSelector, type ModelSelectorProps } from "./ModelSelector";
 import { SendButton } from "./SendButton";
+import { ContextRing, type ContextRingDetails } from "./ContextRing";
+import type { ChatFooterStats } from "./ChatFooterBar";
 
 // Bottom toolbar row of the chat input: LEFT (role + model + attach),
 // spacer, RIGHT (tools preset / compact / sound / more) + send button.
@@ -28,6 +30,8 @@ interface ToolbarRowProps {
   role: RoleSelectorProps;
   model: ModelSelectorProps;
   attach?: { count: number; onAttach: () => void };
+  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
+  stats?: ChatFooterStats | null;
   toolPreset?: "none" | "default" | "full";
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
   canSend: boolean;
@@ -36,12 +40,20 @@ interface ToolbarRowProps {
 }
 
 export const ToolbarRow = memo(function ToolbarRow({
-  isStreaming, t, role, model, attach,
+  isStreaming, t, role, model, attach, contextUsage, stats,
   toolPreset, onToolPresetChange,
   canSend, onSend, onAbort,
   visible = true,
 }: ToolbarRowProps) {
   const [toolOpen, setToolOpen] = useState(false);
+
+  const details: ContextRingDetails | null = stats ? {
+    input: stats.input,
+    output: stats.output,
+    cacheRead: stats.cacheRead,
+    cacheWrite: stats.cacheWrite,
+    cost: stats.cost ?? null,
+  } : null;
 
   const toolPresetLabel = Object.entries(TOOL_PRESET_MAP).find(([, v]) => v === (toolPreset ?? "default"))?.[0] ?? "default";
 
@@ -109,6 +121,14 @@ export const ToolbarRow = memo(function ToolbarRow({
             </DropdownMenu>
           )}
 
+          {contextUsage && (
+            <ContextRing
+              percent={contextUsage.percent}
+              contextWindow={contextUsage.contextWindow}
+              tokens={contextUsage.tokens}
+              details={details}
+            />
+          )}
           {attach && (
             <Button
               onClick={attach.onAttach}

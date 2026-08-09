@@ -134,7 +134,7 @@ export const ModelSelector = memo(function ModelSelector({
                   {thinkingLevel || "auto"}▾
                 </span>
               </PopoverTrigger>
-              <PopoverContent side="top" align="end" className="w-auto min-w-[120px] p-1">
+              <PopoverContent side="top" align="end" className="w-fit min-w-0 p-1">
                 {THINKING_LEVELS.map((level) => {
                   const active = thinkingLevel === level;
                   return (

@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import type { SlashCommandInfo } from "@/hooks/useAgentSession";
 
 // Slash-command palette — opens above the textarea when the user types "/".
@@ -87,6 +87,7 @@ interface SlashPaletteProps {
   countLabel: string;
   filtered: SlashCommandPaletteItem[];
   groups: ReturnType<typeof buildSlashCommandLayout>["groups"];
+  query: string;
   activeIndex: number;
   dormancy: Record<string, boolean>;
   onApply: (command: SlashCommandPaletteItem) => void;
@@ -95,63 +96,73 @@ interface SlashPaletteProps {
   t: (key: string, params?: Record<string, string | number>) => string;
 }
 
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const pattern = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig");
+  return text.split(pattern).map((part, index) =>
+    part.localeCompare(query, undefined, { sensitivity: "accent" }) === 0
+      ? <mark key={index} className="rounded-sm bg-[var(--bg-selected)] px-0.5 text-[var(--text)]">{part}</mark>
+      : part,
+  );
+}
+
+const MAX_VISIBLE_PER_GROUP = 3;
+
 export const SlashPalette = memo(function SlashPalette({
-  loading, countLabel, filtered, groups, activeIndex, dormancy, onApply, onHover, itemRefs, t,
+  loading, countLabel, filtered, groups, query, activeIndex, dormancy, onApply, onHover, itemRefs, t,
 }: SlashPaletteProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Set<SlashCommandSource>>(() => new Set());
+  const isSearching = query.trim().length > 0;
   return (
-    <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[120] max-h-[min(56vh,460px)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-[0_-6px_20px_var(--vscode-widget-shadow, rgba(0,0,0,0.12))]">
+    <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[120] max-h-[min(56vh,460px)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-[0_-6px_20px_var(--vscode-widget-shadow,rgba(0,0,0,0.12))]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-dim)]">
         <span>{loading ? t("chat.loadingCommands") : t("chat.slashCommands", { label: countLabel })}</span>
         <span className="font-mono">{t("chat.tabEnter")}</span>
       </div>
       <div className="overflow-y-auto p-2.5" style={{ maxHeight: "calc(min(56vh, 460px) - 34px)" }}>
         {!loading && filtered.length === 0 ? (
-          <div className="px-0.5 pb-1 text-xs text-[var(--text-dim)]">
-            {t("chat.noCommands")}
+          <div className="px-0.5 pb-1 text-xs text-[var(--text-dim)]">{t("chat.noCommands")}</div>
+        ) : isSearching ? (
+          <div className="space-y-1">
+            {filtered.map((command, index) => {
+              const active = index === activeIndex;
+              const dormant = isDormantSkillCommand(command, dormancy);
+              return (
+                <button key={`${command.source}:${command.name}`} ref={(node) => { itemRefs.current[index] = node; }} type="button" onMouseDown={(event) => { event.preventDefault(); onApply(command); }} onMouseEnter={() => onHover(index)} className={`flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-[var(--text)] ${active ? "bg-[var(--bg-selected)]" : "hover:bg-[var(--bg-hover)]"}`}>
+                  <span className="shrink-0 font-mono text-[13px]">/{highlightMatch(command.name, query)}</span>
+                  {dormant && <span className="rounded-[3px] border border-[var(--border)] px-1 text-[9px] text-[var(--text-dim)]">{t("chat.dormant")}</span>}
+                  {command.description && <span className="min-w-0 truncate text-[11px] text-[var(--text-dim)]">{highlightMatch(getSlashDescription(command, t), query)}</span>}
+                </button>
+              );
+            })}
           </div>
         ) : (
-          groups.map((group) => (
-            <section key={group.source} className="mb-3">
-              <div className="sticky top-[-10px] z-[1] flex items-center justify-between gap-2 bg-[var(--bg)] px-0 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
-                <span>{t(SLASH_SOURCE_GROUP_LABEL_KEYS[group.source])}</span>
-                <span className="font-mono font-medium">{group.items.length}</span>
-              </div>
-              <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-                {group.items.map(({ command, index }) => {
-                  const active = index === activeIndex;
-                  const dormant = isDormantSkillCommand(command, dormancy);
-                  return (
-                    <button
-                      key={`${command.source}:${command.name}`}
-                      ref={(node) => { itemRefs.current[index] = node; }}
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); onApply(command); }}
-                      onMouseEnter={() => onHover(index)}
-                      className={`flex min-h-[58px] min-w-0 flex-col justify-center gap-1 rounded-[7px] border px-2.5 py-2 text-left text-[var(--text)] ${
-                        active
-                          ? "border-[var(--accent)] bg-[var(--bg-selected)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--accent)_28%,transparent)]"
-                          : "border-[var(--border)] bg-[var(--bg-panel)]"
-                      }`}
-                    >
-                      <span className="break-words font-mono text-[13px]" style={{ overflowWrap: "anywhere" }}>
-                        /{command.name}
-                        {dormant && (
-                          <span className="ml-1.5 whitespace-nowrap rounded-[3px] border border-[var(--border)] px-1 text-[9px] text-[var(--text-dim)]">
-                            {t("chat.dormant")}
-                          </span>
-                        )}
-                      </span>
-                      {command.description && (
-                        <span className="text-[11px] leading-[1.35] text-[var(--text-dim)]" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden" }}>
-                          {getSlashDescription(command, t)}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ))
+          groups.map((group) => {
+            const expanded = expandedGroups.has(group.source);
+            const visibleItems = expanded ? group.items : group.items.slice(0, MAX_VISIBLE_PER_GROUP);
+            const hiddenCount = group.items.length - visibleItems.length;
+            return (
+              <section key={group.source} className="mb-3 last:mb-0">
+                <div className="sticky top-[-10px] z-[1] flex items-center justify-between gap-2 bg-[var(--bg)] px-0 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+                  <span>{t(SLASH_SOURCE_GROUP_LABEL_KEYS[group.source])}</span><span className="font-mono font-medium">{group.items.length}</span>
+                </div>
+                <div className="space-y-1">
+                  {visibleItems.map(({ command, index }) => {
+                    const active = index === activeIndex;
+                    const dormant = isDormantSkillCommand(command, dormancy);
+                    return (
+                      <button key={`${command.source}:${command.name}`} ref={(node) => { itemRefs.current[index] = node; }} type="button" onMouseDown={(event) => { event.preventDefault(); onApply(command); }} onMouseEnter={() => onHover(index)} className={`flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-[var(--text)] ${active ? "bg-[var(--bg-selected)]" : "hover:bg-[var(--bg-hover)]"}`}>
+                        <span className="shrink-0 font-mono text-[13px]">/{command.name}</span>
+                        {dormant && <span className="rounded-[3px] border border-[var(--border)] px-1 text-[9px] text-[var(--text-dim)]">{t("chat.dormant")}</span>}
+                        {command.description && <span className="min-w-0 truncate text-[11px] text-[var(--text-dim)]">{getSlashDescription(command, t)}</span>}
+                      </button>
+                    );
+                  })}
+                  {hiddenCount > 0 && <button type="button" onMouseDown={(event) => { event.preventDefault(); setExpandedGroups((current) => new Set(current).add(group.source)); }} className="h-8 w-full rounded-[7px] px-2.5 text-left text-[11px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-muted)]">Show {hiddenCount} more</button>}
+                </div>
+              </section>
+            );
+          })
         )}
       </div>
     </div>
