@@ -1157,14 +1157,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                     src={img.previewUrl}
                     alt=""
                     onClick={() => openImageInVSCode(img.data, img.mimeType)}
-                    className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover transition-transform duration-100 group-hover:scale-105"
+                    className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover"
                   />
                   <button
                     onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                     title={t("chat.removeImage") ?? "Remove"}
-                    className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
+                    className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
                   >
-                    <X size={8} strokeWidth={1.5} />
+                    <X size={7} strokeWidth={1.5} />
                   </button>
                 </div>
               ))}
