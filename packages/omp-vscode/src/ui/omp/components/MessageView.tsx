@@ -7,7 +7,7 @@ import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Copy } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -904,6 +904,32 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
             {getToolPreview(block)}
           </span>
         )}
+        {block.toolName === "bash" && (block.input as { command?: string })?.command && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void copyText((block.input as { command: string }).command);
+            }}
+            title={t("i18n.copyCommand") ?? "Copy command"}
+            style={{
+              display: "flex", alignItems: "center", gap: 3,
+              padding: "2px 6px", height: 20,
+              background: "none", border: "1px solid var(--border)",
+              borderRadius: 4,
+              color: "var(--text-dim)",
+              cursor: "pointer",
+              fontSize: 10,
+              flexShrink: 0,
+              opacity: 0,
+              transition: "opacity 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = "var(--text-muted)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
+          >
+            <Copy size={10} />
+          </button>
+        )}
         {duration !== undefined && (
           <span style={{ fontSize: 11, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
@@ -1556,7 +1582,11 @@ function getToolPreview(block: ToolCallContent): string {
   if (keys.length === 0) return "";
 
   // Common tool input patterns
-  if ("command" in input) return String(input.command).slice(0, 120);
+  if ("command" in input) {
+    // bash: prefer the human-readable `i` (intent) field; fall back to the command.
+    if (typeof input.i === "string" && input.i.trim()) return input.i.trim().slice(0, 120);
+    return String(input.command).slice(0, 120);
+  }
   if ("path" in input) return String(input.path).slice(0, 120);
   if ("file_path" in input) return String(input.file_path).slice(0, 120);
   if ("pattern" in input) return String(input.pattern).slice(0, 120);
