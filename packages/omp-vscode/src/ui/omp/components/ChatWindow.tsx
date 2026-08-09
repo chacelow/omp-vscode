@@ -14,7 +14,7 @@ import { Shimmer } from "./ai-elements/shimmer";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
-import { TriangleAlert } from "lucide-react";
+import { ChevronRight, Clock, TriangleAlert } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
@@ -169,9 +169,7 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { mes
         }}
         title={expanded ? t("chat.collapseProcess") : t("chat.expandProcess")}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>
-          <polyline points="4 2.5 7.5 6 4 9.5" />
-        </svg>
+        <ChevronRight size={12} strokeWidth={1.6} style={{ flexShrink: 0, transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
         <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {parts.join(" · ")}
         </span>
@@ -932,10 +930,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
                         key={`turn-duration-${userIdx}`}
                         className="mt-0.5 flex items-center justify-end gap-1 pr-1 font-mono text-[10px] tabular-nums text-[var(--text-dim)]"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
+                        <Clock size={10} strokeWidth={1.8} />
                         {groupDuration}s
                       </div>,
                     );

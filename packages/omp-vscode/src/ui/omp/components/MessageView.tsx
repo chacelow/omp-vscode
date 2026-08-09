@@ -7,7 +7,8 @@ import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
-import { BrainIcon, Check, ChevronDown, Copy } from "lucide-react";
+import { BrainIcon, Check, ChevronDown, Copy, GitBranch } from "lucide-react";
+import { Button } from "./ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -564,24 +565,21 @@ function AssistantMessageView({
       {!isStreaming && (time || canFork) && (
         <div className="mt-1.5 flex items-center justify-end gap-3 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
           {canFork && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => onFork?.(entryId!)}
               disabled={forking}
               title={forking ? t("i18n.creatingSession") : t("i18n.newSessionTitle")}
               className={cn(
-                "flex h-[22px] cursor-pointer items-center gap-1 whitespace-nowrap rounded-[5px] border-none bg-transparent px-2 text-[11px] font-normal",
-                forking ? "cursor-not-allowed text-[var(--accent)]" : "text-[var(--text-dim)] hover:text-[var(--accent)]",
+                "h-[22px] gap-1 px-2 text-[11px] font-normal",
+                forking && "cursor-not-allowed text-[var(--accent)]",
               )}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="6" y1="3" x2="6" y2="15" />
-                <circle cx="18" cy="6" r="3" />
-                <circle cx="6" cy="18" r="3" />
-                <path d="M18 9a9 9 0 0 1-9 9" />
-              </svg>
+              <GitBranch size={11} strokeWidth={1.8} />
               {forking ? t("i18n.creating") : t("i18n.newSession")}
-            </button>
+            </Button>
           )}
           {time && <span className="text-[10px] text-[var(--text-dim)]">{time}</span>}
         </div>
@@ -850,9 +848,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
         {duration !== undefined && (
           <span style={{ fontSize: 11, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--text-dim)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-          <polyline points="2 3.5 5 6.5 8 3.5" />
-        </svg>
+        <ChevronDown size={10} strokeWidth={1.6} className="shrink-0 text-[var(--text-dim)]" style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
       </button>
 
       <AnimatePresence initial={false}>
