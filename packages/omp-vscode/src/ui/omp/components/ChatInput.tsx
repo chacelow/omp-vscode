@@ -1096,16 +1096,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             {compactError}
           </div>
         )}
-        {/* Image previews — above the input, inside the composer card */}
+        {/* Image previews — a single-row strip above the input, styled like
+            the bottom toolbar row */}
         {attachedImages.length > 0 && (
-          <div className="mb-1.5 flex flex-wrap gap-1.5">
+          <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
             {attachedImages.map((img, i) => (
               <div key={i} className="group relative shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.previewUrl}
                   alt=""
-                  className="block h-14 w-14 rounded-md border border-[var(--border)] object-cover"
+                  className="block h-10 w-10 rounded-md border border-[var(--border)] object-cover"
                 />
                 <button
                   onClick={() => removeImage(i)}
