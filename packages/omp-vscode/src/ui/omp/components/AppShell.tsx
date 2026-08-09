@@ -169,16 +169,16 @@ export function AppShell() {
   // Branch navigator state — populated by ChatWindow via onBranchDataChange
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
-  const branchLeafChangeFnRef = useRef<((leafId: string | null) => void) | null>(null);
+  const branchLeafChangeFnRef = useRef<((leafId: string | null) => Promise<void>) | null>(null);
 
-  const handleBranchDataChange = useCallback((tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => void) => {
+  const handleBranchDataChange = useCallback((tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => Promise<void>) => {
     setBranchTree(tree);
     setBranchActiveLeafId(activeLeafId);
     branchLeafChangeFnRef.current = onLeafChange;
   }, []);
 
-  const handleBranchLeafChange = useCallback((leafId: string | null) => {
-    branchLeafChangeFnRef.current?.(leafId);
+  const handleBranchLeafChange = useCallback(async (leafId: string | null): Promise<void> => {
+    await branchLeafChangeFnRef.current?.(leafId);
   }, []);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
@@ -969,8 +969,8 @@ export function AppShell() {
                   <SessionTreeNodes
                     tree={branchTree}
                     activeIds={new Set(branchActiveLeafId ? [branchActiveLeafId] : [])}
-                    onSelect={(entryId) => {
-                      handleBranchLeafChange(entryId);
+                    onSelect={async (entryId) => {
+                      await handleBranchLeafChange(entryId);
                       setTreeOpen(false);
                     }}
                   />

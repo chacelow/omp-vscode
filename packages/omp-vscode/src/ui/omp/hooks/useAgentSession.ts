@@ -147,7 +147,7 @@ export interface UseAgentSessionOptions {
   onSessionForked?: (newSessionId: string) => void;
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
-  onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => void) => void;
+  onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => Promise<void>) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsPanelOpen?: () => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
@@ -1584,27 +1584,31 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const navigateLeaf = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;
-    if (!sid || bashRunningRef.current) return;
-    // Same-file branch switch (Session Tree click): the extension reorders
-    // the session file so this message's ancestor chain is the leaf, restarts
-    // the RPC session on the same file — no new session, no deletion.
-    const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/navigate-leaf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entryId }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    ensureEventsConnected(sid).catch(() => {});
-    setActiveLeafId(entryId);
-    await loadContext(sid, entryId);
-  }, [ensureEventsConnected, loadContext]);
-
-  const handleNavigate = useCallback(async (entryId: string) => {
+    if (!sid || bashRunningRef.current || agentRunningRef.current) return;
+    closeEvents();
+    dispatch({ type: "reset" });
+    setAgentPhase(null);
+    // Block composer submission while the old RPC wrapper is replaced. Only
+    // expose the resumed context after SSE and the authoritative session
+    // context have completed their handshakes.
+    setAgentRunning(true);
     try {
-      await navigateLeaf(entryId);
-    } catch (e) {
-      console.error("Navigate failed:", e);
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/navigate-leaf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await ensureEventsConnected(sid);
+      const loadedState = await loadSession(sid, true, true);
+      if (!loadedState) throw new Error("The resumed session context could not be loaded.");
+    } finally {
+      setAgentRunning(false);
     }
+  }, [closeEvents, ensureEventsConnected, loadSession]);
+
+  const handleNavigate = useCallback(async (entryId: string): Promise<void> => {
+    await navigateLeaf(entryId);
   }, [navigateLeaf]);
 
   const handleLeafChange = useCallback(async (leafId: string | null) => {
