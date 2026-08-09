@@ -10,6 +10,8 @@ import {
   MAX_ATTACHED_IMAGES,
   isBase64ImageWithinLimits,
 } from "@/lib/image-attachments";
+/** Textarea free-resize ceiling: 15 lines × 20.8px line height. */
+const TEXTAREA_MAX_HEIGHT = Math.round(15 * 20.8);
 import {
   buildEntriesFromFiles, buildAtInsertText, extractAtQuery, filterFileEntries,
   type AtQueryMatch, type FileIndexEntry,
@@ -270,6 +272,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const draftKeyRef = useRef(draftKey);
   const valueRef = useRef(value);
   const dirtyRef = useRef(false);
+  const manualResizeRef = useRef(false);
   const attachedImagesRef = useRef(attachedImages);
   const pendingImageCountRef = useRef(0);
   valueRef.current = value;
@@ -317,7 +320,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         if (!ta) return;
         ta.focus();
         ta.style.height = "auto";
-        ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
       });
     },
     prependText(text: string) {
@@ -334,7 +337,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         ta.focus();
         ta.setSelectionRange(combined.length, combined.length);
         ta.style.height = "auto";
-        ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
       });
     },
     insertText(text: string) {
@@ -357,7 +360,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         ta.setSelectionRange(pos, pos);
         ta.focus();
         ta.style.height = "auto";
-        ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
       });
     },
     addImages(files: File[]) {
@@ -426,6 +429,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (draftKey) clearDraft(draftKey);
     if (draftKeyRef.current && draftKeyRef.current !== draftKey) clearDraft(draftKeyRef.current);
     clearImages();
+    manualResizeRef.current = false;
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -464,8 +468,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
+    // Once the user drags the resize handle, stop auto-growing (their manual
+    // height wins); clearInput resets it.
+    if (manualResizeRef.current) return;
     ta.style.height = "auto";
-    if (value) ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+    if (value) ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
   }, [value]);
 
   useEffect(() => {
@@ -643,7 +650,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       el.focus();
       el.setSelectionRange(newPos, newPos);
       el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+      el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
     });
   }, [atQuery, value]);
 
@@ -688,7 +695,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       ta.focus();
       ta.setSelectionRange(text.length, text.length);
       ta.style.height = "auto";
-      ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+      ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
     });
   }, []);
 
@@ -703,7 +710,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       ta.focus();
       ta.setSelectionRange(nextValue.length, nextValue.length);
       ta.style.height = "auto";
-      ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+      ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
     });
   }, []);
 
@@ -903,7 +910,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+    ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
   }, []);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -1174,6 +1181,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             ref={textareaRef}
             value={value}
             readOnly={collapsed}
+            onMouseDown={(e) => {
+              // The native resize handle lives at the bottom edge; a drag
+              // there should freeze auto-grow so the manual height sticks.
+              const rect = e.currentTarget.getBoundingClientRect();
+              if (rect.bottom - e.clientY < 10) manualResizeRef.current = true;
+            }}
             onChange={(e) => {
               dirtyRef.current = true;
               setValue(e.target.value);
@@ -1203,7 +1216,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 : t("chat.messagePlaceholder")
             }
             rows={1}
-            className="min-h-6 max-h-[200px] w-full min-w-0 flex-1 resize-none overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
+            className="min-h-6 max-h-[calc(15*1.6*13px)] w-full min-w-0 flex-1 resize-y overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
             style={{ fontSize: 12, textSizeAdjust: "none", pointerEvents: collapsed ? "none" : undefined }}
           />
 
