@@ -3,6 +3,7 @@
 // folders expand/collapse, active branch highlighted. Data comes from the
 // session file's full tree (every branch); clicking a node switches the
 // branch via navigate-leaf (same file, no new session).
+import { useEffect, useRef } from "react";
 import { Tree, TreeItem, TreeItemLabel } from "@/components/reui/tree";
 import { hotkeysCoreFeature, syncDataLoaderFeature } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
@@ -82,6 +83,11 @@ export function SessionTreeNodes({
 }) {
   const items = buildTreeData(tree, activeIds);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
+  }, [tree]);
   const treeApi = useTree<NodeData>({
     // Default: fully expanded — the full history tree opens showing every
     // branch; users collapse subtrees as needed.
@@ -96,57 +102,45 @@ export function SessionTreeNodes({
     },
     features: [syncDataLoaderFeature, hotkeysCoreFeature],
   });
-
   return (
-    <Tree
-      className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
-      indent={INDENT}
-      tree={treeApi}
-    >
-      {treeApi.getItems().map((item) => {
-        const id = item.getId();
-        const data = item.getItemData();
-        if (id === ROOT_ID) return null;
-        // headless-tree's getItems() returns ALL loaded items (folded ones
-        // included) — render only items whose ancestor chain is expanded,
-        // otherwise collapsed subtrees duplicate on screen.
-        let visible = true;
-        let parent = item.getParent();
-        while (parent) {
-          if (parent.getId() !== ROOT_ID && !parent.isExpanded()) {
-            visible = false;
-            break;
+    <div ref={scrollRef} className="max-h-[calc(min(60vh,420px)-16px)] overflow-y-auto">
+      <Tree
+        className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
+        indent={INDENT}
+        tree={treeApi}
+      >
+        {treeApi.getItems().map((item) => {
+          const id = item.getId();
+          const data = item.getItemData();
+          if (id === ROOT_ID) return null;
+          let visible = true;
+          let parent = item.getParent();
+          while (parent) {
+            if (parent.getId() !== ROOT_ID && !parent.isExpanded()) {
+              visible = false;
+              break;
+            }
+            parent = parent.getParent();
           }
-          parent = parent.getParent();
-        }
-        if (!visible) return null;
-        return (
-          <TreeItem
-            key={id}
-            item={item}
-            onClick={() => {
-              if (id !== ROOT_ID) onSelect(id);
-            }}
-          >
-            <TreeItemLabel
-              className={cn(
-                "flex w-full min-w-0 items-center gap-1.5 rounded-[7px] px-2 py-1 text-xs",
-                data.isActive
-                  ? "bg-[var(--bg-selected)] text-[var(--text)]"
-                  : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]",
-              )}
-            >
-              {roleIcon(data.role)}
-              <span className="min-w-0 flex-1 truncate">{data.name}</span>
-              {data.hasBranch && (
-                <span className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[4px] py-[1px] text-[9px] leading-none whitespace-nowrap text-[var(--text-dim)]">
-                  branch
-                </span>
-              )}
-            </TreeItemLabel>
-          </TreeItem>
-        );
-      })}
-    </Tree>
+          if (!visible) return null;
+          return (
+            <TreeItem key={id} item={item} onClick={() => onSelect(id)}>
+              <TreeItemLabel
+                className={cn(
+                  "flex w-full min-w-0 items-center gap-1.5 rounded-[7px] px-2 py-1 text-left text-xs",
+                  data.isActive
+                    ? "bg-[var(--bg-selected)] text-[var(--text)]"
+                    : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]",
+                )}
+              >
+                {roleIcon(data.role)}
+                <span className="min-w-0 flex-1 truncate">{data.name}</span>
+                {data.hasBranch && <span className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[4px] py-[1px] text-[9px] leading-none whitespace-nowrap text-[var(--text-dim)]">branch</span>}
+              </TreeItemLabel>
+            </TreeItem>
+          );
+        })}
+      </Tree>
+    </div>
   );
 }

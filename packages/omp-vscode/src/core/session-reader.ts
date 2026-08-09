@@ -458,6 +458,51 @@ export function anchorSessionAt(filePath: string, entryId: string): boolean {
   return true;
 }
 
+/**
+ * Resume a session after any visible message. This appends a non-message leaf
+ * anchored TO the selected entry, preserving every existing branch. The next
+ * prompt becomes a new child of that entry.
+ */
+export function resumeSessionAt(filePath: string, entryId: string): boolean {
+  let lines: string[];
+  try {
+    lines = readFileSync(filePath, "utf8").split("\n").filter((line) => line.trim().length > 0);
+  } catch {
+    return false;
+  }
+  const ids = new Set<string>();
+  let found = false;
+  for (const line of lines) {
+    try {
+      const entry = JSON.parse(line) as Record<string, unknown>;
+      if (typeof entry.id === "string") ids.add(entry.id);
+      if (entry.id === entryId && entry.type === "message") found = true;
+    } catch {
+      // ignore malformed entries
+    }
+  }
+  if (!found) return false;
+  let id = "";
+  for (let index = 0; index < 100; index += 1) {
+    const candidate = crypto.randomUUID().slice(-8);
+    if (!ids.has(candidate)) { id = candidate; break; }
+  }
+  if (!id) return false;
+  const anchor = {
+    type: "thinking_level_change",
+    id,
+    parentId: entryId,
+    timestamp: new Date().toISOString(),
+    thinkingLevel: "off",
+  };
+  try {
+    writeFileSync(filePath, `${readFileSync(filePath, "utf8").trimEnd()}\n${JSON.stringify(anchor)}\n`, "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** True if the entry carries conversation context (messages). */
 // Path/id caches (used by the session manager for resolve-by-id)
 // ---------------------------------------------------------------------------

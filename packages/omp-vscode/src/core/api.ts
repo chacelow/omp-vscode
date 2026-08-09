@@ -11,7 +11,7 @@ import {
   startRpcSession,
   subscribeRunningSessions,
 } from "./rpc-manager";
-import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, anchorSessionAt, resolveSessionPath } from "./session-reader";
+import { getOmpAgentDir, listAllSessions, loadSessionContext, loadSessionTree, readSessionHeader, anchorSessionAt, resumeSessionAt, resolveSessionPath } from "./session-reader";
 import type { SessionTreeNode as ReaderSessionTreeNode } from "./session-reader";
 import { parseModelRef, readOmpConfig, readOmpModelsFromConfig, readOmpModelsFromDb } from "./omp-models";
 
@@ -310,9 +310,9 @@ export class ApiHandler {
 
   /**
    * POST /api/sessions/[id]/navigate-leaf { entryId }
-   * Switch the active branch to the given message's branch (Session Tree
-   * click): reorder the file so that message's ancestor chain is last (leaf),
-   * restart the RPC session on the SAME file. Old branches stay in the file.
+   * Resume after the selected visible message. A new append-only anchor is
+   * attached to it, preserving existing branches; the next prompt appends a
+   * new branch from that precise point.
    */
   private async sessionNavigateLeaf(sid: string, body?: string): Promise<HandlerResult> {
     let req: { entryId?: string };
@@ -336,8 +336,8 @@ export class ApiHandler {
         // continue anyway
       }
     }
-    if (!anchorSessionAt(filePath, entryId)) {
-      return { status: 400, body: { error: "Entry not found or not a user message" } };
+    if (!resumeSessionAt(filePath, entryId)) {
+      return { status: 400, body: { error: "Entry not found" } };
     }
     try {
       const { session } = await startRpcSession(sid, filePath, undefined);
