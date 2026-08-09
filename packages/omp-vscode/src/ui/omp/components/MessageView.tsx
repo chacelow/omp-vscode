@@ -783,24 +783,13 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
 }
 
 
-/** `read` tool — flowing style like thinking: a label row (`read` keyword +
- * path + grab range), no card, no success green. A single file opens in VS
- * Code on click; a directory expands to a scrollable (max-height) clickable
- * list. Failures are greyed out. */
+/** `read` tool — flowing style like thinking: a single label row (`read`
+ * keyword + basename + grab range). No card, no green, no expand/collapse —
+ * clicking the filename opens it in VS Code. Failures are greyed out. */
 function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void }) {
-  const { t } = useI18n();
-  const [expanded, setExpanded] = useState(false);
   const input = (block.input ?? {}) as { path?: string; grab?: string | { start?: number; end?: number } | [number, number] };
   const path = input.path ?? "";
   const isError = result?.isError === true;
-  const resultText = result
-    ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
-    : "";
-  // File reads return "[name#ID]\n1:..." (file header + numbered lines);
-  // directory reads return an ls tree (".\n  - file  size  date"). Only
-  // directories expand; file paths open in VS Code on click.
-  const isFile = /^\[[^\]]+#[A-Fa-f0-9]+\]/.test(resultText.trim());
-  const isList = !isFile;
 
   const grabText = (() => {
     const g = input.grab;
@@ -813,8 +802,6 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
     if (g && typeof g.start === "number" && typeof g.end === "number") return `${g.start}:${g.end}`;
     return null;
   })();
-
-  const rows = resultText.trim().split("\n").map((l) => l.trim()).filter(Boolean);
 
   return (
     <div className={cn("sf-read-block my-0.5 text-[12px]", isError && "opacity-50")}>
@@ -830,12 +817,12 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         <button
           type="button"
           onClick={() => onOpenFile?.(path)}
-          disabled={!onOpenFile || isList}
+          disabled={!onOpenFile}
           title={path}
           className={cn(
-            "min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left font-mono text-[11px]",
+            "min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left font-mono text-[11px] underline-offset-2",
             isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
-            onOpenFile && !isList && "cursor-pointer hover:text-[var(--text)]",
+            onOpenFile && "cursor-pointer hover:text-[var(--text)] hover:underline",
           )}
         >
           {path ? path.split("/").filter(Boolean).pop() ?? path : "(no path)"}
@@ -846,37 +833,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         {duration !== undefined && (
           <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
         )}
-        {isList && (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-[var(--text-dim)] hover:text-[var(--text-muted)]"
-          >
-            <ChevronDown size={10} className={cn("transition-transform duration-150", expanded && "rotate-180")} />
-          </button>
-        )}
       </div>
-      {expanded && isList && (
-        <div className="ml-[5px] mt-0.5 max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3">
-          {rows.map((row, i) => {
-            // ls-tree line like "- src/" or "└─ video_worker.py" → the entry
-            // name; join with the read directory for the full path.
-            const rel = row.replace(/^[│├└─\s]+/, "").replace(/^-\s*/, "");
-            const full = path.endsWith("/") ? path + rel : `${path}/${rel}`;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onOpenFile?.(full)}
-                disabled={!onOpenFile}
-                className="block w-full cursor-pointer truncate border-none bg-transparent p-0 text-left font-mono text-[11px] leading-[1.7] text-[var(--text-muted)] hover:text-[var(--text)] disabled:cursor-default"
-              >
-                {row}
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
