@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
+import { ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -728,56 +729,26 @@ function ThinkingBlock({ block, duration, sessionId, entryId, blockIndex }: {
   };
 
   return (
-    <div className="sf-thinking-block" style={{ fontSize: 13, margin: "2px 0" }}>
+    <div className="sf-thinking-block my-0.5 text-[13px]">
       <button
         onClick={() => void toggle()}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          width: "100%",
-          padding: "2px 0",
-          background: "transparent",
-          border: "none",
-          color: "var(--text-dim)",
-          cursor: "pointer",
-          fontSize: 11,
-          textAlign: "left",
-          transition: "color 0.12s",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+        className="flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-[11px] text-[var(--text-dim)] transition-colors duration-100 hover:text-[var(--text-muted)]"
       >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ flexShrink: 0, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-        <span>{expanded ? (t("i18n.thinking") ?? "Thinking") : (t("i18n.thinking") ?? "Thinking")}</span>
+        <ChevronDown
+          size={10}
+          className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")}
+        />
+        <span>{t("i18n.thinking") ?? "Thinking"}</span>
         {duration !== undefined && (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+          <span className="ml-auto font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
         )}
       </button>
       {expanded && (
         <div
-          style={{
-            marginLeft: 5,
-            padding: "2px 0 4px 12px",
-            color: error ? "#f87171" : "var(--text-muted)",
-            fontSize: 12,
-            lineHeight: 1.65,
-            whiteSpace: "pre-wrap",
-            background: "transparent",
-            borderLeft: "1px solid color-mix(in srgb, var(--border) 60%, transparent)",
-          }}
+          className={cn(
+            "ml-[5px] border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
+            error ? "text-[#f87171]" : "text-[var(--text-muted)]",
+          )}
         >
           {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
         </div>
