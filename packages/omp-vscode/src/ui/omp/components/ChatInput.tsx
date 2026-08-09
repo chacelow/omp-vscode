@@ -1182,10 +1182,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             value={value}
             readOnly={collapsed}
             onMouseDown={(e) => {
-              // The native resize handle lives at the bottom edge; a drag
-              // there should freeze auto-grow so the manual height sticks.
+              // The native resize handle sits at the bottom edge. A click
+              // there is NOT a drag by itself (the textarea is short) — only
+              // confirm a manual resize if the height actually changed by
+              // mouseup, so auto-grow keeps working for plain clicks/typing.
               const rect = e.currentTarget.getBoundingClientRect();
-              if (rect.bottom - e.clientY < 10) manualResizeRef.current = true;
+              if (rect.bottom - e.clientY >= 10) return;
+              const ta = textareaRef.current;
+              const startH = ta?.style.height ?? "";
+              const onUp = () => {
+                document.removeEventListener("mouseup", onUp);
+                const cur = textareaRef.current;
+                if (cur && cur.style.height !== startH) manualResizeRef.current = true;
+              };
+              document.addEventListener("mouseup", onUp);
             }}
             onChange={(e) => {
               dirtyRef.current = true;
