@@ -827,7 +827,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
   })();
 
   return (
-    <div className={cn("sf-read-block my-0.5 text-[12px]", isError && "opacity-50")}>
+    <div className={cn("sf-read-block text-[12px]", isError && "opacity-50")}>
       <div className="flex items-center gap-1.5">
         <span
           className={cn(
