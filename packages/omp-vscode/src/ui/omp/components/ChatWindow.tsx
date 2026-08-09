@@ -10,6 +10,7 @@ import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle, type ChatInputProps } from "./ChatInput";
 import { ChatFooterBar } from "./chat/ChatFooterBar";
 import { ChatMinimap } from "./chat/ChatMinimap";
+import { Shimmer } from "./ai-elements/shimmer";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { LoadingState } from "./ui/spinner";
@@ -931,14 +932,18 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
             )}
 
             {agentRunning && !streamState.streamingMessage && agentPhase && (
-              <div className="py-2 text-[13px] text-text-muted">
-                <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase, t)}</span>
+              <div className="py-2 text-[13px]">
+                <Shimmer className="text-[13px] text-[var(--text-muted)]" duration={2.5} spread={1}>
+                  {phaseLabel(agentPhase, t)}
+                </Shimmer>
               </div>
             )}
 
             {bashRunning && !pendingBash && (
-              <div className="py-2 text-[13px] text-text-muted">
-                 <span className="animate-[pulse_1.5s_infinite]">{t("chat.runningCommand")}</span>
+              <div className="py-2 text-[13px]">
+                <Shimmer className="text-[13px] text-[var(--text-muted)]" duration={2.5} spread={1}>
+                  {t("chat.runningCommand")}
+                </Shimmer>
               </div>
             )}
 

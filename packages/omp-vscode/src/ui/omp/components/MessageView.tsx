@@ -447,6 +447,7 @@ function AssistantMessageView({
   const [hovered, setHovered] = useState(false);
   const streamStartRef = useRef<number | null>(null);
   const [tps, setTps] = useState<number | null>(null);
+  const [durationHover, setDurationHover] = useState<number | null>(null);
   const blockItemsRef = useRef(blockItems);
   blockItemsRef.current = blockItems;
 
@@ -533,6 +534,7 @@ function AssistantMessageView({
       if (chars === 0) return;
       if (streamStartRef.current === null) streamStartRef.current = now;
       const elapsed = (now - streamStartRef.current) / 1000;
+      setDurationHover(elapsed);
       if (elapsed > 0.5) setTps(chars / 4 / elapsed);
     };
     const id = setInterval(tick, 300);
@@ -564,6 +566,11 @@ function AssistantMessageView({
           {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
           {isStreaming && tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
+          {(thinkingDurationFromFile !== undefined || durationHover !== null) && (
+            <div className="text-[var(--text-dim)]">
+              {(durationHover ?? thinkingDurationFromFile)?.toFixed(1)}s
+            </div>
+          )}
           {time && !isStreaming && <div className="text-[var(--text-dim)]">{time}</div>}
         </div>
       )}
