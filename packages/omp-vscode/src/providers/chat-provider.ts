@@ -157,6 +157,18 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           this.log.appendLine(`[${msg.level}] ${msg.message}${msg.stack ? `\n${msg.stack}` : ""}`);
           break;
 
+        case "openFile": {
+          // Open a file in the real VS Code editor (opencursor-style): the
+          // webview's file panel is stubbed, so chat file links/read tool
+          // jumps land in the native editor instead.
+          const p = (msg as { path?: string }).path;
+          if (!p) break;
+          const uri = vscode.Uri.file(p);
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, { preview: true });
+          break;
+        }
+
         case "api": {
           const resp = await this.api.handle(msg.url ?? "", msg.method ?? "GET", msg.body);
           this.post({ type: "apiResponse", requestId: msg.requestId, status: resp.status, body: resp.body });

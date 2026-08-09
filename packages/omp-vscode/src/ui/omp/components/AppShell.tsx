@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
+import { openInVSCode } from "../../bridge";
 import { ChatWindow } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
@@ -502,8 +503,10 @@ export function AppShell() {
   }, [isMobile]);
 
   const handleOpenLinkedFile = useCallback((filePath: string) => {
-    handleOpenFile(filePath, getFileName(filePath), { sourceSessionId: selectedSession?.id ?? null });
-  }, [handleOpenFile, selectedSession?.id]);
+    // Open in the REAL VS Code editor (native openTextDocument). The old
+    // webview file-panel tabs are gone — this is the chat's file-open path.
+    openInVSCode(filePath);
+  }, []);
 
   const handleCloseFileTab = useCallback((tabId: string) => {
     setFileTabs((prev) => {

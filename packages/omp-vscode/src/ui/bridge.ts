@@ -209,3 +209,19 @@ window.EventSource = BridgeEventSource as unknown as typeof EventSource;
 window.addEventListener("omp-request-versions", () => {
   ompPost({ type: "getVersions" });
 });
+
+// ---------------------------------------------------------------------------
+// Open a file in VS Code (native editor, not the webview file panel)
+// ---------------------------------------------------------------------------
+
+/** Ask the extension host to open `filePath` in the real VS Code editor. */
+export function openInVSCode(filePath: string): void {
+  ompPost({ type: "openFile", path: filePath });
+}
+
+declare global {
+  interface Window {
+    openInVSCode?: (filePath: string) => void;
+  }
+}
+window.openInVSCode = openInVSCode;
