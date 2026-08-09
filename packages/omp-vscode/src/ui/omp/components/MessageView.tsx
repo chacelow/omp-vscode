@@ -546,13 +546,33 @@ function AssistantMessageView({
 
   if (blocks.length === 0 && !isStreaming && !providerError) return null;
 
+  // Usage/model info is hidden from the layout; hovering the message shows
+  // it next to the cursor (mouse-follow tooltip).
+  const [usageTip, setUsageTip] = useState<{ x: number; y: number } | null>(null);
+
   return (
     <div
       style={{ marginBottom: 16 }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setUsageTip(null); }}
+      onMouseMove={(e) => {
+        if (!message.usage && !message.model) return;
+        setUsageTip({ x: e.clientX, y: e.clientY });
+      }}
     >
-      {/* Model label */}
+      {usageTip && (message.usage || message.model) && (
+        <div
+          className="pointer-events-none fixed z-[200] max-w-[320px] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
+          style={{ left: usageTip.x + 12, top: usageTip.y + 12 }}
+        >
+          {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
+          {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
+          {isStreaming && tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
+        </div>
+      )}
+      {/* Model label / streaming estimate — hidden from layout; the hover
+          tooltip above shows model, usage and tok/s instead. */}
+      {false && (
       <div
         style={{
           fontSize: 11,
@@ -586,10 +606,11 @@ function AssistantMessageView({
                     {est}
                   </span>
                   {tps !== null && (() => {
-                    const bg = tps >= 50 ? "#53b3cb" : tps >= 30 ? "#9bc53d" : tps >= 15 ? "#f9c22e" : "#e01a4f";
+                    const t = tps;
+                    const bg = t >= 50 ? "#53b3cb" : t >= 30 ? "#9bc53d" : t >= 15 ? "#f9c22e" : "#e01a4f";
                     return (
                       <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, background: bg, color: "#fff", fontSize: 11, fontWeight: 400 }}>
-                        {tps.toFixed(1)} t/s
+                        {t.toFixed(1)} t/s
                       </span>
                     );
                   })()}
@@ -599,8 +620,9 @@ function AssistantMessageView({
           );
         })()}
       </div>
+      )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {blockItems.map(({ block, originalIndex }) => (
           <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} />
         ))}
@@ -630,11 +652,6 @@ function AssistantMessageView({
       <div style={{
         display: "flex", alignItems: "center", gap: 8, marginTop: 4,
       }}>
-        {message.usage && !isStreaming && (
-          <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-            {formatUsage(message.usage)}
-          </div>
-        )}
         {textContent && !isStreaming && (
           <button
             onClick={copyContent}
