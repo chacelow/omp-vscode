@@ -1514,9 +1514,31 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const sid = sessionIdRef.current;
     if (!sid || !text.trim()) return;
     setForkingEntryId(entryId);
-    // Immediate feedback: flip running + show the waiting-for-model phase
-    // locally (no optimistic message insertion — it duplicated the replay;
-    // the streamed answer + agent_end reload reconcile with the file).
+    // Immediate feedback, in order:
+    // 1. Optimistically show the edited message (keeps every ancestor,
+    //    drops everything after the edit point) — the user sees "what I
+    //    confirmed" instantly, no waiting on the rewind round-trip.
+    // 2. Flip running + show the waiting-for-model phase locally so the
+    //    Shimmered "waiting for model" label appears right away.
+    // 3. rewind (append anchor + restart same session) -> reconnect SSE ->
+    //    replay prompt. The streamed answer appends after the optimistic
+    //    message; agent_end reload replaces it with the file-backed entry
+    //    (same text, no visual change, no duplicate).
+    const pos = entryIds.indexOf(entryId);
+    if (pos >= 0) {
+      const editedContent: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string }> = [];
+      if (text.trim()) editedContent.push({ type: "text", text });
+      for (const img of images ?? []) editedContent.push({ type: "image", data: img.data, mimeType: img.mimeType });
+      const optimistic: AgentMessage = { role: "user", content: editedContent } as AgentMessage;
+      setMessages((prev) => [
+        ...prev.slice(0, pos),
+        optimistic,
+      ]);
+      // The replay prompt re-delivers this exact user message via message_end;
+      // mark it so the delivered branch consumes the optimistic bubble instead
+      // of appending a duplicate user row while streaming.
+      optimisticUserMessageKeyRef.current = userMessageKey(optimistic);
+    }
     setAgentRunning(true);
     setAgentPhase({ kind: "waiting_model" });
     try {
@@ -1537,8 +1559,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // The RPC process was restarted — re-subscribe BEFORE sending the replay
       // so agent_start/agent_end stream back with normal timing, then replay.
       await ensureEventsConnected(sid);
-      // Show the edit point (everything before it) while the replay streams.
-      await loadContext(sid, null);
       await sendAgentCommand(sid, {
         type: "prompt",
         message: text,
@@ -1551,7 +1571,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally {
       setForkingEntryId(null);
     }
-  }, [ensureEventsConnected, loadContext, setAgentRunning, setAgentPhase]);
+  }, [ensureEventsConnected, entryIds, setAgentRunning, setAgentPhase]);
 
   const navigateLeaf = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;
