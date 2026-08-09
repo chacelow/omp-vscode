@@ -837,7 +837,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
           {path || "(no path)"}
         </button>
         {grabText && (
-          <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">{grabText}</span>
+          <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">L{grabText}</span>
         )}
         {duration !== undefined && (
           <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
