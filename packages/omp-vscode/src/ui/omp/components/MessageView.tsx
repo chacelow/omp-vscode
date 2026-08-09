@@ -565,7 +565,7 @@ function AssistantMessageView({
         >
           {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
-          {isStreaming && tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
+          {tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
           {(thinkingDurationFromFile !== undefined || durationHover !== null) && (
             <div className="text-[var(--text-dim)]">
               {(durationHover ?? thinkingDurationFromFile)?.toFixed(1)}s
@@ -872,19 +872,9 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
       {/* ── Tool call header ── */}
       <button
         onClick={() => setExpanded((v) => !v)}
+        className="group flex w-full min-w-0 cursor-pointer items-center gap-[7px] border-none bg-transparent p-0 text-left text-[12px] text-[var(--text-muted)]"
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          width: "100%",
           padding: "6px 10px",
-          background: "none",
-          border: "none",
-          color: "var(--text-muted)",
-          cursor: "pointer",
-          fontSize: 12,
-          textAlign: "left",
-          minWidth: 0,
         }}
       >
         {isStreaming ? (
@@ -913,7 +903,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
               void copyText((block.input as { command: string }).command);
             }}
             title={t("i18n.copyCommand") ?? "Copy command"}
-            className="flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-[var(--border)] bg-transparent p-0 px-1.5 text-[10px] text-[var(--text-dim)] opacity-0 transition-[opacity,color] duration-100 hover:text-[var(--text-muted)] hover:opacity-100"
+            className="flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-[var(--border)] bg-transparent p-0 px-1.5 text-[10px] text-[var(--text-dim)] opacity-0 transition-[opacity,color] duration-100 group-hover:opacity-100 hover:text-[var(--text-muted)]"
           >
             <Copy size={10} />
           </button>
