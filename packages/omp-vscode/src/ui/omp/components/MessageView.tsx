@@ -442,7 +442,6 @@ function AssistantMessageView({
   const blocks = blockItems.map(({ block }) => block);
   const providerError = getAssistantErrorMessage(message, { isStreaming });
   const [hovered, setHovered] = useState(false);
-  const [copied, setCopied] = useState(false);
   const streamStartRef = useRef<number | null>(null);
   const [tps, setTps] = useState<number | null>(null);
   const blockItemsRef = useRef(blockItems);
@@ -479,13 +478,6 @@ function AssistantMessageView({
     .filter((b): b is TextContent => b.type === "text")
     .map((b) => b.text)
     .join("\n");
-
-  const copyContent = () => {
-    copyText(textContent).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
 
   useEffect(() => {
     if (!isStreaming) {
@@ -570,13 +562,6 @@ function AssistantMessageView({
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
           {isStreaming && tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
           {time && !isStreaming && <div className="text-[var(--text-dim)]">{time}</div>}
-          <button
-            type="button"
-            onClick={copyContent}
-            className="mt-1 cursor-pointer border-none bg-transparent p-0 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)]"
-          >
-            {copied ? (t("i18n.copied") ?? "Copied") : (t("i18n.copyMessage") ?? "Copy")}
-          </button>
         </div>
       )}
       {/* Model label / streaming estimate — hidden from layout; the hover
