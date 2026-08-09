@@ -772,7 +772,7 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
   };
 
   return (
-    <div className="sf-thinking-block my-0.5 text-[13px]">
+    <div className="sf-thinking-block text-[13px]">
       <button
         onClick={() => void toggle()}
         className="flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-[11px] text-[var(--text-dim)] transition-colors duration-100 hover:text-[var(--text-muted)]"
