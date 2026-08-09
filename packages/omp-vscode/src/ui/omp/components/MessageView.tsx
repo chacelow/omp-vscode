@@ -90,6 +90,8 @@ interface Props {
   sessionId?: string;
   /** Suppress the usage/model hover card (used for split process blocks). */
   hideUsageTip?: boolean;
+  /** Suppress the new-session (fork) action (used for split process blocks). */
+  hideFork?: boolean;
 }
 
 function formatTime(ts?: number): string | null {
@@ -119,12 +121,12 @@ function haveSameRelevantToolResults(
   return true;
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideUsageTip }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideUsageTip, hideFork }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} editInputRender={editInputRender} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideUsageTip={hideUsageTip} onFork={onFork} forking={forking} />;
+    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideUsageTip={hideUsageTip} hideFork={hideFork} onFork={onFork} forking={forking} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -156,7 +158,8 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.showTimestamp === next.showTimestamp
     && prev.prevTimestamp === next.prevTimestamp
     && prev.sessionId === next.sessionId
-    && prev.hideUsageTip === next.hideUsageTip;
+    && prev.hideUsageTip === next.hideUsageTip
+    && prev.hideFork === next.hideFork;
 });
 
 function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender }: {
@@ -309,6 +312,7 @@ function AssistantMessageView({
   sessionId,
   entryId,
   hideUsageTip,
+  hideFork,
   onFork,
   forking,
 }: {
@@ -323,12 +327,13 @@ function AssistantMessageView({
   sessionId?: string;
   entryId?: string;
   hideUsageTip?: boolean;
+  hideFork?: boolean;
   onFork?: (entryId: string) => void;
   forking?: boolean;
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
-  const canFork = !isStreaming && !!entryId && !!onFork;
+  const canFork = !isStreaming && !hideFork && !!entryId && !!onFork;
   const blockItems = (message.content ?? [])
     .map((block, originalIndex) => ({ block, originalIndex }))
     .filter(({ block }) => !isEmptyThinkingBlock(block, { isStreaming }));
