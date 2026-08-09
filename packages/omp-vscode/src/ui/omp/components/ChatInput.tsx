@@ -272,7 +272,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const draftKeyRef = useRef(draftKey);
   const valueRef = useRef(value);
   const dirtyRef = useRef(false);
-  const manualResizeRef = useRef(false);
   const attachedImagesRef = useRef(attachedImages);
   const pendingImageCountRef = useRef(0);
   valueRef.current = value;
@@ -429,7 +428,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (draftKey) clearDraft(draftKey);
     if (draftKeyRef.current && draftKeyRef.current !== draftKey) clearDraft(draftKeyRef.current);
     clearImages();
-    manualResizeRef.current = false;
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -468,9 +466,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    // Once the user drags the resize handle, stop auto-growing (their manual
-    // height wins); clearInput resets it.
-    if (manualResizeRef.current) return;
     ta.style.height = "auto";
     if (value) ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
   }, [value]);
@@ -1181,22 +1176,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             ref={textareaRef}
             value={value}
             readOnly={collapsed}
-            onMouseDown={(e) => {
-              // The native resize handle sits at the bottom edge. A click
-              // there is NOT a drag by itself (the textarea is short) — only
-              // confirm a manual resize if the height actually changed by
-              // mouseup, so auto-grow keeps working for plain clicks/typing.
-              const rect = e.currentTarget.getBoundingClientRect();
-              if (rect.bottom - e.clientY >= 10) return;
-              const ta = textareaRef.current;
-              const startH = ta?.style.height ?? "";
-              const onUp = () => {
-                document.removeEventListener("mouseup", onUp);
-                const cur = textareaRef.current;
-                if (cur && cur.style.height !== startH) manualResizeRef.current = true;
-              };
-              document.addEventListener("mouseup", onUp);
-            }}
             onChange={(e) => {
               dirtyRef.current = true;
               setValue(e.target.value);
@@ -1226,8 +1205,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 : t("chat.messagePlaceholder")
             }
             rows={1}
-            className="min-h-6 max-h-[calc(15*1.6*13px)] w-full min-w-0 flex-1 resize-y overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
-            style={{ fontSize: 12, textSizeAdjust: "none", pointerEvents: collapsed ? "none" : undefined }}
+            className="min-h-6 max-h-[calc(15*1.6*13px)] w-full min-w-0 flex-1 resize-none overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
+            style={{ fontSize: 12, textSizeAdjust: "none", maxHeight: TEXTAREA_MAX_HEIGHT, pointerEvents: collapsed ? "none" : undefined }}
           />
 
         {/* Bash mode status label */}
