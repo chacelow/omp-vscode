@@ -796,7 +796,11 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
   const resultText = result
     ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
     : "";
-  const isList = path.trim().endsWith("/") || resultText.trim().split("\n").filter(Boolean).length > 1;
+  // File reads return "[name#ID]\n1:..." (file header + numbered lines);
+  // directory reads return an ls tree (".\n  - file  size  date"). Only
+  // directories expand; file paths open in VS Code on click.
+  const isFile = /^\[[^\]]+#[A-Fa-f0-9]+\]/.test(resultText.trim());
+  const isList = !isFile;
 
   const grabText = (() => {
     const g = input.grab;
@@ -854,17 +858,23 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
       </div>
       {expanded && isList && (
         <div className="ml-[5px] mt-0.5 max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3">
-          {rows.map((row, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onOpenFile?.(row.replace(/^[│├└─\s]+/, ""))}
-              disabled={!onOpenFile}
-              className="block w-full cursor-pointer truncate border-none bg-transparent p-0 text-left font-mono text-[11px] leading-[1.7] text-[var(--text-muted)] hover:text-[var(--text)] disabled:cursor-default"
-            >
-              {row}
-            </button>
-          ))}
+          {rows.map((row, i) => {
+            // ls-tree line like "- src/" or "└─ video_worker.py" → the entry
+            // name; join with the read directory for the full path.
+            const rel = row.replace(/^[│├└─\s]+/, "").replace(/^-\s*/, "");
+            const full = path.endsWith("/") ? path + rel : `${path}/${rel}`;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onOpenFile?.(full)}
+                disabled={!onOpenFile}
+                className="block w-full cursor-pointer truncate border-none bg-transparent p-0 text-left font-mono text-[11px] leading-[1.7] text-[var(--text-muted)] hover:text-[var(--text)] disabled:cursor-default"
+              >
+                {row}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
