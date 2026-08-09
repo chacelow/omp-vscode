@@ -1097,32 +1097,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             {compactError}
           </div>
         )}
-        {/* Image previews — a single-row strip above the input, styled like
-            the bottom toolbar row; click a thumbnail to view it large
-            (global lightbox). */}
-        {attachedImages.length > 0 && (
-          <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
-            {attachedImages.map((img, i) => (
-              <div key={i} className="group relative shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.previewUrl}
-                  alt=""
-                  onClick={() => openImageInVSCode(img.data, img.mimeType)}
-                  className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover transition-transform duration-100 group-hover:scale-105"
-                />
-                <button
-                  onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                  title={t("chat.removeImage") ?? "Remove"}
-                  className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
-                >
-                  <X size={8} strokeWidth={1.5} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Main input */}
         <div className="relative min-w-0">
           {historyMenuOpen && inputHistory.length > 0 && (
@@ -1172,6 +1146,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             onClick={collapsed ? () => onActivateEdit?.() : undefined}
             title={collapsed ? (t("i18n.editFromHereTitle") ?? "Click to edit") : undefined}
           >
+          {/* Image previews — strip at the top INSIDE the composer card,
+              above the textarea */}
+          {attachedImages.length > 0 && (
+            <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+              {attachedImages.map((img, i) => (
+                <div key={i} className="group relative shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.previewUrl}
+                    alt=""
+                    onClick={() => openImageInVSCode(img.data, img.mimeType)}
+                    className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover transition-transform duration-100 group-hover:scale-105"
+                  />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                    title={t("chat.removeImage") ?? "Remove"}
+                    className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
+                  >
+                    <X size={8} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={value}
