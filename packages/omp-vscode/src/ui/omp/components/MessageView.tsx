@@ -835,6 +835,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
 }
 
 function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void; isStreaming?: boolean }) {  const [expanded, setExpanded] = useState(false);
+  const { t } = useI18n();
   const inputStr = JSON.stringify(block.input, null, 2);
   const isEditTool = isEditToolName(block.toolName);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
@@ -912,20 +913,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
               void copyText((block.input as { command: string }).command);
             }}
             title={t("i18n.copyCommand") ?? "Copy command"}
-            style={{
-              display: "flex", alignItems: "center", gap: 3,
-              padding: "2px 6px", height: 20,
-              background: "none", border: "1px solid var(--border)",
-              borderRadius: 4,
-              color: "var(--text-dim)",
-              cursor: "pointer",
-              fontSize: 10,
-              flexShrink: 0,
-              opacity: 0,
-              transition: "opacity 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = "var(--text-muted)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
+            className="flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-[var(--border)] bg-transparent p-0 px-1.5 text-[10px] text-[var(--text-dim)] opacity-0 transition-[opacity,color] duration-100 hover:text-[var(--text-muted)] hover:opacity-100"
           >
             <Copy size={10} />
           </button>
