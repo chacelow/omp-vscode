@@ -728,15 +728,7 @@ function ThinkingBlock({ block, duration, sessionId, entryId, blockIndex }: {
   };
 
   return (
-    <div
-      className="sf-thinking-block"
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: 6,
-        overflow: "hidden",
-        fontSize: 13,
-      }}
-    >
+    <div className="sf-thinking-block" style={{ fontSize: 13, margin: "2px 0" }}>
       <button
         onClick={() => void toggle()}
         style={{
@@ -744,33 +736,50 @@ function ThinkingBlock({ block, duration, sessionId, entryId, blockIndex }: {
           alignItems: "center",
           gap: 6,
           width: "100%",
-          padding: "6px 10px",
-          background: "var(--bg-panel)",
+          padding: "2px 0",
+          background: "transparent",
           border: "none",
-          color: "var(--text-muted)",
+          color: "var(--text-dim)",
           cursor: "pointer",
-          fontSize: 12,
+          fontSize: 11,
           textAlign: "left",
+          transition: "color 0.12s",
         }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
       >
-         <span>{t("i18n.thinking")}</span>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ flexShrink: 0, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span>{expanded ? (t("i18n.thinking") ?? "Thinking") : (t("i18n.thinking") ?? "Thinking")}</span>
         {duration !== undefined && (
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
       </button>
       {expanded && (
         <div
           style={{
-            padding: "8px 10px",
+            marginLeft: 5,
+            padding: "2px 0 4px 12px",
             color: error ? "#f87171" : "var(--text-muted)",
             fontSize: 12,
-            lineHeight: 1.6,
+            lineHeight: 1.65,
             whiteSpace: "pre-wrap",
-            background: "var(--bg-panel)",
-            borderTop: "1px solid var(--border)",
+            background: "transparent",
+            borderLeft: "1px solid color-mix(in srgb, var(--border) 60%, transparent)",
           }}
         >
-           {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
+          {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
         </div>
       )}
     </div>
