@@ -219,9 +219,17 @@ export function openInVSCode(filePath: string): void {
   ompPost({ type: "openFile", path: filePath });
 }
 
+/** Ask the host to preview an in-memory image (base64) in the native VS Code
+ * image preview (whole window, not the sidebar webview). */
+export function openImageInVSCode(data: string, mimeType: string): void {
+  ompPost({ type: "openImage", data, mimeType });
+}
+
 declare global {
   interface Window {
     openInVSCode?: (filePath: string) => void;
+    openImageInVSCode?: (data: string, mimeType: string) => void;
   }
 }
 window.openInVSCode = openInVSCode;
+window.openImageInVSCode = openImageInVSCode;

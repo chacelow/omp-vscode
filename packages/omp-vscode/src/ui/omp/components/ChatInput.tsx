@@ -20,10 +20,10 @@ import { HistoryMenu } from "./chat/HistoryMenu";
 import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescription, SLASH_SOURCE_ORDER, type SlashCommandPaletteItem } from "./chat/SlashPalette";
 import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 import { cn } from "@/lib/utils";
+import { openImageInVSCode } from "../../bridge";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -230,7 +230,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
   ));
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const trimmedValue = value.trimStart();
   const bashMode = attachedImages.length === 0 && trimmedValue.startsWith("!");
   const bashExcluded = bashMode && trimmedValue.startsWith("!!");
@@ -1109,7 +1108,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 <img
                   src={img.previewUrl}
                   alt=""
-                  onClick={() => setLightboxUrl(img.previewUrl)}
+                  onClick={() => openImageInVSCode(img.data, img.mimeType)}
                   className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover transition-transform duration-100 group-hover:scale-105"
                 />
                 <button
@@ -1123,19 +1122,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             ))}
           </div>
         )}
-
-        {/* Global lightbox: VS Code modal showing the full image */}
-        <Dialog open={!!lightboxUrl} onOpenChange={(o) => { if (!o) setLightboxUrl(null); }}>
-          <DialogContent className="max-w-[92vw] gap-0 border-none bg-transparent p-0 shadow-none sm:rounded-none">
-            <DialogTitle className="sr-only">Image preview</DialogTitle>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={lightboxUrl ?? ""}
-              alt=""
-              className="mx-auto max-h-[88vh] max-w-[90vw] rounded-lg object-contain"
-            />
-          </DialogContent>
-        </Dialog>
 
         {/* Main input */}
         <div className="relative min-w-0">
