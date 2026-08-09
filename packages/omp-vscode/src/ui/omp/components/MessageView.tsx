@@ -655,11 +655,11 @@ function AssistantMessageView({
         </div>
       )}
 
+      {textContent && !isStreaming && (
       <div style={{
         display: "flex", alignItems: "center", gap: 8, marginTop: 4,
       }}>
-        {textContent && !isStreaming && (
-          <button
+        <button
             onClick={copyContent}
              title={t("i18n.copyMessage")}
             style={{
@@ -695,6 +695,7 @@ function AssistantMessageView({
           <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
         )}
       </div>
+      )}
     </div>
   );
 }
