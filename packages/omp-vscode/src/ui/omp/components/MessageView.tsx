@@ -1213,53 +1213,48 @@ function PairedResult({ text, isEmpty, isError, terminalMode }: {
 
 function CompactionMessageView({ message }: { message: CustomMessage }) {
   const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
   const summary = getMessageText(message.content);
   const parsedSummary = useMemo(() => parseCompactionSummary(summary), [summary]);
   const time = formatTime(message.timestamp);
+  const hasDetails = Boolean(parsedSummary.body || parsedSummary.readFiles.length || parsedSummary.modifiedFiles.length);
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div
-        style={{
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          overflow: "hidden",
-          background: "var(--bg)",
-        }}
+    <section className="mb-4 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)]">
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+        className="flex min-h-10 w-full items-center gap-2 bg-[var(--bg-panel)] px-3 py-2 text-left text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)]"
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "7px 10px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg-panel)",
-            color: "var(--text-muted)",
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 650 }}>
-            compaction
-          </span>
-          {time && <span style={{ marginLeft: "auto", color: "var(--text-dim)", fontSize: 10 }}>{time}</span>}
-        </div>
-
-        <div style={{ padding: "11px 13px 12px" }}>
-          <div style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>
-             {t("i18n.conversationCompacted")}
-          </div>
-          <div style={{ marginTop: 3, marginBottom: 10, color: "var(--text)", fontSize: 14, lineHeight: 1.5 }}>
-             {t("i18n.compactionDescription")}
-          </div>
-          {parsedSummary.body ? (
-            <MarkdownBody className="markdown-compaction-message">{parsedSummary.body}</MarkdownBody>
-          ) : (
-             <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{t("i18n.noSummary")}</span>
-          )}
-          <CompactionFileMetadata readFiles={parsedSummary.readFiles} modifiedFiles={parsedSummary.modifiedFiles} />
-        </div>
-      </div>
-    </div>
+        <span className="font-mono text-[11px] font-semibold">compaction</span>
+        <span className="min-w-0 flex-1 truncate text-xs">{t("i18n.conversationCompacted")}</span>
+        {time && <span className="shrink-0 text-[10px] text-[var(--text-dim)]">{time}</span>}
+        <ChevronDown size={14} className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 pt-2.5">
+              <p className="mb-2 text-sm leading-5 text-[var(--text-muted)]">{t("i18n.compactionDescription")}</p>
+              {parsedSummary.body ? (
+                <MarkdownBody className="markdown-compaction-message">{parsedSummary.body}</MarkdownBody>
+              ) : (
+                <span className="text-xs text-[var(--text-dim)]">{t("i18n.noSummary")}</span>
+              )}
+              <CompactionFileMetadata readFiles={parsedSummary.readFiles} modifiedFiles={parsedSummary.modifiedFiles} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {!hasDetails && <span className="sr-only">{t("i18n.noSummary")}</span>}
+    </section>
   );
 }
 
