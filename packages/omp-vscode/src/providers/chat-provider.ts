@@ -160,12 +160,14 @@ export class ChatProvider implements vscode.WebviewViewProvider {
         case "openFile": {
           // Open a file in the real VS Code editor (opencursor-style): the
           // webview's file panel is stubbed, so chat file links/read tool
-          // jumps land in the native editor instead.
+          // jumps land in the native editor instead. Independent tab: an
+          // already-open file is activated, otherwise a new tab opens (no
+          // preview-replacement).
           const p = (msg as { path?: string }).path;
           if (!p) break;
           const uri = vscode.Uri.file(p);
           const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: true });
+          await vscode.window.showTextDocument(doc, { preview: false });
           break;
         }
 
