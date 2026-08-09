@@ -79,13 +79,13 @@ export function SessionTreeNodes({
 }) {
   const items = buildTreeData(tree, activeIds);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const latestRef = useRef<HTMLDivElement>(null);
   const [pendingResumeId, setPendingResumeId] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(false);
   useEffect(() => {
-    const container = scrollRef.current;
-    if (container) container.scrollTop = container.scrollHeight;
+    const frame = requestAnimationFrame(() => latestRef.current?.scrollIntoView({ block: "end" }));
+    return () => cancelAnimationFrame(frame);
   }, [tree]);
   const treeApi = useTree<NodeData>({
     initialState: { expandedItems: Object.keys(items) },
@@ -101,7 +101,7 @@ export function SessionTreeNodes({
   });
   return (
     <>
-      <div ref={scrollRef} className="max-h-[calc(min(60vh,420px)-16px)] overflow-y-auto">
+      <div>
       <Tree
         className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
         indent={INDENT}
@@ -122,7 +122,7 @@ export function SessionTreeNodes({
           }
           if (!visible) return null;
           return (
-            <TreeItem key={id} item={item} onClick={() => setPendingResumeId(id)}>
+            <TreeItem key={id} item={item}>
               <TreeItemLabel
                 className={cn(
                   "flex w-full min-w-0 items-center gap-1.5 rounded-[7px] px-2 py-1 text-left text-xs",
@@ -134,11 +134,18 @@ export function SessionTreeNodes({
                 {roleIcon(data.role)}
                 <span className="min-w-0 flex-1 truncate">{data.name}</span>
                 {data.hasBranch && <span className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[4px] py-[1px] text-[9px] leading-none whitespace-nowrap text-[var(--text-dim)]">branch</span>}
-                <span className="flex shrink-0 items-center gap-1 text-[10px] text-[var(--text-dim)]"><CornerDownRight size={11} />Resume</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => { event.preventDefault(); event.stopPropagation(); setPendingResumeId(id); }}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); setPendingResumeId(id); } }}
+                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+                ><CornerDownRight size={11} />Resume</span>
               </TreeItemLabel>
             </TreeItem>
           );
         })}
+        <div ref={latestRef} />
       </Tree>
       </div>
       <AlertDialog open={pendingResumeId !== null} onOpenChange={(open) => { if (!open && !resuming) { setPendingResumeId(null); setResumeError(null); } }}>
