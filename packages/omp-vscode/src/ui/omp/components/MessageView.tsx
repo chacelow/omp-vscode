@@ -7,7 +7,7 @@ import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
-import { ChevronDown, Copy } from "lucide-react";
+import { BrainIcon, ChevronDown, Copy } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -742,6 +742,7 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
             className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")}
           />
         )}
+        <BrainIcon size={12} className={cn("shrink-0", isStreaming ? "text-[var(--text-muted)]" : "text-[var(--text-dim)]")} />
         {isStreaming ? (
           <Shimmer className="text-[11px]" duration={2} spread={1}>
             {t("i18n.thinkingShort") ?? "Thinking…"}
