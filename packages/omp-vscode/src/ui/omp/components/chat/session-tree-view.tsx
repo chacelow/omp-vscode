@@ -80,10 +80,9 @@ export function SessionTreeNodes({
   const items = buildTreeData(tree, activeIds);
 
   const treeApi = useTree<NodeData>({
-    // Default: only the root expanded — hundreds of entries render as the
-    // top level only, so long sessions (thousands of messages) open
-    // instantly instead of rendering every branch.
-    initialState: { expandedItems: [ROOT_ID] },
+    // Default: fully expanded — the full history tree opens showing every
+    // branch; users collapse subtrees as needed.
+    initialState: { expandedItems: Object.keys(items) },
     indent: INDENT,
     rootItemId: ROOT_ID,
     getItemName: (item) => item.getItemData().name,
