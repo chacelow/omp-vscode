@@ -1096,11 +1096,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             {compactError}
           </div>
         )}
-        {/* Image previews */}
+        {/* Image previews — above the input, inside the composer card */}
         {attachedImages.length > 0 && (
           <div className="mb-1.5 flex flex-wrap gap-1.5">
             {attachedImages.map((img, i) => (
-              <div key={i} className="relative shrink-0">
+              <div key={i} className="group relative shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.previewUrl}
@@ -1109,7 +1109,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 />
                 <button
                   onClick={() => removeImage(i)}
-                  className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)]"
+                  title={t("chat.removeImage") ?? "Remove"}
+                  className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
                 >
                   <X size={8} strokeWidth={1.5} />
                 </button>

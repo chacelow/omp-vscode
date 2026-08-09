@@ -100,7 +100,7 @@ export class ChatProvider implements vscode.WebviewViewProvider {
       "default-src 'none'",
       `style-src ${webview.cspSource} 'unsafe-inline'`,
       `script-src ${webview.cspSource}`,
-      "img-src ${webview.cspSource} data: https: http:",
+      "img-src ${webview.cspSource} data: blob: https: http:",
       "font-src ${webview.cspSource} data:",
       "connect-src 'none'",
     ].join("; ");
