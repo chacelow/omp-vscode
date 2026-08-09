@@ -282,11 +282,17 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
     prevScrollDistanceRef.current = null;
   }, [visibleCount, scrollContainerRef]);
 
-  // --- Auto-scroll follow (opencode-style) ---
-  // Lock follow while the user scrolls away from the bottom; unlock when
-  // they scroll back near the bottom. Programmatic scrolls are marked so
-  // they don't trip the lock.
-  const [userScrolled, setUserScrolled] = useState(false);
+  // --- Auto-scroll follow (opencode/zoeymind style) ---
+  // Wheel up locks follow; scrolling back near the bottom unlocks. The lock
+  // lives in a ref too, so programmatic scrolls (optimistic insert, stream
+  // polling) read the CURRENT value synchronously — otherwise a stale state
+  // read right after the wheel event yanks the user back to the bottom.
+  const [userScrolled, setUserScrolledState] = useState(false);
+  const userScrolledRef = useRef(false);
+  const setUserScrolled = useCallback((v: boolean) => {
+    userScrolledRef.current = v;
+    setUserScrolledState(v);
+  }, []);
   const autoScrollMarkRef = useRef<{ top: number; time: number } | null>(null);
 
   useEffect(() => {
@@ -294,26 +300,41 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
     if (!container) return;
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY >= 0) return;
+      // Ignore wheel inside nested scrollables (tool output etc.) — only the
+      // main list decides follow state.
       const target = e.target instanceof Element ? e.target : undefined;
       const nested = target?.closest("[data-scrollable]");
       if (nested && nested !== container) return;
       if (container.scrollHeight - container.clientHeight <= 1) return;
+      // Wheel-up starts the detachment; the scroll handler below locks once
+      // the distance threshold is actually crossed.
       setUserScrolled(true);
     };
     container.addEventListener("wheel", onWheel, { passive: true });
     return () => container.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [setUserScrolled]);
 
+  // Follow lifecycle while streaming: snapping back within UNLOCK distance
+  // re-attaches (and the poll below keeps scrolling to the bottom); moving
+  // beyond LOCK distance detaches. Programmatic scrolls are marked so they
+  // don't trip the state.
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const onScroll = () => {
       const dist = container.scrollHeight - container.clientHeight - container.scrollTop;
-      if (dist <= 12) setUserScrolled(false);
+      if (dist <= 12) {
+        // Snap back: within the bottom threshold → re-attach.
+        setUserScrolled(false);
+      } else if (dist > 80) {
+        // Detached: scrolled a meaningful distance above the bottom → cancel
+        // follow (ref guards against re-locking on programmatic scrolls).
+        if (!userScrolledRef.current) setUserScrolled(true);
+      }
     };
     container.addEventListener("scroll", onScroll);
     return () => container.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [setUserScrolled]);
 
   const scrollToBottomNow = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -323,14 +344,14 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
   }, []);
 
   useEffect(() => {
-    if (userScrolled) return;
+    if (userScrolledRef.current) return;
     scrollToBottomNow();
   }, [messages, userScrolled, sessionBusy, scrollToBottomNow]);
 
   useEffect(() => {
-    if (!sessionBusy || userScrolled) return;
+    if (!sessionBusy || userScrolledRef.current) return;
     const timer = setInterval(() => {
-      if (userScrolled) return;
+      if (userScrolledRef.current) return;
       const el = scrollContainerRef.current;
       if (!el) return;
       if (el.scrollHeight - el.clientHeight - el.scrollTop < 2) return;
