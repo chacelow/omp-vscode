@@ -687,7 +687,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
     const tc = block as ToolCallContent;
     const result = toolResults?.get(tc.toolCallId);
     const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} duration={duration} />;
+    return <ToolCallBlock block={tc} result={result} duration={duration} onOpenFile={onOpenFile} />;
   }
   return null;
 }
@@ -783,11 +783,105 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
 }
 
 
-function ToolCallBlock({ block, result, duration }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number }) {
+/** `read` tool — flowing style like thinking: a label row (`read` keyword +
+ * path + grab range), no card, no success green. A single file opens in VS
+ * Code on click; a directory expands to a scrollable (max-height) clickable
+ * list. Failures are greyed out. */
+function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
+  const input = (block.input ?? {}) as { path?: string; grab?: string | { start?: number; end?: number } | [number, number] };
+  const path = input.path ?? "";
+  const isError = result?.isError === true;
+  const resultText = result
+    ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
+    : "";
+  const isList = path.trim().endsWith("/") || resultText.trim().split("\n").filter(Boolean).length > 1;
+
+  const grabText = (() => {
+    const g = input.grab;
+    if (typeof g === "string") {
+      const m = g.match(/(\d+)\s*[-:]\s*(\d+)/);
+      if (m) return `${m[1]}:${m[2]}`;
+      return g;
+    }
+    if (Array.isArray(g)) return `${g[0]}:${g[1]}`;
+    if (g && typeof g.start === "number" && typeof g.end === "number") return `${g.start}:${g.end}`;
+    return null;
+  })();
+
+  const rows = resultText.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+
+  return (
+    <div className={cn("sf-read-block my-0.5 text-[12px]", isError && "opacity-50")}>
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            "shrink-0 font-mono text-[11px] font-semibold",
+            isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
+          )}
+        >
+          read
+        </span>
+        <button
+          type="button"
+          onClick={() => onOpenFile?.(path)}
+          disabled={!onOpenFile || isList}
+          title={path}
+          className={cn(
+            "min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left font-mono text-[11px]",
+            isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
+            onOpenFile && !isList && "cursor-pointer hover:text-[var(--text)]",
+          )}
+        >
+          {path || "(no path)"}
+        </button>
+        {grabText && (
+          <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">{grabText}</span>
+        )}
+        {duration !== undefined && (
+          <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
+        )}
+        {isList && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-[var(--text-dim)] hover:text-[var(--text-muted)]"
+          >
+            <ChevronDown size={10} className={cn("transition-transform duration-150", expanded && "rotate-180")} />
+          </button>
+        )}
+      </div>
+      {expanded && isList && (
+        <div className="ml-[5px] mt-0.5 max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3">
+          {rows.map((row, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onOpenFile?.(row.replace(/^[│├└─\s]+/, ""))}
+              disabled={!onOpenFile}
+              className="block w-full cursor-pointer truncate border-none bg-transparent p-0 text-left font-mono text-[11px] leading-[1.7] text-[var(--text-muted)] hover:text-[var(--text)] disabled:cursor-default"
+            >
+              {row}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void }) {  const [expanded, setExpanded] = useState(false);
   const inputStr = JSON.stringify(block.input, null, 2);
   const isEditTool = isEditToolName(block.toolName);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
+
+  // `read` gets a dedicated flowing style (like thinking): no card, no
+  // success green — a label row with the keyword + path + grab range, and
+  // file/dir content that opens in VS Code or lists as a scrollable tree.
+  if (block.toolName === "read") {
+    return <ReadToolBlock block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+  }
 
   // Result display
   const resultText = result
