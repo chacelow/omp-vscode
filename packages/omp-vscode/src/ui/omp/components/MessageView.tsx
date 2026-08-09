@@ -849,8 +849,10 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         borderRadius: 7,
         overflow: "hidden",
         fontSize: 12,
-        border: isError ? "1px solid color-mix(in srgb, var(--destructive) 45%, transparent)" : "1px solid color-mix(in srgb, var(--success) 25%, transparent)",
-        background: isError ? "color-mix(in srgb, var(--destructive) 5%, transparent)" : "color-mix(in srgb, var(--success) 4%, transparent)",
+        opacity: isError ? 0.55 : 1,
+        // No success color: neutral border for ok, greyed for failures.
+        border: isError ? "1px solid color-mix(in srgb, var(--border) 45%, transparent)" : "1px solid color-mix(in srgb, var(--border) 22%, transparent)",
+        background: "transparent",
       }}
     >
       {/* ── Tool call header ── */}
@@ -871,7 +873,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
           minWidth: 0,
         }}
       >
-        <span style={{ color: isError ? "#f87171" : "#16a34a", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
+        <span style={{ color: isError ? "var(--text-dim)" : "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
           {block.toolName}
         </span>
         <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
@@ -896,7 +898,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
             lineHeight: 1.5,
             overflow: "auto",
             background: "var(--bg-subtle)",
-            borderTop: isError ? "1px solid color-mix(in srgb, var(--destructive) 25%, transparent)" : "1px solid color-mix(in srgb, var(--success) 20%, transparent)",
+            borderTop: isError ? "1px solid color-mix(in srgb, var(--border) 45%, transparent)" : "1px solid color-mix(in srgb, var(--border) 22%, transparent)",
             whiteSpace: "pre-wrap",
             wordBreak: "break-all",
           }}
@@ -933,7 +935,7 @@ function PairedDiffResult({ diff }: {
   return (
     <div
       style={{
-        borderTop: "1px solid color-mix(in srgb, var(--success) 15%, transparent)",
+        borderTop: "1px solid color-mix(in srgb, var(--border) 22%, transparent)",
         background: "var(--bg)",
       }}
     >
