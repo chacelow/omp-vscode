@@ -1514,25 +1514,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const sid = sessionIdRef.current;
     if (!sid || !text.trim()) return;
     setForkingEntryId(entryId);
-    // Immediate feedback, in order:
-    // 1. Optimistically show the edited message in the list (keeps every
-    //    ancestor visible; drops everything after the edit point) — the user
-    //    sees "what I confirmed" right away.
-    // 2. Flip running so the composer shows the sending state.
-    // 3. rewind (append anchor + restart same session) -> reconnect SSE ->
-    //    replay prompt. The streamed answer + agent_end refresh reconcile
-    //    the optimistic state with the file.
-    const pos = entryIds.indexOf(entryId);
-    if (pos >= 0) {
-      const editedContent: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string }> = [];
-      if (text.trim()) editedContent.push({ type: "text", text });
-      for (const img of images ?? []) editedContent.push({ type: "image", data: img.data, mimeType: img.mimeType });
-      setMessages((prev) => [
-        ...prev.slice(0, pos),
-        { role: "user", content: editedContent } as AgentMessage,
-      ]);
-    }
+    // Immediate feedback: flip running + show the waiting-for-model phase
+    // locally (no optimistic message insertion — it duplicated the replay;
+    // the streamed answer + agent_end reload reconcile with the file).
     setAgentRunning(true);
+    setAgentPhase({ kind: "waiting_model" });
     try {
       // In-place rewind (plugin-built-in): the extension appends an anchor
       // entry (parent = edited message's parent) so the resumed leaf is the
@@ -1551,6 +1537,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // The RPC process was restarted — re-subscribe BEFORE sending the replay
       // so agent_start/agent_end stream back with normal timing, then replay.
       await ensureEventsConnected(sid);
+      // Show the edit point (everything before it) while the replay streams.
+      await loadContext(sid, null);
       await sendAgentCommand(sid, {
         type: "prompt",
         message: text,
@@ -1559,10 +1547,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } catch (e) {
       console.error("Edit-from-here failed:", e);
       setAgentRunning(false);
+      setAgentPhase(null);
     } finally {
       setForkingEntryId(null);
     }
-  }, [ensureEventsConnected, entryIds, setAgentRunning]);
+  }, [ensureEventsConnected, loadContext, setAgentRunning, setAgentPhase]);
 
   const navigateLeaf = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;
