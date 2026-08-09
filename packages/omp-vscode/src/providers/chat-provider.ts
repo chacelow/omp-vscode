@@ -176,16 +176,16 @@ export class ChatProvider implements vscode.WebviewViewProvider {
         case "openImage": {
           // Preview an in-memory (pasted/attached) image in the native VS
           // Code image preview — whole window, not the sidebar webview.
-          // The webview can't hand VS Code a blob URL, so the host writes a
-          // temp file and opens it as an image document.
+          // openTextDocument is the text path; for images use the built-in
+          // `vscode.open` command, which opens the default viewer (image
+          // preview) for the URI.
           const { data, mimeType } = msg as { data?: string; mimeType?: string };
           if (!data) break;
           const ext = mimeType?.includes("png") ? "png" : mimeType?.includes("webp") ? "webp" : mimeType?.includes("gif") ? "gif" : "jpg";
           const tmp = path.join(os.tmpdir(), `omp-chat-image-${Date.now()}.${ext}`);
           fs.writeFileSync(tmp, Buffer.from(data, "base64"));
           const uri = vscode.Uri.file(tmp);
-          const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: true });
+          await vscode.commands.executeCommand("vscode.open", uri, { preview: true });
           break;
         }
 
