@@ -952,16 +952,15 @@ export function AppShell() {
                   style={{
                     position: "absolute",
                     top: "100%",
+                    left: 0,
                     right: 0,
                     zIndex: 60,
-                    width: "min(72vw, 460px)",
                     maxHeight: "min(60vh, 420px)",
                     overflowY: "auto",
-                    padding: 6,
-                    background: "var(--bg)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 10,
-                    boxShadow: "0 8px 30px var(--vscode-widget-shadow, rgba(0,0,0,0.25))",
+                    padding: "8px 10px",
+                    background: "var(--bg-panel)",
+                    borderBottom: "1px solid var(--border)",
+                    boxShadow: "0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
                   }}
                 >
                   <SessionTreeNodes
