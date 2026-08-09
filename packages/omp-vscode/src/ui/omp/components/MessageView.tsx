@@ -838,7 +838,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
             onOpenFile && !isList && "cursor-pointer hover:text-[var(--text)]",
           )}
         >
-          {path || "(no path)"}
+          {path ? path.split("/").filter(Boolean).pop() ?? path : "(no path)"}
         </button>
         {grabText && (
           <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">L{grabText}</span>
