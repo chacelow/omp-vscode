@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
@@ -737,17 +738,27 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
           <span className="ml-auto font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
         )}
       </button>
-      {expanded && (
-        <div
-          ref={contentRef}
-          className={cn(
-            "ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
-            error ? "text-[#f87171]" : "text-[var(--text-muted)]",
-          )}
-        >
-          {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div
+              ref={contentRef}
+              className={cn(
+                "ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
+                error ? "text-[#f87171]" : "text-[var(--text-muted)]",
+              )}
+            >
+              {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -874,8 +885,17 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         </svg>
       </button>
 
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
       {/* ── Expanded: input args ── */}
-      {expanded && !isEditTool && (
+      {!isEditTool && (
         <pre
           style={{
             margin: 0,
@@ -895,7 +915,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
       )}
 
       {/* ── Paired result — only shown when expanded ── */}
-      {expanded && result && (
+      {result && (
         resultDiff ? (
           <PairedDiffResult
             diff={resultDiff}
@@ -908,6 +928,9 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
           />
         )
       )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
