@@ -546,13 +546,19 @@ function AssistantMessageView({
 
   if (blocks.length === 0 && !isStreaming && !providerError) return null;
 
+  // Tool calls chain together visually: a message that ends with a tool call
+  // gets a tight bottom margin so the next (often also a tool) message sits
+  // right below — one continuous tool stream, same gap everywhere.
+  const lastBlock = blocks[blocks.length - 1];
+  const endsWithTool = lastBlock?.type === "toolCall";
+
   // Usage/model info is hidden from the layout; hovering the message shows
   // it next to the cursor (mouse-follow tooltip).
   const [usageTip, setUsageTip] = useState<{ x: number; y: number } | null>(null);
 
   return (
     <div
-      style={{ marginBottom: 16 }}
+      style={{ marginBottom: endsWithTool ? 4 : 16 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setUsageTip(null); }}
       onMouseMove={(e) => {
@@ -622,7 +628,7 @@ function AssistantMessageView({
       </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {blockItems.map(({ block, originalIndex }) => (
           <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} />
         ))}
