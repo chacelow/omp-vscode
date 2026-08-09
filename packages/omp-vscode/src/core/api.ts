@@ -99,11 +99,17 @@ export class ApiHandler {
   private modelsCache = new Map<string, { at: number; list: Array<{ id: string; name: string; provider: string; contextWindow?: number }> }>();
 
   /** Wire a session wrapper's events to subscribers once (duplicates would
-   *  forward every event N times → duplicated messages in the UI). */
-  private wireSession(sid: string, wrapper: { onEvent: (cb: (e: unknown) => void) => () => void }): void {
+   *  forward every event N times → duplicated messages in the UI). When the
+   *  wrapper is destroyed (rewind restarts the RPC process), clear the mark
+   *  so the replacement wrapper gets wired — otherwise its events are never
+   *  forwarded and the UI only sees the final state (no streaming). */
+  private wireSession(sid: string, wrapper: { onEvent: (cb: (e: unknown) => void) => () => void; onDestroy?: (cb: () => void) => void }): void {
     if (this.wiredSessions.has(sid)) return;
     this.wiredSessions.add(sid);
     wrapper.onEvent((event) => this.emitSessionEvent(sid, event));
+    wrapper.onDestroy?.(() => {
+      this.wiredSessions.delete(sid);
+    });
   }
 
   /** GET /api/version — omp CLI version (one `omp -v`, cached) + this extension's version. */
