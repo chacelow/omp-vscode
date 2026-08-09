@@ -457,15 +457,22 @@ function AssistantMessageView({
   // (fixed position, clickable) instead of taking layout space.
   const [usageTip, setUsageTip] = useState(false);
 
-  // Completed messages show a persistent TUI-style status line under the
-  // answer (usage · duration · tokens/s) — always visible, not hover-gated.
+  // Completed messages: use the engine-computed duration (message.duration,
+  // ms) with usage.output — same formula as the TUI status line. Our own
+  // timestamp diff was wrong (ISO strings / partial spans → 545 tok/s).
+  const engineDurationMs = useMemo<number | undefined>(() => {
+    const d = (message as AssistantMessage & { duration?: number }).duration;
+    return typeof d === "number" && Number.isFinite(d) && d > 0 ? d : undefined;
+  }, [message]);
+
   const completedTps = useMemo<number | null>(() => {
     if (isStreaming || !message.usage) return null;
-    const dur = thinkingDurationFromFile;
-    if (!dur || dur <= 0) return null;
+    const durMs = engineDurationMs;
+    if (durMs === undefined || durMs < 100) return null;
     const out = message.usage.output ?? 0;
-    return out > 0 ? Math.round(out / dur) : null;
-  }, [isStreaming, message.usage, thinkingDurationFromFile]);
+    if (!Number.isFinite(out) || out <= 0) return null;
+    return Math.round((out * 1000) / durMs);
+  }, [isStreaming, message.usage, engineDurationMs]);
 
   return (
     <div
@@ -481,9 +488,9 @@ function AssistantMessageView({
           {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
           {(tps !== null || completedTps !== null) && <div>{Math.round(tps ?? completedTps ?? 0).toLocaleString()} tok/s</div>}
-          {(thinkingDurationFromFile !== undefined || durationHover !== null) && (
+          {(engineDurationMs !== undefined || thinkingDurationFromFile !== undefined || durationHover !== null) && (
             <div className="text-[var(--text-dim)]">
-              {(durationHover ?? thinkingDurationFromFile)?.toFixed(1)}s
+              {(engineDurationMs !== undefined ? engineDurationMs / 1000 : durationHover ?? thinkingDurationFromFile)?.toFixed(1)}s
             </div>
           )}
           {time && !isStreaming && <div className="text-[var(--text-dim)]">{time}</div>}
