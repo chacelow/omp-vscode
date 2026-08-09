@@ -681,7 +681,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
     return <TextBlock block={block as TextContent} isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile} />;
   }
   if (block.type === "thinking") {
-    return <ThinkingBlock block={block as ThinkingContent} duration={streamingDuration} sessionId={sessionId} entryId={entryId} blockIndex={blockIndex} />;
+    return <ThinkingBlock block={block as ThinkingContent} isStreaming={isStreaming} duration={streamingDuration} sessionId={sessionId} entryId={entryId} blockIndex={blockIndex} />;
   }
   if (block.type === "toolCall") {
     const tc = block as ToolCallContent;
@@ -696,18 +696,37 @@ function TextBlock({ block, isStreaming, cwd, onOpenFile }: { block: TextContent
   return <MarkdownBody isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile}>{block.text}</MarkdownBody>;
 }
 
-function ThinkingBlock({ block, duration, sessionId, entryId, blockIndex }: {
+function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, blockIndex }: {
   block: ThinkingContent;
+  isStreaming?: boolean;
   duration?: number;
   sessionId?: string;
   entryId?: string;
   blockIndex: number;
 }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useState(false);
+  // Stream: expanded live (auto-follow); done: collapsed to a one-line
+  // summary — zoeymind-style lifecycle.
+  const [expanded, setExpanded] = useState(isStreaming === true);
+  const prevStreamingRef = useRef(isStreaming);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const prev = prevStreamingRef.current;
+    if (isStreaming && !prev) setExpanded(true);
+    else if (!isStreaming && prev) setExpanded(false);
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
+  // While streaming + expanded, keep the tail of the thinking visible.
+  useEffect(() => {
+    if (isStreaming && expanded && contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    }
+  }, [content, block.thinking, isStreaming, expanded]);
 
   const toggle = async () => {
     const nextExpanded = !expanded;
@@ -735,19 +754,24 @@ function ThinkingBlock({ block, duration, sessionId, entryId, blockIndex }: {
         onClick={() => void toggle()}
         className="flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-[11px] text-[var(--text-dim)] transition-colors duration-100 hover:text-[var(--text-muted)]"
       >
-        <ChevronDown
-          size={10}
-          className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")}
-        />
-        <span>{t("i18n.thinking") ?? "Thinking"}</span>
+        {isStreaming ? (
+          <span className="inline-block size-3 shrink-0 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--text-dim)_30%,transparent)] border-t-[var(--text-muted)]" />
+        ) : (
+          <ChevronDown
+            size={10}
+            className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")}
+          />
+        )}
+        <span>{isStreaming ? (t("i18n.thinkingShort") ?? "Thinking…") : (t("i18n.thinking") ?? "Thinking")}</span>
         {duration !== undefined && (
           <span className="ml-auto font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
         )}
       </button>
       {expanded && (
         <div
+          ref={contentRef}
           className={cn(
-            "ml-[5px] border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
+            "ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
             error ? "text-[#f87171]" : "text-[var(--text-muted)]",
           )}
         >

@@ -410,6 +410,7 @@ export const enLocale: LocalePlugin = {
     "i18n.packageEnabled": "Package enabled.",
     "i18n.sessionReloaded": "Session reloaded.",
     "i18n.thinking": "Thinking",
+    "i18n.thinkingShort": "Thinking…",
     "i18n.loadingThinking": "Loading thinking...",
     "i18n.copyMessage": "Copy message",
     "i18n.editFromHere": "Edit from here",
