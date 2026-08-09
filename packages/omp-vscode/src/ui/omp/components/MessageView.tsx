@@ -6,7 +6,8 @@ import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
-import { ChevronDown } from "lucide-react";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "./ai-elements/reasoning";
+import { Task, TaskContent, TaskItem, TaskItemFile, TaskTrigger } from "./ai-elements/task";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -677,38 +678,18 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
   blockIndex: number;
 }) {
   const { t } = useI18n();
-  // Stream: expanded live (auto-follow); done: collapsed to a one-line
-  // summary — zoeymind-style lifecycle.
-  const [expanded, setExpanded] = useState(isStreaming === true);
-  const prevStreamingRef = useRef(isStreaming);
-  const contentRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadedRef = useRef(false);
 
-  useEffect(() => {
-    const prev = prevStreamingRef.current;
-    if (isStreaming && !prev) setExpanded(true);
-    else if (!isStreaming && prev) setExpanded(false);
-    prevStreamingRef.current = isStreaming;
-  }, [isStreaming]);
-
-  // While streaming + expanded, keep the tail of the thinking visible.
-  useEffect(() => {
-    if (isStreaming && expanded && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
-    }
-  }, [content, block.thinking, isStreaming, expanded]);
-
-  const toggle = async () => {
-    const nextExpanded = !expanded;
-    setExpanded(nextExpanded);
-    if (!nextExpanded || !block.deferred || content !== null) return;
+  const loadDeferred = async () => {
+    if (loadedRef.current || content !== null || !block.deferred) return;
     if (!sessionId || !entryId) {
       setError(t("i18n.thinkingUnavailable"));
+      loadedRef.current = true;
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
@@ -716,51 +697,31 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      loadedRef.current = true;
       setLoading(false);
     }
   };
 
   return (
-    <div className="sf-thinking-block text-[13px]">
-      <button
-        onClick={() => void toggle()}
-        className="flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-[11px] text-[var(--text-dim)] transition-colors duration-100 hover:text-[var(--text-muted)]"
+    <Reasoning
+      isStreaming={isStreaming}
+      duration={duration}
+      defaultOpen={isStreaming}
+      onOpenChange={(open) => { if (open) void loadDeferred(); }}
+      className="sf-thinking-block mb-1 not-prose"
+    >
+      <ReasoningTrigger
+        className="text-[11px] text-[var(--text-dim)] hover:text-[var(--text-muted)]"
+        getThinkingMessage={(s, d) => (
+          s ? (t("i18n.thinkingShort") ?? "Thinking…") : (t("i18n.thinking") ?? "Thinking")
+        )}
+      />
+      <ReasoningContent
+        className="ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] text-[var(--text-muted)]"
       >
-        {isStreaming ? (
-          <span className="inline-block size-3 shrink-0 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--text-dim)_30%,transparent)] border-t-[var(--text-muted)]" />
-        ) : (
-          <ChevronDown
-            size={10}
-            className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")}
-          />
-        )}
-        <span>{isStreaming ? (t("i18n.thinkingShort") ?? "Thinking…") : (t("i18n.thinking") ?? "Thinking")}</span>
-        {duration !== undefined && (
-          <span className="ml-auto font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
-        )}
-      </button>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div
-              ref={contentRef}
-              className={cn(
-                "ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
-                error ? "text-[#f87171]" : "text-[var(--text-muted)]",
-              )}
-            >
-              {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking) ?? ""}
+      </ReasoningContent>
+    </Reasoning>
   );
 }
 
@@ -796,19 +757,16 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         >
           read
         </span>
-        <button
-          type="button"
+        <TaskItemFile
           onClick={() => onOpenFile?.(path)}
-          disabled={!onOpenFile}
           title={path}
           className={cn(
-            "min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left font-mono text-[11px] underline-offset-2",
-            isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
-            onOpenFile && "cursor-pointer hover:text-[var(--text)] hover:underline",
+            "min-w-0 flex-1 cursor-pointer truncate border-[var(--border)] bg-[var(--bg-panel)] font-mono text-[10px] text-[var(--text-muted)]",
+            onOpenFile && "hover:bg-[var(--bg-hover)] hover:text-[var(--text)]",
           )}
         >
           {path ? path.split("/").filter(Boolean).pop() ?? path : "(no path)"}
-        </button>
+        </TaskItemFile>
         {grabText && (
           <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">L{grabText}</span>
         )}
@@ -817,6 +775,57 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         )}
       </div>
     </div>
+  );
+}
+
+/** Search tools (grep/glob/search/…) — ai-elements Task: a collapsible
+ * trigger (SearchIcon + pattern) over a file-chip + match-lines list.
+ * Result format: "# path" header lines introduce a file group, followed by
+ * match lines (" 71:…", glob lists bare paths). */
+function SearchToolBlock({ block, result, duration, onOpenFile }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void }) {
+  const { t } = useI18n();
+  const input = (block.input ?? {}) as { pattern?: string };
+  const resultText = result
+    ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
+    : "";
+  const groups: Array<{ path: string; lines: string[] }> = [];
+  let cur: { path: string; lines: string[] } | null = null;
+  for (const line of resultText.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("# ")) {
+      cur = { path: trimmed.slice(2).trim(), lines: [] };
+      groups.push(cur);
+    } else {
+      if (!cur) { cur = { path: input.pattern ?? block.toolName, lines: [] }; groups.push(cur); }
+      cur.lines.push(line);
+    }
+  }
+
+  return (
+    <Task className="sf-search-block mb-1">
+      <TaskTrigger
+        title={input.pattern ? `"${input.pattern}"` : block.toolName}
+        className="text-[11px] text-[var(--text-dim)] hover:text-[var(--text-muted)]"
+      />
+      <TaskContent className="max-h-[240px] overflow-y-auto text-[11px] text-[var(--text-muted)]">
+        {groups.length === 0 ? (
+          <TaskItem className="text-[11px] text-[var(--text-dim)]">{t("i18n.noOutput") ?? "(no output)"}</TaskItem>
+        ) : groups.map((g) => (
+          <div key={g.path}>
+            <TaskItemFile
+              onClick={() => onOpenFile?.(g.path)}
+              className="cursor-pointer text-[10px] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+            >
+              {g.path.split("/").filter(Boolean).pop() ?? g.path}
+            </TaskItemFile>
+            {g.lines.map((l, i) => (
+              <TaskItem key={i} className="font-mono text-[11px] leading-[1.5]">{l}</TaskItem>
+            ))}
+          </div>
+        ))}
+      </TaskContent>
+    </Task>
   );
 }
 
@@ -830,6 +839,9 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
   // file/dir content that opens in VS Code or lists as a scrollable tree.
   if (block.toolName === "read") {
     return <ReadToolBlock block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+  }
+  if (["grep", "glob", "search", "ag", "ast_grep", "rg"].includes(block.toolName)) {
+    return <SearchToolBlock block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
   }
 
   // Result display
