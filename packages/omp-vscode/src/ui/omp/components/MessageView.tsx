@@ -606,7 +606,7 @@ function AssistantMessageView({
                     {est}
                   </span>
                   {tps !== null && (() => {
-                    const t = tps;
+                    const t = tps ?? 0;
                     const bg = t >= 50 ? "#53b3cb" : t >= 30 ? "#9bc53d" : t >= 15 ? "#f9c22e" : "#e01a4f";
                     return (
                       <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, background: bg, color: "#fff", fontSize: 11, fontWeight: 400 }}>
