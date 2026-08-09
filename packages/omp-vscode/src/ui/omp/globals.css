@@ -21,6 +21,36 @@ body, #app {
   overflow: hidden;
 }
 
+/* ── Unified slim scrollbar (all scrollable containers) ────────────────
+   No track background, thin thumb, VS Code scrollbar tokens so it follows
+   the theme and matches the native look. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.45)) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.45));
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(128, 128, 128, 0.7));
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ── Local font: HarmonyOS Sans (UI chrome) ─────────────────────────────── */
 @font-face {
   font-family: 'HarmonyOS Sans';

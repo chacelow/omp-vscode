@@ -1151,7 +1151,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           {/* Image previews — strip at the top INSIDE the composer card,
               above the textarea */}
           {attachedImages.length > 0 && (
-            <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+            <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5">
               {attachedImages.map((img, i) => (
                 <div key={i} className="group relative shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
