@@ -6,6 +6,7 @@ import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
+import { Shimmer } from "./ai-elements/shimmer";
 import { ChevronDown } from "lucide-react";
 import {
   AlertDialog,
@@ -659,7 +660,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
     const tc = block as ToolCallContent;
     const result = toolResults?.get(tc.toolCallId);
     const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} duration={duration} onOpenFile={onOpenFile} />;
+    return <ToolCallBlock block={tc} result={result} duration={duration} onOpenFile={onOpenFile} isStreaming={isStreaming} />;
   }
   return null;
 }
@@ -734,7 +735,13 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
             className={cn("shrink-0 transition-transform duration-150", expanded && "rotate-180")}
           />
         )}
-        <span>{isStreaming ? (t("i18n.thinkingShort") ?? "Thinking…") : (t("i18n.thinking") ?? "Thinking")}</span>
+        {isStreaming ? (
+          <Shimmer className="text-[11px]" duration={2} spread={1}>
+            {t("i18n.thinkingShort") ?? "Thinking…"}
+          </Shimmer>
+        ) : (
+          <span>{t("i18n.thinking") ?? "Thinking"}</span>
+        )}
         {duration !== undefined && (
           <span className="ml-auto font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
         )}
@@ -820,7 +827,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
   );
 }
 
-function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void }) {  const [expanded, setExpanded] = useState(false);
+function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void; isStreaming?: boolean }) {  const [expanded, setExpanded] = useState(false);
   const inputStr = JSON.stringify(block.input, null, 2);
   const isEditTool = isEditToolName(block.toolName);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
@@ -872,12 +879,24 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
           minWidth: 0,
         }}
       >
-        <span style={{ color: isError ? "var(--text-dim)" : "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
-          {block.toolName}
-        </span>
-        <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
-          {getToolPreview(block)}
-        </span>
+        {isStreaming ? (
+          <Shimmer className="font-mono text-[11px] font-semibold" duration={2}>
+            {block.toolName}
+          </Shimmer>
+        ) : (
+          <span style={{ color: isError ? "var(--text-dim)" : "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
+            {block.toolName}
+          </span>
+        )}
+        {isStreaming ? (
+          <Shimmer className="flex-1 truncate font-mono text-[11px]" duration={2} spread={1}>
+            {getToolPreview(block)}
+          </Shimmer>
+        ) : (
+          <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+            {getToolPreview(block)}
+          </span>
+        )}
         {duration !== undefined && (
           <span style={{ fontSize: 11, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
