@@ -558,7 +558,7 @@ function AssistantMessageView({
 
   return (
     <div
-      style={{ marginBottom: endsWithTool ? 4 : 16 }}
+      style={{ marginBottom: endsWithTool ? 2 : 16 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setUsageTip(null); }}
       onMouseMove={(e) => {
@@ -628,7 +628,7 @@ function AssistantMessageView({
       </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {blockItems.map(({ block, originalIndex }) => (
           <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} />
         ))}
