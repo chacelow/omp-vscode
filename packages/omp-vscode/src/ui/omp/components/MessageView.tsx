@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
+import { parseAnsiLine } from "@/lib/ansi";
 import { ChevronDown } from "lucide-react";
 import {
   AlertDialog,
@@ -925,6 +926,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
             text={resultText ?? ""}
             isEmpty={resultIsEmpty}
             isError={isError}
+            terminalMode={block.toolName === "bash"}
           />
         )
       )}
@@ -1181,12 +1183,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function PairedResult({ text, isEmpty, isError }: {
+function PairedResult({ text, isEmpty, isError, terminalMode }: {
   text: string;
   isEmpty: boolean;
   isError: boolean;
+  terminalMode?: boolean;
 }) {
   const { t } = useI18n();
+  const lines = useMemo(
+    () => (terminalMode ? text.split("\n") : null),
+    [terminalMode, text],
+  );
   return (
     <div
       style={{
@@ -1198,19 +1205,31 @@ function PairedResult({ text, isEmpty, isError }: {
         style={{
           margin: 0,
           padding: "8px 10px",
-          color: isError ? "var(--text-dim)" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
+          // Terminal mode mimics the VS Code terminal surface: its background
+          // + foreground tokens and ANSI colors from the terminal theme.
+          color: terminalMode ? "var(--vscode-terminal-foreground, var(--text-muted))" : (isError ? "var(--text-dim)" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)")),
           fontSize: 12,
           lineHeight: 1.5,
           overflow: "auto",
           maxHeight: 400,
-          background: "var(--bg)",
+          background: terminalMode ? "var(--vscode-terminal-background, var(--bg))" : "var(--bg)",
           whiteSpace: "pre-wrap",
           wordBreak: "break-all",
           fontStyle: isEmpty ? "italic" : "normal",
           opacity: isEmpty ? 0.6 : 1,
         }}
       >
-         {isEmpty ? t("i18n.noOutput") : text}
+        {isEmpty
+          ? t("i18n.noOutput")
+          : lines
+            ? lines.map((line, i) => (
+                <div key={i}>
+                  {parseAnsiLine(line).map((seg, j) => (
+                    <span key={j} style={seg.style}>{seg.text}</span>
+                  ))}
+                </div>
+              ))
+            : text}
       </pre>
     </div>
   );

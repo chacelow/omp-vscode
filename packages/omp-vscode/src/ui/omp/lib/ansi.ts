@@ -5,26 +5,29 @@ const ANSI_ESCAPE_AT_START_RE = /^\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]
 const ANSI_SGR_RE = /\x1B\[([0-9;]*)m/g;
 const TUI_CURSOR_MARKER_RE = /\x1B_pi:c\x07/g;
 
+// Colors map to VS Code's terminal theme variables (available in the webview)
+// so bash output follows the user's terminal color scheme, like a real
+// VS Code terminal.
 const ANSI_8_COLORS = [
-  "#1f2937",
-  "#dc2626",
-  "#16a34a",
-  "#d97706",
-  "#2563eb",
-  "#9333ea",
-  "#0891b2",
-  "#6b7280",
+  "var(--vscode-terminal-ansiBlack, #1f2937)",
+  "var(--vscode-terminal-ansiRed, #dc2626)",
+  "var(--vscode-terminal-ansiGreen, #16a34a)",
+  "var(--vscode-terminal-ansiYellow, #d97706)",
+  "var(--vscode-terminal-ansiBlue, #2563eb)",
+  "var(--vscode-terminal-ansiMagenta, #9333ea)",
+  "var(--vscode-terminal-ansiCyan, #0891b2)",
+  "var(--vscode-terminal-ansiWhite, #6b7280)",
 ];
 
 const ANSI_BRIGHT_COLORS = [
-  "#9ca3af",
-  "#ef4444",
-  "#22c55e",
-  "#f59e0b",
-  "#3b82f6",
-  "#a855f7",
-  "#06b6d4",
-  "#e5e7eb",
+  "var(--vscode-terminal-ansiBrightBlack, #9ca3af)",
+  "var(--vscode-terminal-ansiBrightRed, #ef4444)",
+  "var(--vscode-terminal-ansiBrightGreen, #22c55e)",
+  "var(--vscode-terminal-ansiBrightYellow, #f59e0b)",
+  "var(--vscode-terminal-ansiBrightBlue, #3b82f6)",
+  "var(--vscode-terminal-ansiBrightMagenta, #a855f7)",
+  "var(--vscode-terminal-ansiBrightCyan, #06b6d4)",
+  "var(--vscode-terminal-ansiBrightWhite, #e5e7eb)",
 ];
 
 export interface AnsiSegment {
