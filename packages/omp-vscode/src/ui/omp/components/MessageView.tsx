@@ -812,7 +812,7 @@ function SearchToolBlock({ block, result, duration, onOpenFile }: { block: ToolC
         {groups.length === 0 ? (
           <TaskItem className="text-[11px] text-[var(--text-dim)]">{t("i18n.noOutput") ?? "(no output)"}</TaskItem>
         ) : groups.map((g) => (
-          <div key={g.path}>
+          <TaskItem key={g.path}>
             <TaskItemFile
               onClick={() => onOpenFile?.(g.path)}
               className="cursor-pointer text-[10px] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
@@ -820,9 +820,9 @@ function SearchToolBlock({ block, result, duration, onOpenFile }: { block: ToolC
               {g.path.split("/").filter(Boolean).pop() ?? g.path}
             </TaskItemFile>
             {g.lines.map((l, i) => (
-              <TaskItem key={i} className="font-mono text-[11px] leading-[1.5]">{l}</TaskItem>
+              <div key={i} className="font-mono leading-[1.5]">{l}</div>
             ))}
-          </div>
+          </TaskItem>
         ))}
       </TaskContent>
     </Task>
