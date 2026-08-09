@@ -44,27 +44,30 @@ function buildTreeData(tree: SessionTreeNode[], activeIds: Set<string>) {
   const items: Record<string, NodeData & { children?: string[] }> = {
     [ROOT_ID]: { name: "Session", role: "root", isActive: false, hasBranch: false, children: [] },
   };
-  const walk = (nodes: SessionTreeNode[], parentId: string) => {
-    for (const node of nodes) {
-      const id = node.entry?.id ?? "";
-      if (!id) continue;
-      // Children are assigned HERE, once, from the node's own subtree.
-      const childIds = (node.children ?? []).map((c) => c.entry?.id ?? "").filter(Boolean);
-      items[id] = {
-        name: entryText(node.entry) || entryRole(node.entry),
-        role: entryRole(node.entry),
-        isActive: activeIds.has(id),
-        hasBranch: node.children.length > 1,
-        ...(childIds.length > 0 ? { children: childIds } : {}),
-      };
-      // Only the virtual root collects its children by push (it has no own
-      // subtree mapping); every other parent's children list comes from the
-      // explicit assignment above — no double-append.
-      if (parentId === ROOT_ID) (items[ROOT_ID].children ??= []).push(id);
-      walk(node.children ?? [], id);
+
+  // Session parentId links form a full chronological chain. That storage shape
+  // must not become visual indentation: linear turns remain siblings. A node
+  // creates a visual level only when it has multiple children (a real fork).
+  const walk = (node: SessionTreeNode, displayParentId: string): void => {
+    const nodeId = node.entry?.id;
+    if (!nodeId) return;
+    items[nodeId] = {
+      name: entryText(node.entry) || entryRole(node.entry),
+      role: entryRole(node.entry),
+      isActive: activeIds.has(nodeId),
+      hasBranch: node.children.length > 1,
+      children: [],
+    };
+    (items[displayParentId].children ??= []).push(nodeId);
+
+    if (node.children.length === 1) {
+      walk(node.children[0], displayParentId);
+      return;
     }
+    for (const child of node.children) walk(child, nodeId);
   };
-  walk(tree, ROOT_ID);
+
+  for (const node of tree) walk(node, ROOT_ID);
   return items;
 }
 
