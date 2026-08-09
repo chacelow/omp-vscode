@@ -20,6 +20,7 @@ import { HistoryMenu } from "./chat/HistoryMenu";
 import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescription, SLASH_SOURCE_ORDER, type SlashCommandPaletteItem } from "./chat/SlashPalette";
 import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 import { cn } from "@/lib/utils";
@@ -229,6 +230,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
   ));
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const trimmedValue = value.trimStart();
   const bashMode = attachedImages.length === 0 && trimmedValue.startsWith("!");
   const bashExcluded = bashMode && trimmedValue.startsWith("!!");
@@ -1097,7 +1099,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </div>
         )}
         {/* Image previews — a single-row strip above the input, styled like
-            the bottom toolbar row */}
+            the bottom toolbar row; click a thumbnail to view it large
+            (global lightbox). */}
         {attachedImages.length > 0 && (
           <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
             {attachedImages.map((img, i) => (
@@ -1106,10 +1109,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 <img
                   src={img.previewUrl}
                   alt=""
-                  className="block h-10 w-10 rounded-md border border-[var(--border)] object-cover"
+                  onClick={() => setLightboxUrl(img.previewUrl)}
+                  className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover transition-transform duration-100 group-hover:scale-105"
                 />
                 <button
-                  onClick={() => removeImage(i)}
+                  onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                   title={t("chat.removeImage") ?? "Remove"}
                   className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
                 >
@@ -1119,6 +1123,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             ))}
           </div>
         )}
+
+        {/* Global lightbox: VS Code modal showing the full image */}
+        <Dialog open={!!lightboxUrl} onOpenChange={(o) => { if (!o) setLightboxUrl(null); }}>
+          <DialogContent className="max-w-[92vw] gap-0 border-none bg-transparent p-0 shadow-none sm:rounded-none">
+            <DialogTitle className="sr-only">Image preview</DialogTitle>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxUrl ?? ""}
+              alt=""
+              className="mx-auto max-h-[88vh] max-w-[90vw] rounded-lg object-contain"
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Main input */}
         <div className="relative min-w-0">
