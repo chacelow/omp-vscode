@@ -933,7 +933,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
 
             {agentRunning && !streamState.streamingMessage && agentPhase && (
               <div className="py-2 text-[13px]">
-                <Shimmer className="text-[13px] text-[var(--text-muted)]" duration={2.5} spread={1}>
+                <Shimmer className="text-[13px]" duration={2.5} spread={1}>
                   {phaseLabel(agentPhase, t) ?? ""}
                 </Shimmer>
               </div>
@@ -941,7 +941,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
 
             {bashRunning && !pendingBash && (
               <div className="py-2 text-[13px]">
-                <Shimmer className="text-[13px] text-[var(--text-muted)]" duration={2.5} spread={1}>
+                <Shimmer className="text-[13px]" duration={2.5} spread={1}>
                   {t("chat.runningCommand")}
                 </Shimmer>
               </div>
