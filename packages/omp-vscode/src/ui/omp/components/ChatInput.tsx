@@ -1205,7 +1205,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 : t("chat.messagePlaceholder")
             }
             rows={1}
-            className="min-h-6 max-h-[calc(15*1.6*13px)] w-full min-w-0 flex-1 resize-none overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
+            className="min-h-6 max-h-[calc(15*1.6*13px)] w-full min-w-0 flex-none resize-none overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
             style={{ fontSize: 12, textSizeAdjust: "none", maxHeight: TEXTAREA_MAX_HEIGHT, pointerEvents: collapsed ? "none" : undefined }}
           />
 
