@@ -47,14 +47,16 @@ export function ContextRing({
     ? `${pct.toFixed(0)}% / ${fmt(contextWindow)} tokens`
     : tokens !== null ? `${fmt(tokens)} tokens` : "context";
 
-  const rows: Array<[string, string]> = [];
+  // RPC reports only overall context-window usage. Its available breakdown is
+  // cumulative model usage, not an attribution to tools, skills, or prompts.
+  const usageRows: Array<{ label: string; tokens: number }> = [];
   if (details) {
-    if (details.input !== undefined) rows.push(["in", fmt(details.input)]);
-    if (details.output !== undefined) rows.push(["out", fmt(details.output)]);
-    if (details.cacheRead) rows.push(["cache read", fmt(details.cacheRead)]);
-    if (details.cacheWrite) rows.push(["cache write", fmt(details.cacheWrite)]);
+    if (details.input !== undefined) usageRows.push({ label: "input", tokens: details.input });
+    if (details.output !== undefined) usageRows.push({ label: "output", tokens: details.output });
+    if (details.cacheRead) usageRows.push({ label: "cache read", tokens: details.cacheRead });
+    if (details.cacheWrite) usageRows.push({ label: "cache write", tokens: details.cacheWrite });
   }
-  if (details?.cost != null && details.cost > 0) rows.push(["cost", `$${details.cost.toFixed(4)}`]);
+  const accountedTokens = usageRows.reduce((total, row) => total + row.tokens, 0);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -84,26 +86,21 @@ export function ContextRing({
       <DropdownMenuContent side="top" align="end" className="min-w-[240px] p-2">
         <DropdownMenuLabel className="text-sm">Context usage</DropdownMenuLabel>
         <div className="space-y-1.5 pt-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[var(--text-dim)]">used</span>
-            <span className="font-mono text-[var(--text)]">{pct.toFixed(1)}%</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[var(--text-dim)]">window</span>
-            <span className="font-mono text-[var(--text)]">{fmt(contextWindow)} tokens</span>
-          </div>
-          {tokens !== null && (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[var(--text-dim)]">total tokens</span>
-              <span className="font-mono text-[var(--text)]">{fmt(tokens)}</span>
+          <div className="flex items-center justify-between text-xs"><span className="text-[var(--text-dim)]">used</span><span className="font-mono tabular-nums text-[var(--text)]">{pct.toFixed(1)}%</span></div>
+          <div className="flex items-center justify-between text-xs"><span className="text-[var(--text-dim)]">window</span><span className="font-mono tabular-nums text-[var(--text)]">{fmt(contextWindow)} tokens</span></div>
+          {tokens !== null && <div className="flex items-center justify-between text-xs"><span className="text-[var(--text-dim)]">current context</span><span className="font-mono tabular-nums text-[var(--text)]">{fmt(tokens)}</span></div>}
+          {usageRows.length > 0 && (
+            <div className="mt-2 border-t border-[var(--border)] pt-2">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">Cumulative model usage</p>
+              <div className="space-y-1.5">
+                {usageRows.map((row) => {
+                  const share = accountedTokens ? (row.tokens / accountedTokens) * 100 : 0;
+                  return <div key={row.label} className="flex items-center justify-between gap-3 text-xs"><span className="text-[var(--text-dim)]">{row.label}</span><span className="font-mono tabular-nums text-[var(--text)]">{fmt(row.tokens)} · {share.toFixed(1)}%</span></div>;
+                })}
+              </div>
             </div>
           )}
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between text-xs">
-              <span className="text-[var(--text-dim)]">{label}</span>
-              <span className="font-mono text-[var(--text)]">{value}</span>
-            </div>
-          ))}
+          {details?.cost != null && details.cost > 0 && <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs"><span className="text-[var(--text-dim)]">cost</span><span className="font-mono tabular-nums text-[var(--text)]">${details.cost.toFixed(4)}</span></div>}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

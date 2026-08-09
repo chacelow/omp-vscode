@@ -1030,11 +1030,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         // standard 16px side padding against the window edge.
         collapsed || initialValue !== undefined ? "px-0" : "px-4",
       )}
-      onBlur={(e) => {
-        // Edit-from-here: focus leaving the composer collapses it back to
-        // the read-only message (reference interaction). Redundant with the
-        // pointerdown handler above (kept for keyboard-driven focus moves).
-        if (onCancelEdit && e.relatedTarget instanceof Node && !e.currentTarget.contains(e.relatedTarget)) {
+      onBlur={(event) => {
+        // Radix menu content is portaled outside this wrapper. Moving focus to
+        // it is still part of editing; only collapse for a genuine focus exit.
+        const nextTarget = event.relatedTarget instanceof Element ? event.relatedTarget : null;
+        const movingToComposerMenu = !!nextTarget?.closest?.("[data-radix-popper-content-wrapper]");
+        if (onCancelEdit && !movingToComposerMenu && event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) {
           onCancelEdit();
         }
       }}

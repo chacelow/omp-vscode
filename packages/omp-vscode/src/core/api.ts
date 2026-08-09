@@ -173,6 +173,13 @@ export class ApiHandler {
         }
       }
 
+      // /api/cwd/git-branch?cwd=... — VS Code Git extension API branch.
+      // This must precede the generic /api/cwd config surface.
+      if (parts[1] === "cwd" && parts[2] === "git-branch" && method === "GET") {
+        const params = new URL(url, "http://local").searchParams;
+        return this.gitBranch(params.get("cwd") ?? "");
+      }
+
       // /api/models, /api/models-config, /api/skills, /api/plugins, /api/auth,
       // /api/files, /api/cwd — config surfaces are not embedded yet.
       if (["models-config", "skills", "plugins", "auth", "files", "cwd", "home", "default-cwd", "project-trust"].includes(parts[1] as string)) {
@@ -184,11 +191,6 @@ export class ApiHandler {
       if (parts[1] === "file-index" && method === "GET") {
         const params = new URL(url, "http://local").searchParams;
         return this.fileIndex(params.get("cwd") ?? "", params.get("q") ?? "");
-      }
-      // /api/cwd/git-branch?cwd=... — current git branch for the composer footer
-      if (parts[1] === "cwd" && parts[2] === "git-branch" && method === "GET") {
-        const params = new URL(url, "http://local").searchParams;
-        return this.gitBranch(params.get("cwd") ?? "");
       }
 
       return { status: 404, body: { error: `Not found: ${path}` } };
