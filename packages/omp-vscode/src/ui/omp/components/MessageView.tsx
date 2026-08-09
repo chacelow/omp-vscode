@@ -850,9 +850,11 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
         overflow: "hidden",
         fontSize: 12,
         opacity: isError ? 0.55 : 1,
-        // No success color: neutral border for ok, greyed for failures.
-        border: isError ? "1px solid color-mix(in srgb, var(--border) 45%, transparent)" : "1px solid color-mix(in srgb, var(--border) 22%, transparent)",
-        background: "transparent",
+        // Card = widget layer (editorWidget-background), one step above the
+        // editor background; border at full-ish strength so it reads as a
+        // distinct surface. Failures: same surface, dimmed via opacity.
+        border: isError ? "1px solid color-mix(in srgb, var(--border) 65%, transparent)" : "1px solid color-mix(in srgb, var(--border) 55%, transparent)",
+        background: "var(--tool-bg)",
       }}
     >
       {/* ── Tool call header ── */}
@@ -898,7 +900,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile }: { block: ToolCal
             lineHeight: 1.5,
             overflow: "auto",
             background: "var(--bg-subtle)",
-            borderTop: isError ? "1px solid color-mix(in srgb, var(--border) 45%, transparent)" : "1px solid color-mix(in srgb, var(--border) 22%, transparent)",
+            borderTop: isError ? "1px solid color-mix(in srgb, var(--border) 65%, transparent)" : "1px solid color-mix(in srgb, var(--border) 55%, transparent)",
             whiteSpace: "pre-wrap",
             wordBreak: "break-all",
           }}
@@ -935,7 +937,7 @@ function PairedDiffResult({ diff }: {
   return (
     <div
       style={{
-        borderTop: "1px solid color-mix(in srgb, var(--border) 22%, transparent)",
+        borderTop: "1px solid color-mix(in srgb, var(--border) 55%, transparent)",
         background: "var(--bg)",
       }}
     >
@@ -1180,15 +1182,15 @@ function PairedResult({ text, isEmpty, isError }: {
   return (
     <div
       style={{
-        borderTop: `1px solid ${isError ? "color-mix(in srgb, var(--destructive) 30%, transparent)" : "color-mix(in srgb, var(--success) 15%, transparent)"}`,
-        background: isError ? "color-mix(in srgb, var(--destructive) 4%, transparent)" : "var(--bg-subtle)",
+        borderTop: `1px solid ${isError ? "color-mix(in srgb, var(--border) 65%, transparent)" : "color-mix(in srgb, var(--border) 55%, transparent)"}`,
+        background: isError ? "transparent" : "var(--bg-subtle)",
       }}
     >
       <pre
         style={{
           margin: 0,
           padding: "8px 10px",
-          color: isError ? "#f87171" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
+          color: isError ? "var(--text-dim)" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
           fontSize: 12,
           lineHeight: 1.5,
           overflow: "auto",
