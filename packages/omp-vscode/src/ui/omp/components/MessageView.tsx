@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { MarkdownBody } from "./MarkdownBody";
+import { Braces, File, FileCode, FileImage, FileTerminal, FileText } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
@@ -726,6 +727,16 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
 }
 
 
+function fileIconFor(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["ts", "tsx", "js", "jsx"].includes(ext)) return <FileCode size={10} className="shrink-0 text-[var(--text-dim)]" />;
+  if (["json"].includes(ext)) return <Braces size={10} className="shrink-0 text-[var(--text-dim)]" />;
+  if (["md", "markdown", "txt"].includes(ext)) return <FileText size={10} className="shrink-0 text-[var(--text-dim)]" />;
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) return <FileImage size={10} className="shrink-0 text-[var(--text-dim)]" />;
+  if (["py", "rb", "go", "rs", "c", "cpp", "sh", "yaml", "yml", "toml"].includes(ext)) return <FileTerminal size={10} className="shrink-0 text-[var(--text-dim)]" />;
+  return <File size={10} className="shrink-0 text-[var(--text-dim)]" />;
+}
+
 /** `read` tool — flowing style like thinking: a single label row (`read`
  * keyword + basename + grab range). No card, no green, no expand/collapse —
  * clicking the filename opens it in VS Code. Failures are greyed out. */
@@ -765,6 +776,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
             onOpenFile && "hover:bg-[var(--bg-hover)] hover:text-[var(--text)]",
           )}
         >
+          {path ? fileIconFor(path) : null}
           {path ? path.split("/").filter(Boolean).pop() ?? path : "(no path)"}
         </TaskItemFile>
         {grabText && (
@@ -817,6 +829,7 @@ function SearchToolBlock({ block, result, duration, onOpenFile }: { block: ToolC
               onClick={() => onOpenFile?.(g.path)}
               className="cursor-pointer text-[10px] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
             >
+              {fileIconFor(g.path)}
               {g.path.split("/").filter(Boolean).pop() ?? g.path}
             </TaskItemFile>
             {g.lines.map((l, i) => (
