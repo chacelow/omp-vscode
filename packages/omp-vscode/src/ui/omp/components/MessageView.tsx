@@ -7,7 +7,7 @@ import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
-import { BrainIcon, ChevronDown, Copy } from "lucide-react";
+import { BrainIcon, Check, ChevronDown, Copy } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,6 +87,8 @@ interface Props {
   showTimestamp?: boolean;
   prevTimestamp?: number;
   sessionId?: string;
+  /** Suppress the usage/model hover card (used for split process blocks). */
+  hideUsageTip?: boolean;
 }
 
 function formatTime(ts?: number): string | null {
@@ -116,12 +118,12 @@ function haveSameRelevantToolResults(
   return true;
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideUsageTip }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} editInputRender={editInputRender} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} />;
+    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideUsageTip={hideUsageTip} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -152,7 +154,8 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.onEditContent === next.onEditContent
     && prev.showTimestamp === next.showTimestamp
     && prev.prevTimestamp === next.prevTimestamp
-    && prev.sessionId === next.sessionId;
+    && prev.sessionId === next.sessionId
+    && prev.hideUsageTip === next.hideUsageTip;
 });
 
 function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender }: {
@@ -425,6 +428,7 @@ function AssistantMessageView({
   prevTimestamp,
   sessionId,
   entryId,
+  hideUsageTip,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -436,6 +440,7 @@ function AssistantMessageView({
   prevTimestamp?: number;
   sessionId?: string;
   entryId?: string;
+  hideUsageTip?: boolean;
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
@@ -553,19 +558,29 @@ function AssistantMessageView({
   // (fixed position, clickable) instead of taking layout space.
   const [usageTip, setUsageTip] = useState(false);
 
+  // Completed messages show a persistent TUI-style status line under the
+  // answer (usage · duration · tokens/s) — always visible, not hover-gated.
+  const completedTps = useMemo<number | null>(() => {
+    if (isStreaming || !message.usage) return null;
+    const dur = thinkingDurationFromFile;
+    if (!dur || dur <= 0) return null;
+    const out = message.usage.output ?? 0;
+    return out > 0 ? Math.round(out / dur) : null;
+  }, [isStreaming, message.usage, thinkingDurationFromFile]);
+
   return (
     <div
       style={{ marginBottom: endsWithTool ? 2 : 16, position: "relative" }}
-      onMouseEnter={() => { setHovered(true); if (message.usage || message.model || time) setUsageTip(true); }}
+      onMouseEnter={() => { setHovered(true); if (!hideUsageTip && (message.usage || message.model || time)) setUsageTip(true); }}
       onMouseLeave={() => { setHovered(false); setUsageTip(false); }}
     >
       {usageTip && (
         <div
-          className="absolute right-0 top-[-6px] z-[200] max-w-[340px] translate-y-[-100%] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
+          className="absolute right-0 top-[-6px] z-[200] max-w-[360px] translate-y-[-100%] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
         >
           {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
-          {tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
+          {(tps !== null || completedTps !== null) && <div>{Math.round(tps ?? completedTps ?? 0).toLocaleString()} tok/s</div>}
           {(thinkingDurationFromFile !== undefined || durationHover !== null) && (
             <div className="text-[var(--text-dim)]">
               {(durationHover ?? thinkingDurationFromFile)?.toFixed(1)}s
@@ -836,6 +851,7 @@ function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCal
 }
 
 function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void; isStreaming?: boolean }) {  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { t } = useI18n();
   const inputStr = JSON.stringify(block.input, null, 2);
   const isEditTool = isEditToolName(block.toolName);
@@ -901,12 +917,15 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              void copyText((block.input as { command: string }).command);
+              void copyText((block.input as { command: string }).command).then(() => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1500);
+              });
             }}
             title={t("i18n.copyCommand") ?? "Copy command"}
             className="flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-[var(--border)] bg-transparent p-0 px-1.5 text-[10px] text-[var(--text-dim)] opacity-0 transition-[opacity,color] duration-100 group-hover:opacity-100 hover:text-[var(--text-muted)]"
           >
-            <Copy size={10} />
+            {copied ? <Check size={10} className="text-[var(--success)]" /> : <Copy size={10} />}
           </button>
         )}
         {duration !== undefined && (
