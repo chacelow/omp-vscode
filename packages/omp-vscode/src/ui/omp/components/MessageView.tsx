@@ -552,28 +552,31 @@ function AssistantMessageView({
   const lastBlock = blocks[blocks.length - 1];
   const endsWithTool = lastBlock?.type === "toolCall";
 
-  // Usage/model info is hidden from the layout; hovering the message shows
-  // it next to the cursor (mouse-follow tooltip).
-  const [usageTip, setUsageTip] = useState<{ x: number; y: number } | null>(null);
+  // Usage/model/time/copy live in a hover card anchored to the message
+  // (fixed position, clickable) instead of taking layout space.
+  const [usageTip, setUsageTip] = useState(false);
 
   return (
     <div
-      style={{ marginBottom: endsWithTool ? 2 : 16 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setUsageTip(null); }}
-      onMouseMove={(e) => {
-        if (!message.usage && !message.model) return;
-        setUsageTip({ x: e.clientX, y: e.clientY });
-      }}
+      style={{ marginBottom: endsWithTool ? 2 : 16, position: "relative" }}
+      onMouseEnter={() => { setHovered(true); if (message.usage || message.model || time) setUsageTip(true); }}
+      onMouseLeave={() => { setHovered(false); setUsageTip(false); }}
     >
-      {usageTip && (message.usage || message.model) && (
+      {usageTip && (
         <div
-          className="pointer-events-none fixed z-[200] max-w-[320px] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
-          style={{ left: usageTip.x + 12, top: usageTip.y + 12 }}
+          className="absolute right-0 top-[-6px] z-[200] max-w-[340px] translate-y-[-100%] rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--text-muted)] shadow-[0_4px_16px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))]"
         >
           {message.model && <div className="text-[var(--text-dim)]">{modelNames?.[`${message.provider}:${message.model}`] ?? modelNames?.[message.model] ?? message.model}</div>}
           {message.usage && !isStreaming && <div>{formatUsage(message.usage)}</div>}
           {isStreaming && tps !== null && <div>{Math.round(tps).toLocaleString()} tok/s</div>}
+          {time && !isStreaming && <div className="text-[var(--text-dim)]">{time}</div>}
+          <button
+            type="button"
+            onClick={copyContent}
+            className="mt-1 cursor-pointer border-none bg-transparent p-0 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)]"
+          >
+            {copied ? (t("i18n.copied") ?? "Copied") : (t("i18n.copyMessage") ?? "Copy")}
+          </button>
         </div>
       )}
       {/* Model label / streaming estimate — hidden from layout; the hover
