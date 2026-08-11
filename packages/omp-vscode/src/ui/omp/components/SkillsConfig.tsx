@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { z } from "zod";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
 import type {
   SkillInfo as Skill,
   SkillInstallScope,
   SkillSearchResult,
-  SkillsResponse,
   SkillUpdateResult,
 } from "@/lib/api-types";
+import { ompExtensions } from "@/lib/ext-methods";
+import { hostCall } from "../../bridge";
 
 function shortenPath(p: string): string {
   // POSIX: /Users/xxx or /home/xxx → ~
@@ -17,6 +19,29 @@ function shortenPath(p: string): string {
   return p
     .replace(/^\/(?:Users|home)\/[^/]+/, "~")
     .replace(/^[A-Za-z]:[/\\]Users[/\\][^/\\]+/, "~");
+}
+
+const SkillExtensionSchema = z.object({
+  kind: z.literal("skill"),
+  name: z.string(),
+  description: z.string(),
+  path: z.string(),
+  source: z.object({ level: z.enum(["user", "project"]).optional() }).optional(),
+});
+
+function mapSkillExtensionToSkillInfo(extension: unknown): Skill | null {
+  const parsed = SkillExtensionSchema.safeParse(extension);
+  if (!parsed.success) return null;
+  const { name, description, path, source } = parsed.data;
+  const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return {
+    name,
+    description,
+    filePath: path,
+    baseDir: separatorIndex >= 0 ? path.slice(0, separatorIndex) : "",
+    disableModelInvocation: false,
+    sourceInfo: { scope: source?.level },
+  };
 }
 
 function sourceLabel(skill: Skill): string {
@@ -400,12 +425,7 @@ function AddSkillPanel({
     setSearchError(null);
     setResults([]);
     try {
-      const res = await fetch("/api/skills/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q.trim() }),
-      });
-      const d = (await res.json()) as {
+      const d = await hostCall("skillsSearch", { query: q.trim() }) as {
         results?: SkillSearchResult[];
         error?: string;
       };
@@ -427,14 +447,9 @@ function AddSkillPanel({
       setInstalling(pkg);
       setInstallError(null);
       try {
-        const res = await fetch("/api/skills/install", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ package: pkg, scope, cwd }),
-        });
-        const d = (await res.json()) as { success?: boolean; error?: string };
-        if (!res.ok || d.error) {
-          setInstallError(d.error ?? `HTTP ${res.status}`);
+        const d = await hostCall("skillsInstall", { package: pkg, scope, cwd }) as { success?: boolean; error?: string };
+        if (!d.success || d.error) {
+          setInstallError(d.error ?? "Unable to install skill");
           return;
         }
         setNewlyInstalledPkgs((prev) =>
@@ -712,9 +727,11 @@ function AddSkillPanel({
 export function SkillsConfig({
   cwd,
   onClose,
+  embedded,
 }: {
   cwd: string;
-  onClose: () => void;
+  onClose?: () => void;
+  embedded?: boolean;
 }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
@@ -737,12 +754,12 @@ export function SkillsConfig({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/skills?cwd=${encodeURIComponent(cwd)}`);
-      const d = (await res.json()) as Partial<SkillsResponse> & { error?: string };
-      if (!res.ok || d.error) throw new Error(d.error ?? `HTTP ${res.status}`);
-      const list = d.skills ?? [];
+      const { extensions } = await ompExtensions(cwd);
+      const list = extensions
+        .map(mapSkillExtensionToSkillInfo)
+        .filter((skill): skill is Skill => skill !== null);
       setSkills(list);
-      setProjectResourcesLoaded(d.projectResourcesLoaded ?? true);
+      setProjectResourcesLoaded(true);
       if (list.length > 0 && !selected) {
         const initialSkill = list.find((skill) => !skill.disableModelInvocation) ?? list[0];
         setSelected(initialSkill.filePath);
@@ -781,20 +798,15 @@ export function SkillsConfig({
     setCheckingUpdates((current) => new Set([...current, ...keys]));
     if (!skill) setCheckingAll(true);
     try {
-      const res = await fetch("/api/skills/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cwd,
-          package: skill?.install?.package,
-          scope: skill?.install?.scope,
-        }),
-      });
-      const data = (await res.json()) as {
+      const data = await hostCall("skillsCheck", {
+        cwd,
+        package: skill?.install?.package,
+        scope: skill?.install?.scope,
+      }) as {
         updates?: SkillUpdateResult[];
         error?: string;
       };
-      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+      if (data.error) throw new Error(data.error);
       setUpdateStatuses((current) => {
         const next = { ...current };
         for (const update of data.updates ?? []) {
@@ -820,22 +832,17 @@ export function SkillsConfig({
     setUpdatingSkill(key);
     setUpdateError(null);
     try {
-      const res = await fetch("/api/skills/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cwd,
-          package: skill.install.package,
-          scope: skill.install.scope,
-        }),
-      });
-      const data = (await res.json()) as {
+      const data = await hostCall("skillsUpdate", {
+        cwd,
+        package: skill.install.package,
+        scope: skill.install.scope,
+      }) as {
         success?: boolean;
         skill?: Skill;
         error?: string;
       };
-      if (!res.ok || data.error || !data.success) {
-        throw new Error(data.error ?? `HTTP ${res.status}`);
+      if (data.error || !data.success) {
+        throw new Error(data.error ?? "Unable to update skill");
       }
       await loadSkills();
       const versionHash = data.skill?.install?.versionHash;
@@ -861,17 +868,12 @@ export function SkillsConfig({
     setToggling((s) => new Set(s).add(skill.filePath));
     setSaveError(null);
     try {
-      const res = await fetch("/api/skills", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filePath: skill.filePath,
-          disableModelInvocation: next,
-        }),
-      });
-      const d = (await res.json()) as { success?: boolean; error?: string };
-      if (!res.ok || d.error) {
-        setSaveError(d.error ?? `HTTP ${res.status}`);
+      const d = await hostCall("skillsPatch", {
+        filePath: skill.filePath,
+        disableModelInvocation: next,
+      }) as { success?: boolean; error?: string };
+      if (!d.success || d.error) {
+        setSaveError(d.error ?? "Unable to update skill");
         return;
       }
       setSkills((prev) =>
@@ -902,33 +904,18 @@ export function SkillsConfig({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.35))",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      style={embedded
+        ? { display: "flex", flexDirection: "column", height: "100%", width: "100%", background: "var(--bg)", color: "var(--text)" }
+        : { position: "fixed", inset: 0, zIndex: 1000, background: "var(--vscode-widget-shadow, rgba(0,0,0,0.35))", display: "flex", alignItems: "center", justifyContent: "center" }}
+      onClick={embedded ? undefined : (e) => {
+        if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
-        style={{
-          width: isMobile ? "calc(100vw - 16px)" : 860,
-          maxWidth: "calc(100vw - 16px)",
-          height: isMobile ? "calc(100dvh - 16px)" : "78vh",
-          maxHeight: "calc(100dvh - 16px)",
-          background: "var(--bg)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
-          overflow: "hidden",
-        }}
+        style={embedded
+          ? { display: "flex", flexDirection: "column", height: "100%", width: "100%", background: "var(--bg)", color: "var(--text)", overflow: "hidden" }
+          : { width: isMobile ? "calc(100vw - 16px)" : 860, maxWidth: "calc(100vw - 16px)", height: isMobile ? "calc(100dvh - 16px)" : "78vh", maxHeight: "calc(100dvh - 16px)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))", overflow: "hidden" }
+        }
       >
         {/* Header */}
         <div
@@ -961,8 +948,8 @@ export function SkillsConfig({
               {shortenPath(cwd)}
             </code>
           </div>
-          <button
-            onClick={onClose}
+          {!embedded && <button
+            onClick={() => onClose?.()}
             style={{
               background: "none",
               border: "none",
@@ -974,7 +961,7 @@ export function SkillsConfig({
             }}
           >
             ×
-          </button>
+          </button>}
         </div>
 
         {!projectResourcesLoaded && (
@@ -1382,8 +1369,8 @@ export function SkillsConfig({
               </span>
             )}
           </div>
-          <button
-            onClick={onClose}
+          {!embedded && <button
+            onClick={() => onClose?.()}
             style={{
               padding: "6px 14px",
               background: "none",
@@ -1395,7 +1382,7 @@ export function SkillsConfig({
             }}
           >
              {t("i18n.close")}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

@@ -1,13 +1,72 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sendAgentCommand } from "@/lib/agent-client";
+import { z } from "zod";
+import { acpRequest, hostCall } from "../../bridge";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { PluginPackageInfo, PluginsResponse } from "@/lib/api-types";
+import { ompExtensions, ompExtensionsToggle } from "@/lib/ext-methods";
 import { useI18n } from "@/hooks/useI18n";
 
-type PluginScope = PluginPackageInfo["scope"];
-type PluginAction = "install" | "remove" | "update" | "disable" | "enable";
+const PluginExtensionSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["extension-module", "mcp"]),
+  name: z.string(),
+  displayName: z.string().optional(),
+  description: z.string().optional(),
+  path: z.string().optional(),
+  source: z.object({ provider: z.string(), level: z.enum(["user", "project"]).optional() }),
+  state: z.enum(["active", "disabled", "shadowed"]),
+});
+
+function mapExtensionToPluginPackage(extension: unknown): PluginPackageInfo | null {
+  const parsed = PluginExtensionSchema.safeParse(extension);
+  if (!parsed.success) return null;
+  const { id, kind, name, displayName, description, path, source, state } = parsed.data;
+  return {
+    source: id,
+    providerId: source.provider,
+    scope: source.level === "project" ? "project" : "global",
+    filtered: state === "shadowed",
+    disabled: state === "disabled",
+    installedPath: path,
+    packageName: displayName ?? name,
+    counts: {
+      extensions: 1,
+      skills: 0,
+      prompts: 0,
+      themes: 0,
+    },
+    resources: [{
+      kind: "extension",
+      name: displayName ?? name,
+      path: path ?? "",
+      relativePath: description ?? (kind === "mcp" ? "MCP server" : "Plugin"),
+    }],
+    status: state === "active" ? "loaded" : state === "disabled" ? "disabled" : "installed",
+  };
+}
+
+function extensionsToPluginsResponse(extensions: unknown[]): PluginsResponse {
+  const packages = extensions
+    .map(mapExtensionToPluginPackage)
+    .filter((plugin): plugin is PluginPackageInfo => plugin !== null);
+  return {
+    packages,
+    totals: {
+      extensions: packages.length,
+      skills: 0,
+      prompts: 0,
+      themes: 0,
+    },
+    diagnostics: [],
+    projectResourcesLoaded: true,
+  };
+}
+
+ type PluginScope = PluginPackageInfo["scope"];
+ type PluginAction = "install" | "remove" | "update" | "disable" | "enable";
+ type PluginsActionResponse = PluginsResponse & { success?: boolean; error?: string };
 
 function shortenPath(path: string): string {
   // POSIX: /Users/xxx or /home/xxx → ~
@@ -621,11 +680,13 @@ export function PluginsConfig({
   sessionId,
   onClose,
   onReloaded,
+  embedded,
 }: {
   cwd: string;
   sessionId: string | null;
-  onClose: () => void;
+  onClose?: () => void;
   onReloaded?: () => void;
+  embedded?: boolean;
 }) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
@@ -643,7 +704,6 @@ export function PluginsConfig({
   const packages = useMemo(() => data?.packages ?? [], [data?.packages]);
   const selectedPackage = packages.find((pkg) => packageKey(pkg) === selected) ?? null;
   const projectResourcesLoaded = data?.projectResourcesLoaded ?? true;
-
   const groupedPackages = useMemo(() => {
     return (["project", "global"] as PluginScope[])
       .map((scope) => ({ scope, packages: packages.filter((pkg) => pkg.scope === scope) }))
@@ -654,9 +714,8 @@ export function PluginsConfig({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/plugins?cwd=${encodeURIComponent(cwd)}`);
-      const next = (await res.json()) as PluginsResponse & { error?: string };
-      if (!res.ok || next.error) throw new Error(next.error ?? `HTTP ${res.status}`);
+      const { extensions } = await ompExtensions(cwd);
+      const next = extensionsToPluginsResponse(extensions);
       setData(next);
       setAddMode((current) => next.packages.length === 0 || current);
       setSelected((current) => {
@@ -665,6 +724,8 @@ export function PluginsConfig({
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
   }, [cwd]);
 
@@ -678,13 +739,15 @@ export function PluginsConfig({
     setActionError(null);
     setActionMessage(null);
     try {
-      const res = await fetch("/api/plugins", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, source: pkg.source, scope: pkg.scope, cwd }),
-      });
-      const next = (await res.json()) as PluginsResponse & { error?: string };
-      if (!res.ok || next.error) throw new Error(next.error ?? `HTTP ${res.status}`);
+      if (action === "disable" || action === "enable") {
+        if (!pkg.providerId) throw new Error("Extension provider is unavailable.");
+        await ompExtensionsToggle(pkg.providerId, action === "enable");
+        await loadPlugins();
+        setActionMessage(action === "enable" ? "Package enabled." : "Package disabled.");
+        return;
+      }
+      const next = await hostCall("pluginsAction", { action, source: pkg.source, scope: pkg.scope, cwd }) as PluginsActionResponse;
+      if (next.error) throw new Error(next.error);
       setData(next);
       if (action === "remove") {
         setSelected(next.packages[0] ? packageKey(next.packages[0]) : null);
@@ -704,7 +767,7 @@ export function PluginsConfig({
     } finally {
       setBusyKey(null);
     }
-  }, [cwd]);
+  }, [cwd, loadPlugins]);
 
   const installPlugin = useCallback(async () => {
     const source = normalizePluginSourceInput(installSource).trim();
@@ -715,13 +778,8 @@ export function PluginsConfig({
     setActionError(null);
     setActionMessage(null);
     try {
-      const res = await fetch("/api/plugins", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "install", source, scope: installScope, cwd }),
-      });
-      const next = (await res.json()) as PluginsResponse & { error?: string };
-      if (!res.ok || next.error) throw new Error(next.error ?? `HTTP ${res.status}`);
+      const next = await hostCall("pluginsAction", { action: "install", source, scope: installScope, cwd }) as unknown as PluginsActionResponse;
+      if (next.error) throw new Error(next.error);
       setData(next);
       const installed = findInstalledPackage(next.packages, source, installScope);
       setSelected(installed ? packageKey(installed) : key);
@@ -741,7 +799,7 @@ export function PluginsConfig({
     setActionError(null);
     setActionMessage(null);
     try {
-      await sendAgentCommand(sessionId, { type: "reload" });
+      await acpRequest({ type: "acp/prompt", sessionId, prompt: [{ type: "text", text: "/reload" }] });
       onReloaded?.();
       await loadPlugins();
       setActionMessage("Session reloaded.");
@@ -756,33 +814,18 @@ export function PluginsConfig({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.35))",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      style={embedded
+        ? { display: "flex", flexDirection: "column", height: "100%", width: "100%", background: "var(--bg)", color: "var(--text)" }
+        : { position: "fixed", inset: 0, zIndex: 1000, background: "var(--vscode-widget-shadow, rgba(0,0,0,0.35))", display: "flex", alignItems: "center", justifyContent: "center" }}
+      onClick={embedded ? undefined : (e) => {
+        if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
-        style={{
-          width: isMobile ? "calc(100vw - 16px)" : 860,
-          maxWidth: "calc(100vw - 16px)",
-          height: isMobile ? "calc(100dvh - 16px)" : "76vh",
-          maxHeight: "calc(100dvh - 16px)",
-          background: "var(--bg)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
-          overflow: "hidden",
-        }}
+        style={embedded
+          ? { display: "flex", flexDirection: "column", height: "100%", width: "100%", background: "var(--bg)", color: "var(--text)", overflow: "hidden" }
+          : { width: isMobile ? "calc(100vw - 16px)" : 860, maxWidth: "calc(100vw - 16px)", height: isMobile ? "calc(100dvh - 16px)" : "76vh", maxHeight: "calc(100dvh - 16px)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))", overflow: "hidden" }
+        }
       >
         <div
           style={{
@@ -811,8 +854,8 @@ export function PluginsConfig({
               {shortenPath(cwd)}
             </code>
           </div>
-          <button
-            onClick={onClose}
+          {!embedded && <button
+            onClick={() => onClose?.()}
             style={{
               background: "none",
               border: "none",
@@ -824,7 +867,7 @@ export function PluginsConfig({
             }}
           >
             ×
-          </button>
+          </button>}
         </div>
 
         {!projectResourcesLoaded && (
@@ -1083,9 +1126,9 @@ export function PluginsConfig({
           <button onClick={() => void loadPlugins()} disabled={loading || busyKey !== null} style={buttonStyle(loading || busyKey !== null)}>
              {t("i18n.refresh")}
           </button>
-          <button onClick={onClose} style={buttonStyle(false)}>
+          {!embedded && <button onClick={() => onClose?.()} style={buttonStyle(false)}>
              {t("i18n.close")}
-          </button>
+          </button>}
         </div>
       </div>
     </div>
