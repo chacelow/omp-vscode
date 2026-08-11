@@ -568,7 +568,12 @@ export class AcpService {
       revision: existing.revision + 1,
     };
     this.sessions.set(sessionId, next);
-    this.publishSession(sessionId);
+    // Skip publishing during ACP replay. omp streams every historic message
+    // as its own `session/update` event during `session/load`; publishing
+    // each one triggers an O(N) webview re-render, so a 200-message session
+    // burns 200×N =~ 40k re-renders before the transcript is even visible.
+    // `registerSession` publishes ONCE with the merged state after replay.
+    if (!next.replaying) this.publishSession(sessionId);
     return next;
   }
 

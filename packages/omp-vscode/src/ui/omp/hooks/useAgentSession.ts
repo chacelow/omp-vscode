@@ -493,28 +493,36 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setEntryIds(loaded.context.entryIds);
       setThinkingLevel(loaded.context.thinkingLevel as ThinkingLevelOption);
       setError(null);
+      // JSONL is painted → release the loading overlay NOW. Attaching ACP
+      // (which re-parses the same JSONL server-side and replays it as
+      // notifications) can take another 2–5 s for long sessions; blocking
+      // the UI on that felt like "loading half a day".
+      if (showLoading) setLoading(false);
 
       // ACP subscription is best-effort: if the agent hasn't heard of this
       // session yet (fresh cold start after the file was written) we still
-      // want the transcript visible so the user can inspect / branch.
+      // want the transcript visible so the user can inspect / branch. Runs
+      // in the background — the local snapshot from sessionDetail stays
+      // authoritative until the first ACP snapshot arrives.
       const cwd = detail.cwd || newSessionCwd || session?.cwd || "";
-      try {
-        await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd });
-        await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
-      } catch (acpErr) {
-        addNotice({
-          type: "warning",
-          message: acpErr instanceof Error
-            ? `Agent could not attach: ${acpErr.message}`
-            : "Agent could not attach to this session",
-        });
-      }
+      void (async () => {
+        try {
+          await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd });
+          await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
+        } catch (acpErr) {
+          addNotice({
+            type: "warning",
+            message: acpErr instanceof Error
+              ? `Agent could not attach: ${acpErr.message}`
+              : "Agent could not attach to this session",
+          });
+        }
+      })();
       return loaded;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
-      return null;
-    } finally {
       if (showLoading) setLoading(false);
+      return null;
     }
   }, [addNotice, newSessionCwd, session?.cwd]);
 
