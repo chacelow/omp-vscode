@@ -13,6 +13,7 @@ import type {
   ToolCallStatus,
   ToolResultMessage,
 } from "@/lib/types";
+import { normalizeToolCalls } from "@/lib/normalize";
 import { getToolNamesForPreset } from "@/lib/tool-presets";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 import { acpRequest, hostCall, subscribeAcp } from "../../bridge";
@@ -310,6 +311,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  // Kept in sync inside every setMessages caller. Read by applySnapshot
+  // to guard against empty-snapshot wipes.
+  const messagesRef = useRef<AgentMessage[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [entryIds, setEntryIds] = useState<string[]>([]);
   const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
   const [agentRunning, setAgentRunning] = useState(false);
@@ -431,11 +436,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const applySnapshot = useCallback((state: AcpSessionState) => {
     if (state.sessionId !== sessionIdRef.current) return;
-    // Defensive: never overwrite the visible transcript with an incoming
-    // "replaying + no messages yet" snapshot. omp's session/load emits a
-    // clearing state before the historical chunks arrive; on a huge
-    // session that gap is multi-seconds of blank chat.
-    if (state.replaying && (state.messages?.length ?? 0) === 0) {
+    // Never let an empty-messages snapshot wipe a non-empty local transcript.
+    // This covers both the transient replaying-clear during session/load AND
+    // the initial post-newSession snapshot (which arrives with messages=[]
+    // because omp's bootstrap events don't include historical entries).
+    // The local transcript came from sessionDetail's authoritative JSONL
+    // parse; ACP snapshots only enrich it with mode/config/usage/plan.
+    if ((state.messages?.length ?? 0) === 0 && messagesRef.current.length > 0) {
       setSnapshot(state);
       return;
     }
@@ -532,7 +539,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       };
       setData(loaded);
       setActiveLeafId(loaded.leafId);
-      setMessages(loaded.context.messages);
+      setMessages(loaded.context.messages.map(normalizeToolCalls));
       setEntryIds(loaded.context.entryIds);
       setThinkingLevel(loaded.context.thinkingLevel as ThinkingLevelOption);
       setError(null);
