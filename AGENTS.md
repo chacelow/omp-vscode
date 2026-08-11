@@ -121,3 +121,19 @@ ESLint + Prettier + Stylelint's linter will catch most issues automatically. Foc
 ---
 
 Most formatting and common issues are automatically fixed by ESLint + Prettier + Stylelint. Run `pnpm dlx ultracite fix` before committing to ensure compliance.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as markdown files under `.scratch/<feature>/` (local-markdown, no remote tracker). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context monorepo: root `CONTEXT-MAP.md` + per-package `CONTEXT.md` under `packages/*/`. See `docs/agents/domain.md`.

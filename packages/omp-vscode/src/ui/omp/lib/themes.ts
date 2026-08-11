@@ -1,0 +1,1576 @@
+export interface OmpTheme {
+  name: string;
+  palette: Record<string, string>;
+}
+
+/** Snapshot of OMP built-in themes, ported from coding-agent theme defaults. */
+export const THEMES: Array<OmpTheme> = [
+  {
+    "name": "alabaster",
+    "palette": {
+      "accent": "#505860",
+      "border": "#e8e8ec",
+      "muted": "#6a7080",
+      "dim": "#909098",
+      "text": "",
+      "selectedBg": "#f0eff0",
+      "userMessageBg": "#f5f4f5",
+      "mdLink": "#505860",
+      "success": "#405840",
+      "error": "#704040",
+      "warning": "#806850"
+    }
+  },
+  {
+    "name": "amethyst",
+    "palette": {
+      "accent": "#b48eff",
+      "border": "#6b4d9e",
+      "muted": "#8b7a99",
+      "dim": "#6a5a78",
+      "text": "",
+      "selectedBg": "#221b28",
+      "userMessageBg": "#1a1420",
+      "mdLink": "#9b6fd8",
+      "success": "#8eb897",
+      "error": "#d96c75",
+      "warning": "#d4af37"
+    }
+  },
+  {
+    "name": "anthracite",
+    "palette": {
+      "accent": "#e8734a",
+      "border": "#3d4555",
+      "muted": "#9ca3b5",
+      "dim": "#6b7280",
+      "text": "",
+      "selectedBg": "#252932",
+      "userMessageBg": "#1a1511",
+      "mdLink": "#6ba3d4",
+      "success": "#7fb069",
+      "error": "#d9534f",
+      "warning": "#e89c4a"
+    }
+  },
+  {
+    "name": "basalt",
+    "palette": {
+      "accent": "#c45a3a",
+      "border": "#3a3530",
+      "muted": "#5a524b",
+      "dim": "#4a433d",
+      "text": "",
+      "selectedBg": "#2a2520",
+      "userMessageBg": "#3a3530",
+      "mdLink": "#8bb88b",
+      "success": "#6a9a6a",
+      "error": "#b84a2c",
+      "warning": "#d97651"
+    }
+  },
+  {
+    "name": "birch",
+    "palette": {
+      "accent": "#608058",
+      "border": "#c8c4b8",
+      "muted": "#9a958a",
+      "dim": "#8a9d84",
+      "text": "",
+      "selectedBg": "#ede9df",
+      "userMessageBg": "#f2efe7",
+      "mdLink": "#4a7060",
+      "success": "#7a9a70",
+      "error": "#b85a50",
+      "warning": "#b8984a"
+    }
+  },
+  {
+    "name": "dark-abyss",
+    "palette": {
+      "accent": "#3FD3FF",
+      "border": "#22324B",
+      "muted": "#8FA1B5",
+      "dim": "#617289",
+      "text": "",
+      "selectedBg": "#142338",
+      "userMessageBg": "#0B111A",
+      "mdLink": "#3FD3FF",
+      "success": "#35C28A",
+      "error": "#E85B5B",
+      "warning": "#F2B04C"
+    }
+  },
+  {
+    "name": "dark-arctic",
+    "palette": {
+      "accent": "#88c0d0",
+      "border": "#5e81ac",
+      "muted": "#4c566a",
+      "dim": "#434c5e",
+      "text": "",
+      "selectedBg": "#3b4252",
+      "userMessageBg": "#1f2430",
+      "mdLink": "#81a1c1",
+      "success": "#a3be8c",
+      "error": "#bf616a",
+      "warning": "#ebcb8b"
+    }
+  },
+  {
+    "name": "dark-aurora",
+    "palette": {
+      "accent": "#bd00ff",
+      "border": "#00b4d8",
+      "muted": "#a0a0a0",
+      "dim": "#606060",
+      "text": "",
+      "selectedBg": "#1a1a2e",
+      "userMessageBg": "#0f0f1a",
+      "mdLink": "#00b4d8",
+      "success": "#00ff9f",
+      "error": "#ff0055",
+      "warning": "#ffee00"
+    }
+  },
+  {
+    "name": "dark-catppuccin",
+    "palette": {
+      "accent": "#fab387",
+      "border": "#89b4fa",
+      "muted": "#7f849c",
+      "dim": "#6c7086",
+      "text": "",
+      "selectedBg": "#313244",
+      "userMessageBg": "#181825",
+      "mdLink": "#89b4fa",
+      "success": "#a6e3a1",
+      "error": "#f38ba8",
+      "warning": "#f9e2af"
+    }
+  },
+  {
+    "name": "dark-cavern",
+    "palette": {
+      "accent": "#5FB2D8",
+      "border": "#2F3945",
+      "muted": "#A5ADBA",
+      "dim": "#6B7381",
+      "text": "",
+      "selectedBg": "#1D2229",
+      "userMessageBg": "#14181D",
+      "mdLink": "#5FB2D8",
+      "success": "#6FB86A",
+      "error": "#E06C75",
+      "warning": "#D9A441"
+    }
+  },
+  {
+    "name": "dark-copper",
+    "palette": {
+      "accent": "#d08770",
+      "border": "#5e81ac",
+      "muted": "#e5e9f0",
+      "dim": "#4c566a",
+      "text": "",
+      "selectedBg": "#2e3440",
+      "userMessageBg": "#242933",
+      "mdLink": "#5e81ac",
+      "success": "#a3be8c",
+      "error": "#bf616a",
+      "warning": "#ebcb8b"
+    }
+  },
+  {
+    "name": "dark-cosmos",
+    "palette": {
+      "accent": "#5b4bb7",
+      "border": "#101019",
+      "muted": "#8c88a3",
+      "dim": "#66627b",
+      "text": "",
+      "selectedBg": "#141326",
+      "userMessageBg": "#0a0a12",
+      "mdLink": "#7aa4ff",
+      "success": "#63cfa5",
+      "error": "#e05a6a",
+      "warning": "#f0b05a"
+    }
+  },
+  {
+    "name": "dark-cyberpunk",
+    "palette": {
+      "accent": "#FF007A",
+      "border": "#0ABDC6",
+      "muted": "#055A5F",
+      "dim": "#4A0E5F",
+      "text": "",
+      "selectedBg": "#1B1B2A",
+      "userMessageBg": "#1B1B2A",
+      "mdLink": "#00BFFF",
+      "success": "#00FFB3",
+      "error": "#FF6F61",
+      "warning": "#FFD600"
+    }
+  },
+  {
+    "name": "dark-dracula",
+    "palette": {
+      "accent": "#BD93F9",
+      "border": "#BD93F9",
+      "muted": "#6272A4",
+      "dim": "#44475A",
+      "text": "",
+      "selectedBg": "#44475A",
+      "userMessageBg": "#1f2029",
+      "mdLink": "#8BE9FD",
+      "success": "#50FA7B",
+      "error": "#FF5555",
+      "warning": "#F1FA8C"
+    }
+  },
+  {
+    "name": "dark-eclipse",
+    "palette": {
+      "accent": "#f5c542",
+      "border": "#4c6b8a",
+      "muted": "#8b8792",
+      "dim": "#67616c",
+      "text": "",
+      "selectedBg": "#1a1724",
+      "userMessageBg": "#0f0d14",
+      "mdLink": "#4c6b8a",
+      "success": "#5fbf87",
+      "error": "#d1495b",
+      "warning": "#f0b25c"
+    }
+  },
+  {
+    "name": "dark-ember",
+    "palette": {
+      "accent": "#ff6f61",
+      "border": "#5f8dd3",
+      "muted": "#abb2bf",
+      "dim": "#5c6370",
+      "text": "",
+      "selectedBg": "#2c313a",
+      "userMessageBg": "#21252b",
+      "mdLink": "#5f8dd3",
+      "success": "#98c379",
+      "error": "#e06c75",
+      "warning": "#e5c07b"
+    }
+  },
+  {
+    "name": "dark-equinox",
+    "palette": {
+      "accent": "#d6a55b",
+      "border": "#1c1f25",
+      "muted": "#8b919a",
+      "dim": "#666b73",
+      "text": "",
+      "selectedBg": "#1a1e25",
+      "userMessageBg": "#14171d",
+      "mdLink": "#5aa6b8",
+      "success": "#6fbf8c",
+      "error": "#d96a6a",
+      "warning": "#e8b45a"
+    }
+  },
+  {
+    "name": "dark-forest",
+    "palette": {
+      "accent": "#8FBC8F",
+      "border": "#01796F",
+      "muted": "#6B7567",
+      "dim": "#556B5F",
+      "text": "",
+      "selectedBg": "#1E2E26",
+      "userMessageBg": "#1B3A2F",
+      "mdLink": "#9CAF88",
+      "success": "#4F7942",
+      "error": "#C44C3C",
+      "warning": "#D4A574"
+    }
+  },
+  {
+    "name": "dark-github",
+    "palette": {
+      "accent": "#58a6ff",
+      "border": "#30363d",
+      "muted": "#8b949e",
+      "dim": "#6e7681",
+      "text": "",
+      "selectedBg": "#1c2128",
+      "userMessageBg": "#161b22",
+      "mdLink": "#58a6ff",
+      "success": "#3fb950",
+      "error": "#f85149",
+      "warning": "#d29922"
+    }
+  },
+  {
+    "name": "dark-gruvbox",
+    "palette": {
+      "accent": "#fe8019",
+      "border": "#458588",
+      "muted": "#928374",
+      "dim": "#7c6f64",
+      "text": "",
+      "selectedBg": "#3c3836",
+      "userMessageBg": "#1d2021",
+      "mdLink": "#8ec07c",
+      "success": "#b8bb26",
+      "error": "#fb4934",
+      "warning": "#fabd2f"
+    }
+  },
+  {
+    "name": "dark-lavender",
+    "palette": {
+      "accent": "#bd93f9",
+      "border": "#bd93f9",
+      "muted": "#f8f8f2",
+      "dim": "#6272a4",
+      "text": "",
+      "selectedBg": "#282a36",
+      "userMessageBg": "#1e1f29",
+      "mdLink": "#8be9fd",
+      "success": "#50fa7b",
+      "error": "#ff5555",
+      "warning": "#f1fa8c"
+    }
+  },
+  {
+    "name": "dark-lunar",
+    "palette": {
+      "accent": "#d6dbe3",
+      "border": "#1a1d26",
+      "muted": "#9aa7b8",
+      "dim": "#6a7686",
+      "text": "",
+      "selectedBg": "#141720",
+      "userMessageBg": "#0d0f15",
+      "mdLink": "#7aa2c8",
+      "success": "#6fc49b",
+      "error": "#e06a6a",
+      "warning": "#f0c27d"
+    }
+  },
+  {
+    "name": "dark-midnight",
+    "palette": {
+      "accent": "#2979ff",
+      "border": "#2979ff",
+      "muted": "#b0bec5",
+      "dim": "#546e7a",
+      "text": "",
+      "selectedBg": "#000a12",
+      "userMessageBg": "#000000",
+      "mdLink": "#40c4ff",
+      "success": "#00e676",
+      "error": "#ff1744",
+      "warning": "#ffea00"
+    }
+  },
+  {
+    "name": "dark-monochrome",
+    "palette": {
+      "accent": "#5fafaf",
+      "border": "#555555",
+      "muted": "#8a8a8a",
+      "dim": "#707070",
+      "text": "",
+      "selectedBg": "#3a3a3a",
+      "userMessageBg": "#2a2a2a",
+      "mdLink": "#5fafaf",
+      "success": "#558a55",
+      "error": "#8a5555",
+      "warning": "#8a8a55"
+    }
+  },
+  {
+    "name": "dark-monokai",
+    "palette": {
+      "accent": "#fd971f",
+      "border": "#66d9ef",
+      "muted": "#999999",
+      "dim": "#75715e",
+      "text": "",
+      "selectedBg": "#49483e",
+      "userMessageBg": "#1e1f1c",
+      "mdLink": "#66d9ef",
+      "success": "#a6e22e",
+      "error": "#f92672",
+      "warning": "#e6db74"
+    }
+  },
+  {
+    "name": "dark-nebula",
+    "palette": {
+      "accent": "#d66bd8",
+      "border": "#5b3fa6",
+      "muted": "#8f8599",
+      "dim": "#6d6378",
+      "text": "",
+      "selectedBg": "#1b1427",
+      "userMessageBg": "#0f0b18",
+      "mdLink": "#35b4c3",
+      "success": "#55c6a9",
+      "error": "#e25a6a",
+      "warning": "#f0b35a"
+    }
+  },
+  {
+    "name": "dark-nord",
+    "palette": {
+      "accent": "#88c0d0",
+      "border": "#5e81ac",
+      "muted": "#4c566a",
+      "dim": "#4c566a",
+      "text": "",
+      "selectedBg": "#3b4252",
+      "userMessageBg": "#3b4252",
+      "mdLink": "#88c0d0",
+      "success": "#a3be8c",
+      "error": "#bf616a",
+      "warning": "#ebcb8b"
+    }
+  },
+  {
+    "name": "dark-ocean",
+    "palette": {
+      "accent": "#FF8B6D",
+      "border": "#5BC0BE",
+      "muted": "#778DA9",
+      "dim": "#5A7B99",
+      "text": "",
+      "selectedBg": "#1B263B",
+      "userMessageBg": "#0F1A28",
+      "mdLink": "#6FFFE9",
+      "success": "#A7F0E8",
+      "error": "#FF6F5E",
+      "warning": "#FFD166"
+    }
+  },
+  {
+    "name": "dark-one",
+    "palette": {
+      "accent": "#e5c07b",
+      "border": "#61afef",
+      "muted": "#828997",
+      "dim": "#5c6370",
+      "text": "",
+      "selectedBg": "#3e4451",
+      "userMessageBg": "#21252b",
+      "mdLink": "#61afef",
+      "success": "#98c379",
+      "error": "#e06c75",
+      "warning": "#d19a66"
+    }
+  },
+  {
+    "name": "dark-poimandres",
+    "palette": {
+      "accent": "#00CED1",
+      "border": "#506477",
+      "muted": "#767c9d",
+      "dim": "#506477",
+      "text": "#a6accd",
+      "selectedBg": "#717cb425",
+      "userMessageBg": "#303340",
+      "mdLink": "#7AC6B6",
+      "success": "#00CED1",
+      "error": "#d0679d",
+      "warning": "#fffac2"
+    }
+  },
+  {
+    "name": "dark-rainforest",
+    "palette": {
+      "accent": "#B07AD9",
+      "border": "#2A3A2D",
+      "muted": "#A6B5AA",
+      "dim": "#6E7E72",
+      "text": "",
+      "selectedBg": "#172018",
+      "userMessageBg": "#101613",
+      "mdLink": "#B07AD9",
+      "success": "#6EBE78",
+      "error": "#E07A6A",
+      "warning": "#F28A3B"
+    }
+  },
+  {
+    "name": "dark-reef",
+    "palette": {
+      "accent": "#F07F6A",
+      "border": "#294052",
+      "muted": "#A6B8C7",
+      "dim": "#6B7F8D",
+      "text": "",
+      "selectedBg": "#16242E",
+      "userMessageBg": "#101A22",
+      "mdLink": "#F07F6A",
+      "success": "#58B39E",
+      "error": "#E36D7C",
+      "warning": "#F2C45C"
+    }
+  },
+  {
+    "name": "dark-retro",
+    "palette": {
+      "accent": "#ffc633",
+      "border": "#cc8800",
+      "muted": "#cc8800",
+      "dim": "#664400",
+      "text": "",
+      "selectedBg": "#1f1a10",
+      "userMessageBg": "#121008",
+      "mdLink": "#66b3ff",
+      "success": "#88dd66",
+      "error": "#ff6b6b",
+      "warning": "#ffdd33"
+    }
+  },
+  {
+    "name": "dark-rose-pine",
+    "palette": {
+      "accent": "#c4a7e7",
+      "border": "#31748f",
+      "muted": "#6e6a86",
+      "dim": "#908caa",
+      "text": "",
+      "selectedBg": "#26233a",
+      "userMessageBg": "#21202e",
+      "mdLink": "#9ccfd8",
+      "success": "#9ccfd8",
+      "error": "#eb6f92",
+      "warning": "#f6c177"
+    }
+  },
+  {
+    "name": "dark-sakura",
+    "palette": {
+      "accent": "#f06292",
+      "border": "#90caf9",
+      "muted": "#eeeeee",
+      "dim": "#9e9e9e",
+      "text": "",
+      "selectedBg": "#2d2426",
+      "userMessageBg": "#1e181a",
+      "mdLink": "#90caf9",
+      "success": "#a5d6a7",
+      "error": "#ef9a9a",
+      "warning": "#fff59d"
+    }
+  },
+  {
+    "name": "dark-slate",
+    "palette": {
+      "accent": "#5e81ac",
+      "border": "#81a1c1",
+      "muted": "#d8dee9",
+      "dim": "#4c566a",
+      "text": "",
+      "selectedBg": "#3b4252",
+      "userMessageBg": "#2e3440",
+      "mdLink": "#81a1c1",
+      "success": "#a3be8c",
+      "error": "#bf616a",
+      "warning": "#ebcb8b"
+    }
+  },
+  {
+    "name": "dark-solarized",
+    "palette": {
+      "accent": "#268bd2",
+      "border": "#586e75",
+      "muted": "#586e75",
+      "dim": "#657b83",
+      "text": "",
+      "selectedBg": "#073642",
+      "userMessageBg": "#073642",
+      "mdLink": "#268bd2",
+      "success": "#859900",
+      "error": "#dc322f",
+      "warning": "#b58900"
+    }
+  },
+  {
+    "name": "dark-solstice",
+    "palette": {
+      "accent": "#5ac8a7",
+      "border": "#13213a",
+      "muted": "#8c98ad",
+      "dim": "#657289",
+      "text": "",
+      "selectedBg": "#10182b",
+      "userMessageBg": "#0c1222",
+      "mdLink": "#8fb2d9",
+      "success": "#6bd6a2",
+      "error": "#e06b6b",
+      "warning": "#f0c37a"
+    }
+  },
+  {
+    "name": "dark-starfall",
+    "palette": {
+      "accent": "#f2c45a",
+      "border": "#151821",
+      "muted": "#8a8f9a",
+      "dim": "#676c78",
+      "text": "",
+      "selectedBg": "#1a1e2a",
+      "userMessageBg": "#0f1218",
+      "mdLink": "#4f7fb2",
+      "success": "#6cc98f",
+      "error": "#e06464",
+      "warning": "#f0a35c"
+    }
+  },
+  {
+    "name": "dark-sunset",
+    "palette": {
+      "accent": "#FF9E4A",
+      "border": "#614E72",
+      "muted": "#4a4552",
+      "dim": "#5E508D",
+      "text": "",
+      "selectedBg": "#2d2436",
+      "userMessageBg": "#251a1f",
+      "mdLink": "#7C4BE5",
+      "success": "#89d281",
+      "error": "#E44C1D",
+      "warning": "#FFC345"
+    }
+  },
+  {
+    "name": "dark-swamp",
+    "palette": {
+      "accent": "#F2C35B",
+      "border": "#2B3A36",
+      "muted": "#8EA59A",
+      "dim": "#667A71",
+      "text": "",
+      "selectedBg": "#182522",
+      "userMessageBg": "#111A18",
+      "mdLink": "#5FB7A2",
+      "success": "#4FC48F",
+      "error": "#E06B6B",
+      "warning": "#F2C35B"
+    }
+  },
+  {
+    "name": "dark-synthwave",
+    "palette": {
+      "accent": "#ff2975",
+      "border": "#8c1eff",
+      "muted": "#8b8b95",
+      "dim": "#5c2c6d",
+      "text": "",
+      "selectedBg": "#2a1342",
+      "userMessageBg": "#1f0c36",
+      "mdLink": "#00ffff",
+      "success": "#00ffff",
+      "error": "#ff2975",
+      "warning": "#ffd319"
+    }
+  },
+  {
+    "name": "dark-taiga",
+    "palette": {
+      "accent": "#7FB7C9",
+      "border": "#2A3A31",
+      "muted": "#8D9891",
+      "dim": "#67726B",
+      "text": "",
+      "selectedBg": "#1B2620",
+      "userMessageBg": "#121A16",
+      "mdLink": "#7FB7C9",
+      "success": "#8DBB7F",
+      "error": "#E06A6A",
+      "warning": "#D8B15A"
+    }
+  },
+  {
+    "name": "dark-terminal",
+    "palette": {
+      "accent": "#00ff00",
+      "border": "#00aaff",
+      "muted": "#cccccc",
+      "dim": "#666666",
+      "text": "",
+      "selectedBg": "#111111",
+      "userMessageBg": "#050505",
+      "mdLink": "#00aaff",
+      "success": "#00ff00",
+      "error": "#ff0000",
+      "warning": "#ffff00"
+    }
+  },
+  {
+    "name": "dark-tokyo-night",
+    "palette": {
+      "accent": "#bb9af7",
+      "border": "#7aa2f7",
+      "muted": "#51597d",
+      "dim": "#51597d",
+      "text": "",
+      "selectedBg": "#2a2f41",
+      "userMessageBg": "#16161e",
+      "mdLink": "#7dcfff",
+      "success": "#9ece6a",
+      "error": "#db4b4b",
+      "warning": "#e0af68"
+    }
+  },
+  {
+    "name": "dark-tundra",
+    "palette": {
+      "accent": "#66D1A1",
+      "border": "#2A3A46",
+      "muted": "#A3B0BF",
+      "dim": "#667381",
+      "text": "",
+      "selectedBg": "#172028",
+      "userMessageBg": "#11171C",
+      "mdLink": "#66D1A1",
+      "success": "#5FB487",
+      "error": "#D26B6B",
+      "warning": "#D0B04D"
+    }
+  },
+  {
+    "name": "dark-twilight",
+    "palette": {
+      "accent": "#e07a3f",
+      "border": "#1e1b3a",
+      "muted": "#8d869c",
+      "dim": "#6a6378",
+      "text": "",
+      "selectedBg": "#241f3f",
+      "userMessageBg": "#171329",
+      "mdLink": "#4ba3a6",
+      "success": "#6cc48f",
+      "error": "#e05f63",
+      "warning": "#f0a35c"
+    }
+  },
+  {
+    "name": "dark-volcanic",
+    "palette": {
+      "accent": "#FF7A3D",
+      "border": "#3A201C",
+      "muted": "#8F7D74",
+      "dim": "#66574F",
+      "text": "",
+      "selectedBg": "#261513",
+      "userMessageBg": "#1A100E",
+      "mdLink": "#FF7A3D",
+      "success": "#4FC48A",
+      "error": "#FF5C5C",
+      "warning": "#F3C24F"
+    }
+  },
+  {
+    "name": "graphite",
+    "palette": {
+      "accent": "#f0d050",
+      "border": "#404550",
+      "muted": "#6b7080",
+      "dim": "#8893a8",
+      "text": "",
+      "selectedBg": "#2d3138",
+      "userMessageBg": "#1a1c1f",
+      "mdLink": "#9098a8",
+      "success": "#85a882",
+      "error": "#d88989",
+      "warning": "#f0d050"
+    }
+  },
+  {
+    "name": "light-arctic",
+    "palette": {
+      "accent": "#8FBCBB",
+      "border": "#81A1C1",
+      "muted": "#4C566A",
+      "dim": "#B4BCC8",
+      "text": "",
+      "selectedBg": "#DFE6ED",
+      "userMessageBg": "#F0F4F8",
+      "mdLink": "#81A1C1",
+      "success": "#A3BE8C",
+      "error": "#BF616A",
+      "warning": "#EBCB8B"
+    }
+  },
+  {
+    "name": "light-aurora-day",
+    "palette": {
+      "accent": "#8bcbb8",
+      "border": "#e6f0f1",
+      "muted": "#4f5f5c",
+      "dim": "#6c7a78",
+      "text": "",
+      "selectedBg": "#eef6f5",
+      "userMessageBg": "#ffffff",
+      "mdLink": "#7fb0d6",
+      "success": "#3fa977",
+      "error": "#c9545c",
+      "warning": "#d8a34a"
+    }
+  },
+  {
+    "name": "light-canyon",
+    "palette": {
+      "accent": "#C96A3B",
+      "border": "#E3D0BF",
+      "muted": "#7A5A45",
+      "dim": "#9A7A65",
+      "text": "",
+      "selectedBg": "#EEDCCB",
+      "userMessageBg": "#FFF8F1",
+      "mdLink": "#4F7F82",
+      "success": "#7F9A55",
+      "error": "#B84B3D",
+      "warning": "#D09A4A"
+    }
+  },
+  {
+    "name": "light-catppuccin",
+    "palette": {
+      "accent": "#8839ef",
+      "border": "#7287fd",
+      "muted": "#6c6f85",
+      "dim": "#8c8fa1",
+      "text": "",
+      "selectedBg": "#ccd0da",
+      "userMessageBg": "#e6e9ef",
+      "mdLink": "#1e66f5",
+      "success": "#40a02b",
+      "error": "#d20f39",
+      "warning": "#df8e1d"
+    }
+  },
+  {
+    "name": "light-cirrus",
+    "palette": {
+      "accent": "#6aa3d7",
+      "border": "#e4e8ef",
+      "muted": "#4a5568",
+      "dim": "#6b7280",
+      "text": "",
+      "selectedBg": "#edf1f7",
+      "userMessageBg": "#ffffff",
+      "mdLink": "#6aa3d7",
+      "success": "#3ea574",
+      "error": "#c84b4b",
+      "warning": "#d18b3b"
+    }
+  },
+  {
+    "name": "light-coral",
+    "palette": {
+      "accent": "#ff7043",
+      "border": "#1e88e5",
+      "muted": "#546e7a",
+      "dim": "#90a4ae",
+      "text": "",
+      "selectedBg": "#fff3e0",
+      "userMessageBg": "#fff8e1",
+      "mdLink": "#1e88e5",
+      "success": "#43a047",
+      "error": "#e53935",
+      "warning": "#fdd835"
+    }
+  },
+  {
+    "name": "light-cyberpunk",
+    "palette": {
+      "accent": "#EA00D9",
+      "border": "#00BFFF",
+      "muted": "#6B6B70",
+      "dim": "#9A9AA0",
+      "text": "#1B1B2A",
+      "selectedBg": "#F0E8FF",
+      "userMessageBg": "#FFE8F5",
+      "mdLink": "#00BFFF",
+      "success": "#00FF9F",
+      "error": "#FF007A",
+      "warning": "#FFEA00"
+    }
+  },
+  {
+    "name": "light-dawn",
+    "palette": {
+      "accent": "#e29b6f",
+      "border": "#a9c1d9",
+      "muted": "#4b5563",
+      "dim": "#6b7280",
+      "text": "",
+      "selectedBg": "#f1e7db",
+      "userMessageBg": "#fdf8f3",
+      "mdLink": "#7aa7d9",
+      "success": "#3a9d70",
+      "error": "#c94b4b",
+      "warning": "#d8923a"
+    }
+  },
+  {
+    "name": "light-dunes",
+    "palette": {
+      "accent": "#7FB7B2",
+      "border": "#D8C3A0",
+      "muted": "#6C5644",
+      "dim": "#8B735F",
+      "text": "",
+      "selectedBg": "#F2E3CC",
+      "userMessageBg": "#FFF8ED",
+      "mdLink": "#5B7C8A",
+      "success": "#7B8D3A",
+      "error": "#C55A4D",
+      "warning": "#D08A2C"
+    }
+  },
+  {
+    "name": "light-eucalyptus",
+    "palette": {
+      "accent": "#00897b",
+      "border": "#00796b",
+      "muted": "#37474f",
+      "dim": "#607d8b",
+      "text": "",
+      "selectedBg": "#e0f2f1",
+      "userMessageBg": "#e0f7fa",
+      "mdLink": "#006064",
+      "success": "#2e7d32",
+      "error": "#c62828",
+      "warning": "#f9a825"
+    }
+  },
+  {
+    "name": "light-forest",
+    "palette": {
+      "accent": "#4f7942",
+      "border": "#7e8c54",
+      "muted": "#7a7466",
+      "dim": "#8b7355",
+      "text": "",
+      "selectedBg": "#d4e4c9",
+      "userMessageBg": "#e8e4d9",
+      "mdLink": "#4f7942",
+      "success": "#9caf88",
+      "error": "#be5103",
+      "warning": "#636b2f"
+    }
+  },
+  {
+    "name": "light-frost",
+    "palette": {
+      "accent": "#03a9f4",
+      "border": "#2196f3",
+      "muted": "#607d8b",
+      "dim": "#90a4ae",
+      "text": "",
+      "selectedBg": "#e1f5fe",
+      "userMessageBg": "#f1faff",
+      "mdLink": "#2196f3",
+      "success": "#4caf50",
+      "error": "#f44336",
+      "warning": "#ffeb3b"
+    }
+  },
+  {
+    "name": "light-github",
+    "palette": {
+      "accent": "#0969da",
+      "border": "#d1d9e0",
+      "muted": "#59636e",
+      "dim": "#8c959f",
+      "text": "",
+      "selectedBg": "#e8eaed",
+      "userMessageBg": "#e8eaed",
+      "mdLink": "#0969da",
+      "success": "#1f883d",
+      "error": "#cf222e",
+      "warning": "#9a6700"
+    }
+  },
+  {
+    "name": "light-glacier",
+    "palette": {
+      "accent": "#3A7FB6",
+      "border": "#C4D6E2",
+      "muted": "#51626D",
+      "dim": "#7A8A95",
+      "text": "",
+      "selectedBg": "#CFE2F1",
+      "userMessageBg": "#FAFDFF",
+      "mdLink": "#5F8FB8",
+      "success": "#3E8F7A",
+      "error": "#C45A55",
+      "warning": "#C58A36"
+    }
+  },
+  {
+    "name": "light-gruvbox",
+    "palette": {
+      "accent": "#689d6a",
+      "border": "#458588",
+      "muted": "#665c54",
+      "dim": "#928374",
+      "text": "",
+      "selectedBg": "#d5c4a1",
+      "userMessageBg": "#ebdbb2",
+      "mdLink": "#458588",
+      "success": "#98971a",
+      "error": "#cc241d",
+      "warning": "#d79921"
+    }
+  },
+  {
+    "name": "light-haze",
+    "palette": {
+      "accent": "#f1c07a",
+      "border": "#e3d8c9",
+      "muted": "#5f5a52",
+      "dim": "#7a746c",
+      "text": "",
+      "selectedBg": "#f1e7d7",
+      "userMessageBg": "#fffaf3",
+      "mdLink": "#7da4c7",
+      "success": "#4b9a6b",
+      "error": "#c95555",
+      "warning": "#d88b35"
+    }
+  },
+  {
+    "name": "light-honeycomb",
+    "palette": {
+      "accent": "#ffb300",
+      "border": "#f57f17",
+      "muted": "#5d4037",
+      "dim": "#8d6e63",
+      "text": "",
+      "selectedBg": "#fff8e1",
+      "userMessageBg": "#fffde7",
+      "mdLink": "#e65100",
+      "success": "#388e3c",
+      "error": "#d32f2f",
+      "warning": "#ffb300"
+    }
+  },
+  {
+    "name": "light-lagoon",
+    "palette": {
+      "accent": "#2E7FA6",
+      "border": "#CFE0E7",
+      "muted": "#5A7280",
+      "dim": "#7B8F9A",
+      "text": "",
+      "selectedBg": "#E6F0F2",
+      "userMessageBg": "#F7FBFD",
+      "mdLink": "#5DB7B0",
+      "success": "#48A07C",
+      "error": "#C45A55",
+      "warning": "#D36A5A"
+    }
+  },
+  {
+    "name": "light-lavender",
+    "palette": {
+      "accent": "#7e57c2",
+      "border": "#5e35b1",
+      "muted": "#4527a0",
+      "dim": "#7e57c2",
+      "text": "",
+      "selectedBg": "#ede7f6",
+      "userMessageBg": "#f3e5f5",
+      "mdLink": "#5e35b1",
+      "success": "#43a047",
+      "error": "#e53935",
+      "warning": "#fdd835"
+    }
+  },
+  {
+    "name": "light-meadow",
+    "palette": {
+      "accent": "#7A5BBF",
+      "border": "#C9D4C3",
+      "muted": "#556257",
+      "dim": "#7A857B",
+      "text": "",
+      "selectedBg": "#E8EFE4",
+      "userMessageBg": "#FAFDF8",
+      "mdLink": "#3D7F7A",
+      "success": "#3F8F55",
+      "error": "#C75B5B",
+      "warning": "#C8902C"
+    }
+  },
+  {
+    "name": "light-mint",
+    "palette": {
+      "accent": "#00bfa5",
+      "border": "#4682b4",
+      "muted": "#555555",
+      "dim": "#888888",
+      "text": "",
+      "selectedBg": "#e0f2f1",
+      "userMessageBg": "#f0fdfa",
+      "mdLink": "#4682b4",
+      "success": "#3cb371",
+      "error": "#cd5c5c",
+      "warning": "#daa520"
+    }
+  },
+  {
+    "name": "light-monochrome",
+    "palette": {
+      "accent": "#3b82f6",
+      "border": "#a3a3a3",
+      "muted": "#6b6b6b",
+      "dim": "#8a8a8a",
+      "text": "",
+      "selectedBg": "#e8e8e8",
+      "userMessageBg": "#f0f0f0",
+      "mdLink": "#3b82f6",
+      "success": "#404040",
+      "error": "#2d2d2d",
+      "warning": "#525252"
+    }
+  },
+  {
+    "name": "light-ocean",
+    "palette": {
+      "accent": "#378ad7",
+      "border": "#297685",
+      "muted": "#5a6c7d",
+      "dim": "#8b7d6b",
+      "text": "",
+      "selectedBg": "#e0f7fa",
+      "userMessageBg": "#fafafa",
+      "mdLink": "#378ad7",
+      "success": "#9bcbbb",
+      "error": "#ff8a80",
+      "warning": "#ffab91"
+    }
+  },
+  {
+    "name": "light-one",
+    "palette": {
+      "accent": "#0184BC",
+      "border": "#4078F2",
+      "muted": "#696C77",
+      "dim": "#A0A1A7",
+      "text": "",
+      "selectedBg": "#E5E5E6",
+      "userMessageBg": "#F0F0F0",
+      "mdLink": "#4078F2",
+      "success": "#50A14F",
+      "error": "#E45649",
+      "warning": "#E5C07B"
+    }
+  },
+  {
+    "name": "light-opal",
+    "palette": {
+      "accent": "#9b8ad6",
+      "border": "#e7e4e0",
+      "muted": "#5d5863",
+      "dim": "#7a7481",
+      "text": "",
+      "selectedBg": "#efeceb",
+      "userMessageBg": "#ffffff",
+      "mdLink": "#86a7d9",
+      "success": "#46a17a",
+      "error": "#c4565d",
+      "warning": "#d6a14c"
+    }
+  },
+  {
+    "name": "light-orchard",
+    "palette": {
+      "accent": "#D97A9B",
+      "border": "#E2D5C2",
+      "muted": "#6D5F4C",
+      "dim": "#9B8A78",
+      "text": "",
+      "selectedBg": "#F2E8D9",
+      "userMessageBg": "#FFF9F0",
+      "mdLink": "#7A5BA6",
+      "success": "#6FA84B",
+      "error": "#B9473D",
+      "warning": "#C98A3A"
+    }
+  },
+  {
+    "name": "light-paper",
+    "palette": {
+      "accent": "#d19a66",
+      "border": "#4271ae",
+      "muted": "#4d4d4c",
+      "dim": "#8e908c",
+      "text": "",
+      "selectedBg": "#efe6d5",
+      "userMessageBg": "#f6f0e4",
+      "mdLink": "#4271ae",
+      "success": "#718c00",
+      "error": "#c82829",
+      "warning": "#eab700"
+    }
+  },
+  {
+    "name": "light-poimandres",
+    "palette": {
+      "accent": "#00CED1",
+      "border": "#767c9d",
+      "muted": "#506477",
+      "dim": "#767c9d",
+      "text": "#506477",
+      "selectedBg": "#717cb425",
+      "userMessageBg": "#7390AA",
+      "mdLink": "#7AC6B6",
+      "success": "#00CED1",
+      "error": "#d0679d",
+      "warning": "#fffac2"
+    }
+  },
+  {
+    "name": "light-prism",
+    "palette": {
+      "accent": "#7c4dff",
+      "border": "#e5e7eb",
+      "muted": "#4a4f57",
+      "dim": "#6b7280",
+      "text": "",
+      "selectedBg": "#f2f5fb",
+      "userMessageBg": "#ffffff",
+      "mdLink": "#3b82f6",
+      "success": "#22c55e",
+      "error": "#ef4444",
+      "warning": "#f97316"
+    }
+  },
+  {
+    "name": "light-retro",
+    "palette": {
+      "accent": "#ffbb00",
+      "border": "#cc9900",
+      "muted": "#6b6b6b",
+      "dim": "#5a5a5a",
+      "text": "#2b2b2b",
+      "selectedBg": "#e8e4d8",
+      "userMessageBg": "#e8f4e8",
+      "mdLink": "#3366cc",
+      "success": "#2d6632",
+      "error": "#cc3333",
+      "warning": "#cc9900"
+    }
+  },
+  {
+    "name": "light-sand",
+    "palette": {
+      "accent": "#a1887f",
+      "border": "#1565c0",
+      "muted": "#5d4037",
+      "dim": "#8d6e63",
+      "text": "",
+      "selectedBg": "#f5f5f5",
+      "userMessageBg": "#fffaf0",
+      "mdLink": "#1565c0",
+      "success": "#2e7d32",
+      "error": "#c62828",
+      "warning": "#f9a825"
+    }
+  },
+  {
+    "name": "light-savanna",
+    "palette": {
+      "accent": "#C98A3A",
+      "border": "#D9C9AD",
+      "muted": "#6E5C47",
+      "dim": "#9A8772",
+      "text": "",
+      "selectedBg": "#F1E6D2",
+      "userMessageBg": "#FFF7EC",
+      "mdLink": "#4C7F8A",
+      "success": "#6E8B3D",
+      "error": "#C45A4F",
+      "warning": "#D08A2C"
+    }
+  },
+  {
+    "name": "light-solarized",
+    "palette": {
+      "accent": "#2aa198",
+      "border": "#268bd2",
+      "muted": "#586e75",
+      "dim": "#93a1a1",
+      "text": "",
+      "selectedBg": "#e3dcc8",
+      "userMessageBg": "#f5f0e6",
+      "mdLink": "#268bd2",
+      "success": "#859900",
+      "error": "#dc322f",
+      "warning": "#b58900"
+    }
+  },
+  {
+    "name": "light-soleil",
+    "palette": {
+      "accent": "#c96a45",
+      "border": "#d7cfc1",
+      "muted": "#5f5a54",
+      "dim": "#7a746d",
+      "text": "",
+      "selectedBg": "#efe6d6",
+      "userMessageBg": "#fffaf3",
+      "mdLink": "#2f7b9c",
+      "success": "#4f9b6c",
+      "error": "#c94b4b",
+      "warning": "#d18a3a"
+    }
+  },
+  {
+    "name": "light-sunset",
+    "palette": {
+      "accent": "#d4a259",
+      "border": "#ff8b6a",
+      "muted": "#8a7568",
+      "dim": "#a89080",
+      "text": "",
+      "selectedBg": "#ffdec9",
+      "userMessageBg": "#fff0e0",
+      "mdLink": "#8b6fa3",
+      "success": "#c49a6c",
+      "error": "#d47766",
+      "warning": "#d4a259"
+    }
+  },
+  {
+    "name": "light-synthwave",
+    "palette": {
+      "accent": "#ff71ce",
+      "border": "#c77dff",
+      "muted": "#8b7a9e",
+      "dim": "#a99bb5",
+      "text": "",
+      "selectedBg": "#ffe6f7",
+      "userMessageBg": "#fff0fa",
+      "mdLink": "#01cdfe",
+      "success": "#05ffa1",
+      "error": "#ff2975",
+      "warning": "#fffb96"
+    }
+  },
+  {
+    "name": "light-tokyo-night",
+    "palette": {
+      "accent": "#118c74",
+      "border": "#b4b5b9",
+      "muted": "#6172b0",
+      "dim": "#848cb5",
+      "text": "",
+      "selectedBg": "#b7c1e3",
+      "userMessageBg": "#d0d5e3",
+      "mdLink": "#2e7de9",
+      "success": "#587539",
+      "error": "#c64343",
+      "warning": "#8c6c3e"
+    }
+  },
+  {
+    "name": "light-wetland",
+    "palette": {
+      "accent": "#4B7AA8",
+      "border": "#D7E1DC",
+      "muted": "#5B6E66",
+      "dim": "#7A8F86",
+      "text": "",
+      "selectedBg": "#E6EEEA",
+      "userMessageBg": "#F8FBF9",
+      "mdLink": "#4B7AA8",
+      "success": "#4F9B6A",
+      "error": "#C6564A",
+      "warning": "#C5A046"
+    }
+  },
+  {
+    "name": "light-zenith",
+    "palette": {
+      "accent": "#2a6fbe",
+      "border": "#b8c0cc",
+      "muted": "#4b5563",
+      "dim": "#6b7280",
+      "text": "",
+      "selectedBg": "#e9edf5",
+      "userMessageBg": "#ffffff",
+      "mdLink": "#2a6fbe",
+      "success": "#2f9d65",
+      "error": "#c23b3b",
+      "warning": "#d0852d"
+    }
+  },
+  {
+    "name": "limestone",
+    "palette": {
+      "accent": "#a07840",
+      "border": "#907050",
+      "muted": "#504838",
+      "dim": "#909080",
+      "text": "",
+      "selectedBg": "#ebe6d4",
+      "userMessageBg": "#f0ece0",
+      "mdLink": "#907050",
+      "success": "#708060",
+      "error": "#a85840",
+      "warning": "#886030"
+    }
+  },
+  {
+    "name": "mahogany",
+    "palette": {
+      "accent": "#c4a050",
+      "border": "#3a302a",
+      "muted": "#b8b0a6",
+      "dim": "#8a847c",
+      "text": "",
+      "selectedBg": "#2a221d",
+      "userMessageBg": "#1f1914",
+      "mdLink": "#b5826f",
+      "success": "#6a7c5d",
+      "error": "#9d4451",
+      "warning": "#d4a574"
+    }
+  },
+  {
+    "name": "marble",
+    "palette": {
+      "accent": "#5a6878",
+      "border": "#c4c0bc",
+      "muted": "#7a766f",
+      "dim": "#9a968f",
+      "text": "",
+      "selectedBg": "#ede9e6",
+      "userMessageBg": "#f2efec",
+      "mdLink": "#2c3e50",
+      "success": "#4a6741",
+      "error": "#8b4049",
+      "warning": "#8b6f47"
+    }
+  },
+  {
+    "name": "obsidian",
+    "palette": {
+      "accent": "#9d7aff",
+      "border": "#1a1816",
+      "muted": "#2b2825",
+      "dim": "#4a4642",
+      "text": "",
+      "selectedBg": "#1a1816",
+      "userMessageBg": "#1a1816",
+      "mdLink": "#5cd9ff",
+      "success": "#52e8a0",
+      "error": "#ff5570",
+      "warning": "#ffc942"
+    }
+  },
+  {
+    "name": "onyx",
+    "palette": {
+      "accent": "$vein",
+      "border": "$band2",
+      "muted": "$warmGray",
+      "dim": "#6a6760",
+      "text": "",
+      "selectedBg": "$band2",
+      "userMessageBg": "$band1",
+      "mdLink": "$bronze",
+      "success": "$emerald",
+      "error": "$ruby",
+      "warning": "$bronze"
+    }
+  },
+  {
+    "name": "pearl",
+    "palette": {
+      "accent": "#b08090",
+      "border": "#7080a0",
+      "muted": "#605860",
+      "dim": "#807880",
+      "text": "",
+      "selectedBg": "#ece8f0",
+      "userMessageBg": "#f0ecf4",
+      "mdLink": "#7080a0",
+      "success": "#709070",
+      "error": "#a06060",
+      "warning": "#b09060"
+    }
+  },
+  {
+    "name": "porcelain",
+    "palette": {
+      "accent": "#5070a0",
+      "border": "#d0d4e0",
+      "muted": "#909cb0",
+      "dim": "#a0a8b8",
+      "text": "",
+      "selectedBg": "#e8eef8",
+      "userMessageBg": "#5070a0",
+      "mdLink": "#5070a0",
+      "success": "#507050",
+      "error": "#c04040",
+      "warning": "#907030"
+    }
+  },
+  {
+    "name": "quartz",
+    "palette": {
+      "accent": "#c07088",
+      "border": "#8070a0",
+      "muted": "#9e6b7b",
+      "dim": "#a898b0",
+      "text": "",
+      "selectedBg": "#f0e0e8",
+      "userMessageBg": "#faf5f7",
+      "mdLink": "#8070a0",
+      "success": "#88a088",
+      "error": "#b85860",
+      "warning": "#c09870"
+    }
+  },
+  {
+    "name": "sandstone",
+    "palette": {
+      "accent": "#b86040",
+      "border": "#c87850",
+      "muted": "#786858",
+      "dim": "#544840",
+      "text": "",
+      "selectedBg": "#e8dcc8",
+      "userMessageBg": "#f0e6d8",
+      "mdLink": "#c87850",
+      "success": "#688058",
+      "error": "#b86040",
+      "warning": "#d89850"
+    }
+  },
+  {
+    "name": "titanium",
+    "palette": {
+      "accent": "#00b4ff",
+      "border": "#2a3038",
+      "muted": "#9ca3b0",
+      "dim": "#6b7280",
+      "text": "",
+      "selectedBg": "#0082b3",
+      "userMessageBg": "#0f1216",
+      "mdLink": "#00b4ff",
+      "success": "#00ff88",
+      "error": "#ff4757",
+      "warning": "#ffb347"
+    }
+  }
+];
