@@ -81,9 +81,10 @@ export function isChangeTool(block: ToolCallContent): boolean {
   );
 }
 
-/** True when the block should use the new inline renderer at all. */
+/** True when the block should render as an inline read-only "activity" line.
+ *  Edit/write/delete/move + bash stay as expandable tool cards (Cursor style). */
 export function isLineStyleTool(block: ToolCallContent): boolean {
-  return isExploringTool(block) || isBashTool(block) || isChangeTool(block);
+  return isExploringTool(block);
 }
 
 /* -------------------------------------------------------------------------- */

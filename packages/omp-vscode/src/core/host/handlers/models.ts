@@ -29,7 +29,7 @@ export const modelsGetHandler: Handler<"modelsGet"> = () => {
   const dbItems = readOmpModelsFromDb().filter((m) => roleProviders.has(m.provider) && !configProviders.has(m.provider));
 
   const items = [...configItems, ...dbItems];
-  const modelList = items.map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
+  const modelList = items.map((m) => ({ id: m.id, name: m.name, provider: m.provider, contextWindow: m.contextWindow }));
   const models: Record<string, string> = {};
   for (const m of items) if (!models[m.id]) models[m.id] = m.name;
 

@@ -40,7 +40,7 @@ import {
 import { useI18n } from "@/hooks/useI18n";
 import { usePreferences } from "@/hooks/usePreferences";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
-import { ExploringGroup, ToolLine, isBashTool, isChangeTool, isExploringTool, isLineStyleTool } from "./chat/ToolLine";
+import { ToolLine, isLineStyleTool } from "./chat/ToolLine";
 import {
   getAssistantErrorMessage,
   isEmptyThinkingBlock,
@@ -847,111 +847,6 @@ function AssistantMessageView({
           while (index < blockItems.length) {
             const item = blockItems[index];
             const { block, originalIndex } = item;
-            if (block.type === "toolCall" && isExploringTool(block)) {
-              const group: ToolCallContent[] = [block];
-              let next = index + 1;
-              while (next < blockItems.length) {
-                const candidate = blockItems[next].block;
-                if (candidate.type !== "toolCall" || !isExploringTool(candidate)) break;
-                group.push(candidate);
-                next += 1;
-              }
-              if (group.length >= 2) {
-                rendered.push(
-                  <ExploringGroup
-                    key={`${entryId ?? "stream"}-explore-${originalIndex}`}
-                    blocks={group}
-                    toolResults={toolResults}
-                    toolCallDurations={toolCallDurations}
-                    onOpenFile={onOpenFile}
-                    variant="exploring"
-                  />
-                );
-                index = next;
-                continue;
-              }
-              rendered.push(
-                <ToolLine
-                  key={`${entryId ?? "stream"}-line-${block.toolCallId}`}
-                  block={block}
-                  result={toolResults?.get(block.toolCallId)}
-                  duration={toolCallDurations?.get(block.toolCallId)}
-                  onOpenFile={onOpenFile}
-                />
-              );
-              index += 1;
-              continue;
-            }
-            if (block.type === "toolCall" && isBashTool(block)) {
-              const group: ToolCallContent[] = [block];
-              let next = index + 1;
-              while (next < blockItems.length) {
-                const candidate = blockItems[next].block;
-                if (candidate.type !== "toolCall" || !isBashTool(candidate)) break;
-                group.push(candidate);
-                next += 1;
-              }
-              if (group.length >= 2) {
-                rendered.push(
-                  <ExploringGroup
-                    key={`${entryId ?? "stream"}-bash-${originalIndex}`}
-                    blocks={group}
-                    toolResults={toolResults}
-                    toolCallDurations={toolCallDurations}
-                    onOpenFile={onOpenFile}
-                    variant="bash"
-                  />
-                );
-                index = next;
-                continue;
-              }
-              rendered.push(
-                <ToolLine
-                  key={`${entryId ?? "stream"}-line-${block.toolCallId}`}
-                  block={block}
-                  result={toolResults?.get(block.toolCallId)}
-                  duration={toolCallDurations?.get(block.toolCallId)}
-                  onOpenFile={onOpenFile}
-                />
-              );
-              index += 1;
-              continue;
-            }
-            if (block.type === "toolCall" && isChangeTool(block)) {
-              const group: ToolCallContent[] = [block];
-              let next = index + 1;
-              while (next < blockItems.length) {
-                const candidate = blockItems[next].block;
-                if (candidate.type !== "toolCall" || !isChangeTool(candidate)) break;
-                group.push(candidate);
-                next += 1;
-              }
-              if (group.length >= 2) {
-                rendered.push(
-                  <ExploringGroup
-                    key={`${entryId ?? "stream"}-changes-${originalIndex}`}
-                    blocks={group}
-                    toolResults={toolResults}
-                    toolCallDurations={toolCallDurations}
-                    onOpenFile={onOpenFile}
-                    variant="changes"
-                  />
-                );
-                index = next;
-                continue;
-              }
-              rendered.push(
-                <ToolLine
-                  key={`${entryId ?? "stream"}-line-${block.toolCallId}`}
-                  block={block}
-                  result={toolResults?.get(block.toolCallId)}
-                  duration={toolCallDurations?.get(block.toolCallId)}
-                  onOpenFile={onOpenFile}
-                />
-              );
-              index += 1;
-              continue;
-            }
             if (block.type === "toolCall" && isLineStyleTool(block)) {
               rendered.push(
                 <ToolLine

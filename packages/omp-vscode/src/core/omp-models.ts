@@ -16,6 +16,7 @@ export interface OmpModelItem {
   id: string;
   name: string;
   provider: string;
+  contextWindow?: number;
 }
 
 /** Read the configured providers' models from ~/.omp/agent/models.yml
@@ -24,13 +25,13 @@ export function readOmpModelsFromConfig(): OmpModelItem[] {
   const configPath = join(getOmpAgentDir(), "models.yml");
   if (!existsSync(configPath)) return [];
   try {
-    const doc = parseYaml(readFileSync(configPath, "utf8")) as { providers?: Record<string, { models?: Array<{ id?: string; name?: string }> }> };
+    const doc = parseYaml(readFileSync(configPath, "utf8")) as { providers?: Record<string, { models?: Array<{ id?: string; name?: string; contextWindow?: number }> }> };
     const providers = doc?.providers ?? {};
     const items: OmpModelItem[] = [];
     for (const [provider, cfg] of Object.entries(providers)) {
       if (!cfg || !Array.isArray(cfg.models)) continue;
       for (const m of cfg.models) {
-        if (m && typeof m.id === "string") items.push({ id: m.id, name: m.name || m.id, provider });
+        if (m && typeof m.id === "string") items.push({ id: m.id, name: m.name || m.id, provider, contextWindow: typeof m.contextWindow === "number" ? m.contextWindow : undefined });
       }
     }
     return items;
@@ -54,10 +55,10 @@ export function readOmpModelsFromDb(): OmpModelItem[] {
     const items: OmpModelItem[] = [];
     for (const row of rows) {
       try {
-        const parsed = JSON.parse(row.models) as Array<{ id: string; name?: string }>;
+        const parsed = JSON.parse(row.models) as Array<{ id: string; name?: string; contextWindow?: number }>;
         if (Array.isArray(parsed)) {
           for (const m of parsed) {
-            if (m && m.id) items.push({ id: m.id, name: m.name || m.id, provider: row.provider_id });
+            if (m && m.id) items.push({ id: m.id, name: m.name || m.id, provider: row.provider_id, contextWindow: typeof m.contextWindow === "number" ? m.contextWindow : undefined });
           }
         }
       } catch {
@@ -75,10 +76,10 @@ export function readOmpModelsFromDb(): OmpModelItem[] {
     if (jsonMatch) {
       for (const block of jsonMatch) {
         try {
-          const parsed = JSON.parse(block) as Array<{ id: string; name?: string; provider?: string }>;
+          const parsed = JSON.parse(block) as Array<{ id: string; name?: string; provider?: string; contextWindow?: number }>;
           if (Array.isArray(parsed)) {
             for (const m of parsed) {
-              if (m && m.id) items.push({ id: m.id, name: m.name || m.id, provider: m.provider || "omp" });
+              if (m && m.id) items.push({ id: m.id, name: m.name || m.id, provider: m.provider || "omp", contextWindow: typeof m.contextWindow === "number" ? m.contextWindow : undefined });
             }
           }
         } catch {
