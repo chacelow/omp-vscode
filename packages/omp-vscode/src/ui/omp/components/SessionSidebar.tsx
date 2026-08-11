@@ -315,26 +315,11 @@ function useSessions(
   setUnreadIds: Dispatch<SetStateAction<Set<string>>>,
 ): () => Promise<void> {
   return useCallback(async () => {
-    const hostResult = hostCall("sessionsList", {});
-    const extResult = ompSessionsListAll(100).then((result) => result.sessions.map(toSessionInfo));
-
+    // hostCall("sessionsList") reads the same JSONL that omp does, and it's
+    // a local FS call — it always wins the race against the ACP path
+    // (_omp/sessions/listAll). Keep it as the single source.
     try {
-      const firstResult = await Promise.race([
-        hostResult.then((result) => ({
-          sessions: result.sessions,
-          runningSessionIds: result.runningSessionIds ?? [],
-        })),
-        extResult.then((sessions) => ({ sessions, runningSessionIds: [] })),
-      ]);
-      setSessions(firstResult.sessions);
-      setRunningIds(new Set(firstResult.runningSessionIds));
-      setError(null);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
-    }
-
-    try {
-      const authoritative = await hostResult;
+      const authoritative = await hostCall("sessionsList", {});
       setSessions(authoritative.sessions);
       setRunningIds(new Set(authoritative.runningSessionIds ?? []));
       const existingIds = new Set(authoritative.sessions.map((session) => session.id));
@@ -632,7 +617,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         }
       });
     return () => { cancelled = true; };
-  }, [selectedCwd, wtRefreshKey, refreshKey]);
+    // NOTE: intentionally NOT keyed on `refreshKey`. `refreshKey` bumps on
+    // every agent-turn end via AppShell.handleAgentEnd; the git worktree
+    // list doesn't change per turn, so refetching worktrees every turn was
+    // pure noise. `wtRefreshKey` is bumped locally when the user creates
+    // or deletes a worktree.
+  }, [selectedCwd, wtRefreshKey]);
 
   // Auto-select cwd and restore session from URL on first load
   useEffect(() => {

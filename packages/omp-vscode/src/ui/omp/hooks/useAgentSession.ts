@@ -24,6 +24,7 @@ import type {
   AcpSessionState,
 } from "../../../core/acp/protocol";
 import type { ContentBlock, ElicitationContentValue, ToolCall } from "@agentclientprotocol/sdk";
+import type { ModelsResult } from "../../../core/host/protocol";
 
 export interface SessionData {
   sessionId: string;
@@ -318,6 +319,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [interactionDialog, setInteractionDialog] = useState<InteractionDialog | null>(null);
 
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
+  // Tracks the session id we've actually LOADED (sessionDetail returned).
+  // Distinct from sessionIdRef, which mirrors the current session-in-flight
+  // for outbound requests. The load guard checks this so an unloaded session
+  // never gets skipped even if sessionIdRef was already set at mount.
+  const lastLoadedSessionIdRef = useRef<string | null>(null);
   const eventSourceRef = useRef<null>(null);
   const handleAgentEventRef = useRef<null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -653,10 +659,34 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handlePromptWithStreamingBehavior = useCallback(async (message: string, _behavior: "steer" | "followUp", images?: AttachedImage[]) => steeringPrompt(message, images), [steeringPrompt]);
   const handleRecallQueue = useCallback(async () => { setQueuedMessages({ steering: [], followUp: [] }); try { await sendPrompt("/clear-queue"); } catch { addNotice({ type: "warning", message: "Queue cannot be recalled in ACP mode" }); } }, [addNotice, sendPrompt]);
 
+  // In-flight dedupe: multiple effects (session change, modelsRefreshKey,
+  // isNew path) all fire loadModels on the same tick. Coalesce into one
+  // hostCall by keeping the last inflight promise per cwd.
+  const modelsGetInflightRef = useRef<{ cwd: string; promise: Promise<ModelsResult> } | null>(null);
   const loadModels = useCallback(async (_signal?: AbortSignal) => {
-    const response = await hostCall("modelsGet", { cwd: newSessionCwd ?? "" });
-    setModelNames(response.models); setModelList(response.modelList); setModelRoles(response.modelRoles); setNewSessionDefaultModel(response.defaultModel); setModelError(response.modelError); setModelScopeWarnings(response.modelScopeWarnings.filter((warning): warning is string => typeof warning === "string")); setModelThinkingLevels({}); setModelThinkingLevelMaps({});
-    return response;
+    const cwd = newSessionCwd ?? "";
+    const inflight = modelsGetInflightRef.current;
+    if (inflight && inflight.cwd === cwd) return inflight.promise;
+    const promise = hostCall("modelsGet", { cwd }).then((response) => {
+      setModelNames(response.models);
+      setModelList(response.modelList);
+      setModelRoles(response.modelRoles);
+      setNewSessionDefaultModel(response.defaultModel);
+      setModelError(response.modelError);
+      setModelScopeWarnings(response.modelScopeWarnings.filter((warning): warning is string => typeof warning === "string"));
+      setModelThinkingLevels({});
+      setModelThinkingLevelMaps({});
+      return response;
+    });
+    modelsGetInflightRef.current = { cwd, promise };
+    // Clear the cache once the request settles (success or failure) so a
+    // later invalidation (modelsRefreshKey bump, user save) refetches.
+    promise.finally(() => {
+      if (modelsGetInflightRef.current?.promise === promise) {
+        modelsGetInflightRef.current = null;
+      }
+    });
+    return promise;
   }, [newSessionCwd]);
   const loadTools = useCallback(async (_sid?: string) => [], []);
   const loadSlashCommands = useCallback(async () => slashCommands, [slashCommands]);
@@ -738,15 +768,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // rows during the merge.
   useEffect(() => {
     if (!session) return;
-    if (sessionIdRef.current === session.id) {
-      void loadModels();
+    if (lastLoadedSessionIdRef.current === session.id) {
+      // Already loaded — parent handed us a new object (e.g. hydrated with
+      // projectRoot) but the same session. No reload needed.
       return;
     }
+    lastLoadedSessionIdRef.current = session.id;
     sessionIdRef.current = session.id;
     void loadSession(session.id, true);
-    void loadModels();
     return () => { void acpRequest({ type: "acp/unsubscribeSession", sessionId: session.id }); };
-  }, [loadModels, loadSession, session?.id, session]);
+  }, [loadSession, session?.id, session]);
   useEffect(() => {
     if (session || !isNew || !newSessionCwd || sessionIdRef.current) return;
     let cancelled = false;
