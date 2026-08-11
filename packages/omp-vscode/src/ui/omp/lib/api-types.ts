@@ -85,6 +85,8 @@ export interface PluginResourceInfo {
 
 export interface PluginPackageInfo {
   source: string;
+  /** Provider whose enabled state controls this extension. */
+  providerId?: string;
   scope: PluginScope;
   filtered: boolean;
   disabled: boolean;

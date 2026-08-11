@@ -12,7 +12,14 @@ import { ChatFooterBar } from "./chat/ChatFooterBar";
 import { ChatMinimap } from "./chat/ChatMinimap";
 import { Shimmer } from "./ai-elements/shimmer";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
+import { InteractionDialog } from "./InteractionDialog";
+import { PlanReviewOverlay } from "./panels/PlanReviewOverlay";
+import { ModelHub } from "./ModelHub";
+import { TemporaryModelPicker } from "./TemporaryModelPicker";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { UserMessageSelector } from "./UserMessageSelector";
+import { AgentHub } from "./agent-hub/AgentHub";
+import { HistorySearchDialog } from "./HistorySearchDialog";
 import { LoadingState } from "./ui/spinner";
 import { ChevronRight, Clock, TriangleAlert } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
@@ -41,7 +48,8 @@ interface Props {
   onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => Promise<void>) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsChange?: (stats: SessionStatsInfo | null) => void;
-  onSessionStatsPanelOpen?: () => void;
+  onOpenSettings?: () => void;
+  onOpenResumeDialog?: () => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
   onOpenFile?: (filePath: string) => void;
   /** Current project (short name) + full path + change callback — for the
@@ -194,8 +202,36 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { mes
     </div>
   );
 }
+function planReviewSchema(request: unknown): Record<string, unknown> | null {
+  if (!request || typeof request !== "object" || !("request" in request)) return null;
+  const nested = request.request;
+  if (!nested || typeof nested !== "object" || !("requestedSchema" in nested)) return null;
+  const schema = nested.requestedSchema;
+  if (!schema || typeof schema !== "object" || !("properties" in schema) || !schema.properties || typeof schema.properties !== "object") return null;
+  const properties = schema.properties;
+  if (!properties || typeof properties !== "object") return null;
+  const typedProperties = properties as Record<string, unknown>;
+  const plan = typedProperties.plan ?? null;
+  const feedback = typedProperties.feedback ?? null;
+  if (!plan || typeof plan !== "object" || !("type" in plan) || plan.type !== "string") return null;
+  if (!feedback || typeof feedback !== "object" || !("type" in feedback) || feedback.type !== "string") return null;
+  return schema;
+}
 
-export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, cwdName, cwd, onCwdChange, forceNewSession }: Props) {
+function planReviewDefault(schema: Record<string, unknown>, key: "plan" | "feedback"): string {
+  const properties = schema.properties;
+  if (!properties || typeof properties !== "object") return "";
+  const property = Object.entries(properties).find(([name]) => name === key)?.[1];
+  return property && typeof property === "object" && "default" in property && typeof property.default === "string" ? property.default : "";
+}
+
+function planReviewChoices(schema: Record<string, unknown>): string[] {
+  const raw = "enum" in schema ? schema.enum : [];
+  return Array.isArray(raw) ? raw.filter((choice): choice is string => typeof choice === "string") : [];
+}
+
+
+export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onOpenSettings, onOpenResumeDialog, onContextUsageChange, onOpenFile, cwdName, cwd, onCwdChange, forceNewSession }: Props) {
   const { t } = useI18n();
   const { soundEnabled, onSoundToggle, playDoneSound, unlockAudio } = useAudio();
 
@@ -223,27 +259,36 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
   const {
     loading, error, messages, entryIds, streamState, data,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel, modelRoles, fastMode, handleRoleChange, loadModels,
-    retryInfo, contextUsage, forkingEntryId,
-    isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
+    retryInfo, contextUsage, forkingEntryId, compactionBoundary,
+    isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats, currentModel,
     slashCommands, slashCommandsLoading, queuedMessages,
     notices, extensionDialog, extensionCustomUi, extensionStatuses, extensionWidgets, respondToExtensionUi, sendExtensionCustomInput,
+    interactionDialog, respondInteraction,
     isAutoModelSelection,
     agentPhase,
     liveTps,
-    isNew,
+    isNew, activeModes,
     sessionIdRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
-    handleSend, handleAbort, handleFork, handleEditResend, handleNavigate, handleModelChange,
+    handleSend, handleAbort, handleFork, handleEditResend, handleNavigate, handleModelChange, setPendingRestoreModel,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
     handleToolPresetChange, handleThinkingLevelChange, loadSlashCommands,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd: wrappedOnAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
+    modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onOpenSettings, onOpenResumeDialog,
     forceNewSession,
   });
   const sessionBusy = agentRunning || bashRunning;
+  const [modelHubOpen, setModelHubOpen] = useState(false);
+  const [temporaryModelPickerOpen, setTemporaryModelPickerOpen] = useState(false);
+  const [showThinking, setShowThinking] = useState(true);
+  const [expandAllTools, setExpandAllTools] = useState(false);
+  const [toolsHidden, setToolsHidden] = useState(false);
+  const [displayResetKey, setDisplayResetKey] = useState(0);
+  const [agentHubOpen, setAgentHubOpen] = useState(false);
+  const [historySearchOpen, setHistorySearchOpen] = useState(false);
 
   useEffect(() => {
     if (!extensionDialog || soundedExtensionDialogIdRef.current === extensionDialog.id) return;
@@ -260,6 +305,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
   // Only render the last N messages initially. When the user scrolls to the
   // top, load another page while keeping the scroll position stable.
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
+  const [branchSelectorOpen, setBranchSelectorOpen] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   // Message DOM refs for scroll-into-view (minimap was removed for the
   // sidebar; the refs are still used for auto-scroll to the latest message).
@@ -532,6 +578,7 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
     stats: sessionStats,
     inputHistory,
     onRecallQueue: handleRecallQueue,
+    onOpenHistorySearch: () => setHistorySearchOpen(true),
     slashCommands,
     slashCommandsLoading,
     onLoadSlashCommands: loadSlashCommands,
@@ -539,6 +586,16 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
     soundEnabled,
     onSoundToggle,
     onAudioUnlock: unlockAudio,
+    onOpenModelSelector: () => setModelHubOpen(true),
+    onOpenTemporaryModelPicker: () => setTemporaryModelPickerOpen(true),
+    onToggleThinking: () => setShowThinking((visible) => !visible),
+    onDisplayReset: () => {
+      messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "instant" });
+      setDisplayResetKey((key) => key + 1);
+    },
+    onToggleExpandAllTools: () => setExpandAllTools((expanded) => !expanded),
+    onToggleToolsHidden: () => setToolsHidden((hidden) => !hidden),
+    onOpenAgentHub: () => setAgentHubOpen(true),
   };
 
   const chatInputElement = (
@@ -549,6 +606,8 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
       cwd={messageCwd}
     />
   );
+  const modelHub = <ModelHub open={modelHubOpen} onClose={() => setModelHubOpen(false)} sessionId={sessionIdRef.current} modelList={modelList} currentModel={currentModel} modelRoles={modelRoles} modelThinkingLevelMaps={modelThinkingLevelMaps} currentModeId={activeModes[0] ?? null} onModelChanged={handleModelChange} />;
+  const temporaryModelPicker = <TemporaryModelPicker open={temporaryModelPickerOpen} onClose={() => setTemporaryModelPickerOpen(false)} currentModel={currentModel} modelList={modelList.map((model) => ({ provider: model.provider, modelId: model.id, name: model.name }))} onSelect={({ provider, modelId }) => { if (!currentModel) return; setPendingRestoreModel(currentModel); void handleModelChange(provider, modelId); }} />;
 
   const renderEditInput = useCallback(
     (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void, collapsed?: boolean) => (
@@ -577,6 +636,9 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
       onSoundToggle={onSoundToggle}
       cwd={messageCwd}
       tps={tps}
+      activeModes={activeModes}
+      fastMode={fastMode}
+      onRoleChange={handleRoleChange}
     />
   );
 
@@ -613,6 +675,8 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {branchSelectorOpen && <UserMessageSelector messages={messages} entryIds={entryIds} onClose={() => setBranchSelectorOpen(false)} onSelectEntry={(entryId) => { setBranchSelectorOpen(false); void handleFork(entryId); }} />}
+      {agentHubOpen && <AgentHub cwd={messageCwd ?? ""} sessionId={sessionIdRef.current} onClose={() => setAgentHubOpen(false)} />}
       {isDragOver && !sessionBusy && (
         <div className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center bg-[var(--accent)]/6 backdrop-blur-[1px]">
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -656,6 +720,21 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
         <ExtensionCustomPanel
           request={extensionCustomUi}
           onInput={sendExtensionCustomInput}
+        />
+      )}
+
+      {interactionDialog && planReviewSchema(interactionDialog) ? (
+        <PlanReviewOverlay
+          plan={planReviewDefault(planReviewSchema(interactionDialog)!, "plan")}
+          feedback={planReviewDefault(planReviewSchema(interactionDialog)!, "feedback")}
+          choices={planReviewChoices(planReviewSchema(interactionDialog)!)}
+          cwd={cwd ?? undefined}
+          onRespond={(response) => respondInteraction(interactionDialog, response)}
+        />
+      ) : interactionDialog && (
+        <InteractionDialog
+          request={interactionDialog}
+          onRespond={respondInteraction}
         />
       )}
 
@@ -740,10 +819,10 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
         </div>
         <div ref={scrollContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4">
           <div style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}>
-            <div style={{ width: "100%", minWidth: 0, maxWidth: 820, margin: "0 auto" }}>
+            <div key={displayResetKey} style={{ width: "100%", minWidth: 0, maxWidth: 820, margin: "0 auto" }}>
               <ExtensionWidgets widgets={aboveEditorWidgets} />
+              {(() => {
 
-            {(() => {
               const toolResultsMap = new Map<string, ToolResultMessage>();
               for (const msg of messages) {
                 if (msg.role === "toolResult") {
@@ -821,6 +900,9 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
                     prevTimestamp={idx > 0 ? (messages[idx - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
                     sessionId={session?.id ?? sessionIdRef.current ?? undefined}
                     hideFork={options.hideFork}
+                    showThinking={showThinking}
+                    expandAllTools={expandAllTools}
+                    toolsHidden={toolsHidden}
                   />
                 );
                 if (!isVisible || options.attachRef === false || currentRefIdx === undefined) return view;
@@ -832,9 +914,22 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
               };
 
               const rendered: ReactNode[] = [];
+              const renderCompactionBoundary = (idx: number): ReactNode => {
+                if (!compactionBoundary || idx !== compactionBoundary.messageIndex) return null;
+                const label = new Date(compactionBoundary.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={`compaction-boundary-${compactionBoundary.at}`} className="my-4 flex items-center gap-3 text-[10px] font-medium uppercase tracking-wide text-[var(--text-dim)]">
+                    <div className="h-px flex-1 bg-[var(--border)]" />
+                    <span>Context compacted at {label}</span>
+                    <div className="h-px flex-1 bg-[var(--border)]" />
+                  </div>
+                );
+              };
               for (let idx = 0; idx < messages.length;) {
                 const msg = messages[idx];
                 if (!isGroupAnchor(msg)) {
+                  const boundary = renderCompactionBoundary(idx);
+                  if (boundary) rendered.push(boundary);
                   rendered.push(renderMessage(idx));
                   idx += 1;
                   continue;
@@ -863,6 +958,8 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
                   continue;
                 }
 
+                const boundary = renderCompactionBoundary(userIdx);
+                if (boundary) rendered.push(boundary);
                 rendered.push(renderMessage(userIdx));
 
                 // Overall turn duration: from this user message to the final
@@ -950,13 +1047,14 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
               );
             })()}
             {streamState.isStreaming && streamState.streamingMessage && (
-              <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} />
+              <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} showThinking={showThinking} expandAllTools={expandAllTools} toolsHidden={toolsHidden} />
             )}
 
             {agentRunning && !streamState.streamingMessage && agentPhase && (
-              <div className="py-2 text-[13px]">
+              <div className="flex items-center gap-2 py-2 text-[13px] text-text-muted" role="status" aria-live="polite">
+                <span className="size-1.5 animate-pulse rounded-full bg-current" aria-hidden="true" />
                 <Shimmer className="text-[13px]" duration={2.5} spread={1}>
-                  {phaseLabel(agentPhase, t) ?? ""}
+                  {agentPhase.kind === "waiting_model" ? t("chat.thinking") : (phaseLabel(agentPhase, t) ?? "")}
                 </Shimmer>
               </div>
             )}
@@ -1013,6 +1111,9 @@ export function ChatWindow({ session, newSessionCwd, minimapOpen, onAgentEnd, on
       </div>
       </>
       )}
+      {modelHub}
+      {temporaryModelPicker}
+      {historySearchOpen && <HistorySearchDialog items={inputHistory} onClose={() => setHistorySearchOpen(false)} onSelect={(prompt) => { chatInputRef?.current?.insertIfEmpty(prompt); setHistorySearchOpen(false); }} />}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { useI18n } from "@/hooks/useI18n";
+import { usePreferences } from "@/hooks/usePreferences";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
 import { getAssistantErrorMessage, isEmptyThinkingBlock } from "@/lib/message-display";
 import { parseUnifiedPatch, type SplitDiffCell } from "@/lib/patch";
@@ -36,6 +37,9 @@ import type {
   ToolCallContent,
   ThinkingContent,
 } from "@/lib/types";
+import { hostCall } from "../../bridge";
+import { useStreamingReveal } from "../hooks/useStreamingReveal";
+import { useToolArgsReveal } from "../hooks/useToolArgsReveal";
 
 const MAX_THINKING_CACHE_ENTRIES = 100;
 const thinkingContentCache = new Map<string, Promise<string>>();
@@ -49,17 +53,15 @@ function loadThinkingContent(sessionId: string, entryId: string, blockIndex: num
     return cached;
   }
 
-  const request = fetch(
-    `/api/sessions/${encodeURIComponent(sessionId)}/entries/${encodeURIComponent(entryId)}/thinking?blockIndex=${blockIndex}`,
-  ).then(async (response) => {
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json() as { thinking?: unknown };
-    if (typeof data.thinking !== "string") throw new Error("Invalid thinking response");
-    return data.thinking;
-  }).catch((error) => {
-    thinkingContentCache.delete(key);
-    throw error;
-  });
+  const request = hostCall("sessionEntryThinking", { sessionId, entryId, blockIndex })
+    .then((data) => {
+      if (typeof data.thinking !== "string") throw new Error("Invalid thinking response");
+      return data.thinking;
+    })
+    .catch((error) => {
+      thinkingContentCache.delete(key);
+      throw error;
+    });
 
   thinkingContentCache.set(key, request);
   if (thinkingContentCache.size > MAX_THINKING_CACHE_ENTRIES) {
@@ -90,6 +92,9 @@ interface Props {
   sessionId?: string;
   /** Suppress the new-session (fork) action (used for split process blocks). */
   hideFork?: boolean;
+  showThinking?: boolean;
+  expandAllTools?: boolean;
+  toolsHidden?: boolean;
 }
 
 function formatTime(ts?: number): string | null {
@@ -119,12 +124,12 @@ function haveSameRelevantToolResults(
   return true;
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideFork }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender, showTimestamp, prevTimestamp, sessionId, hideFork, showThinking = true, expandAllTools = false, toolsHidden = false }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} editInputRender={editInputRender} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideFork={hideFork} onFork={onFork} forking={forking} />;
+    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} sessionId={sessionId} entryId={entryId} hideFork={hideFork} onFork={onFork} forking={forking} showThinking={showThinking} expandAllTools={expandAllTools} toolsHidden={toolsHidden} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -156,7 +161,10 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.showTimestamp === next.showTimestamp
     && prev.prevTimestamp === next.prevTimestamp
     && prev.sessionId === next.sessionId
-    && prev.hideFork === next.hideFork;
+    && prev.hideFork === next.hideFork
+    && prev.showThinking === next.showThinking
+    && prev.expandAllTools === next.expandAllTools
+    && prev.toolsHidden === next.toolsHidden;
 });
 
 function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend, editInputRender }: {
@@ -173,6 +181,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   editInputRender?: (entryId: string, content: string, onCancel: () => void, onSubmit?: (text: string, images?: Array<{ data: string; mimeType: string }>) => void, collapsed?: boolean) => ReactNode;
 }) {
   const { t } = useI18n();
+  const { showImages } = usePreferences();
   const [editing, setEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState<{ text: string; images?: Array<{ data: string; mimeType: string }> } | null>(null);
@@ -210,7 +219,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
       {/* Inline composer/editor: full column width, no side padding or bleed
           — same box geometry as the bottom composer. */}
       <div style={{ width: "100%", maxWidth: 820 }}>
-        {imageBlocks.length > 0 && (
+        {showImages && imageBlocks.length > 0 && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", marginBottom: 6 }}>
             {imageBlocks.map((img, i) => {
               const flat = img as unknown as { data?: string; mimeType?: string };
@@ -298,19 +307,8 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
 }
 
 function AssistantMessageView({
-  message,
-  isStreaming,
-  toolResults,
-  modelNames,
-  cwd,
-  onOpenFile,
-  showTimestamp,
-  prevTimestamp,
-  sessionId,
-  entryId,
-  hideFork,
-  onFork,
-  forking,
+  message, isStreaming, toolResults, modelNames, cwd, onOpenFile, showTimestamp, prevTimestamp,
+  sessionId, entryId, hideFork, onFork, forking, showThinking = true, expandAllTools = false, toolsHidden = false,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -325,12 +323,17 @@ function AssistantMessageView({
   hideFork?: boolean;
   onFork?: (entryId: string) => void;
   forking?: boolean;
+  showThinking?: boolean;
+  expandAllTools?: boolean;
+  toolsHidden?: boolean;
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
   const canFork = !isStreaming && !hideFork && !!entryId && !!onFork;
   const blockItems = (message.content ?? [])
     .map((block, originalIndex) => ({ block, originalIndex }))
+    .filter(({ block }) => showThinking || block.type !== "thinking")
+    .filter(({ block }) => !toolsHidden || block.type !== "toolCall")
     .filter(({ block }) => !isEmptyThinkingBlock(block, { isStreaming }));
   const blocks = blockItems.map(({ block }) => block);
   const providerError = getAssistantErrorMessage(message, { isStreaming });
@@ -522,9 +525,25 @@ function AssistantMessageView({
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {blockItems.map(({ block, originalIndex }) => (
-          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} />
-        ))}
+        {blockItems.map(({ block, originalIndex }, itemIndex) => {
+          const previousBlock = blockItems[itemIndex - 1]?.block;
+          if (block.type === "toolCall" && block.toolName === "read") {
+            if (previousBlock?.type === "toolCall" && previousBlock.toolName === "read") return null;
+            const readBlocks: ToolCallContent[] = [block];
+            let nextIndex = itemIndex + 1;
+            while (true) {
+              const candidate = blockItems[nextIndex]?.block;
+              if (candidate?.type !== "toolCall" || candidate.toolName !== "read") break;
+              readBlocks.push(candidate);
+              nextIndex += 1;
+            }
+            if (readBlocks.length >= 2) {
+              return <ReadToolGroup key={`${entryId ?? "stream"}-${originalIndex}`} blocks={readBlocks} toolResults={toolResults} toolCallDurations={toolCallDurations} onOpenFile={onOpenFile} />;
+            }
+          }
+          const nextBlock = blockItems[itemIndex + 1]?.block;
+          return <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} snapReveal={nextBlock?.type === "toolCall"} expandAllTools={expandAllTools} />;
+        })}
       </div>
 
       {providerError && (
@@ -599,24 +618,24 @@ function AssistantMessageView({
   );
 }
 
-function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, cwd, onOpenFile, sessionId, entryId, blockIndex }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; cwd?: string; onOpenFile?: (filePath: string) => void; sessionId?: string; entryId?: string; blockIndex: number }) {
+function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, cwd, onOpenFile, sessionId, entryId, blockIndex, snapReveal, expandAllTools }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; cwd?: string; onOpenFile?: (filePath: string) => void; sessionId?: string; entryId?: string; blockIndex: number; snapReveal?: boolean; expandAllTools?: boolean }) {
   if (block.type === "text") {
-    return <TextBlock block={block as TextContent} isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile} />;
+    return <TextBlock block={block} isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile} snapReveal={snapReveal} />;
   }
   if (block.type === "thinking") {
-    return <ThinkingBlock block={block as ThinkingContent} isStreaming={isStreaming} duration={streamingDuration} sessionId={sessionId} entryId={entryId} blockIndex={blockIndex} />;
+    return <ThinkingBlock block={block} isStreaming={isStreaming} duration={streamingDuration} sessionId={sessionId} entryId={entryId} blockIndex={blockIndex} />;
   }
   if (block.type === "toolCall") {
-    const tc = block as ToolCallContent;
-    const result = toolResults?.get(tc.toolCallId);
-    const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} duration={duration} onOpenFile={onOpenFile} isStreaming={isStreaming} />;
+    const result = toolResults?.get(block.toolCallId);
+    const duration = toolCallDurations?.get(block.toolCallId);
+    return <ToolCallBlock block={block} result={result} duration={duration} onOpenFile={onOpenFile} isStreaming={isStreaming} expanded={expandAllTools} />;
   }
   return null;
 }
 
-function TextBlock({ block, isStreaming, cwd, onOpenFile }: { block: TextContent; isStreaming?: boolean; cwd?: string; onOpenFile?: (filePath: string) => void }) {
-  return <MarkdownBody isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile}>{block.text}</MarkdownBody>;
+function TextBlock({ block, isStreaming, cwd, onOpenFile, snapReveal }: { block: TextContent; isStreaming?: boolean; cwd?: string; onOpenFile?: (filePath: string) => void; snapReveal?: boolean }) {
+  const { displayText } = useStreamingReveal(block.text, false, !isStreaming || snapReveal);
+  return <MarkdownBody isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile}>{displayText}</MarkdownBody>;
 }
 
 function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, blockIndex }: {
@@ -634,6 +653,7 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
   const prevStreamingRef = useRef(isStreaming);
   const contentRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState<string | null>(null);
+  const { displayText } = useStreamingReveal(block.thinking, true, !isStreaming);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -713,7 +733,7 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
                 error ? "text-[#f87171]" : "text-[var(--text-muted)]",
               )}
             >
-              {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : block.thinking)}
+              {loading ? t("i18n.loadingThinking") : error ?? (block.deferred ? content : displayText)}
             </div>
           </motion.div>
         )}
@@ -727,61 +747,49 @@ function ThinkingBlock({ block, isStreaming, duration, sessionId, entryId, block
  * keyword + basename + grab range). No card, no green, no expand/collapse —
  * clicking the filename opens it in VS Code. Failures are greyed out. */
 function ReadToolBlock({ block, result, duration, onOpenFile }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void }) {
-  const input = (block.input ?? {}) as { path?: string; grab?: string | { start?: number; end?: number } | [number, number] };
-  const path = input.path ?? "";
+  const path = typeof block.input.path === "string" ? block.input.path : "";
+  const grab = block.input.grab;
   const isError = result?.isError === true;
-
-  const grabText = (() => {
-    const g = input.grab;
-    if (typeof g === "string") {
-      const m = g.match(/(\d+)\s*[-:]\s*(\d+)/);
-      if (m) return `${m[1]}:${m[2]}`;
-      return g;
-    }
-    if (Array.isArray(g)) return `${g[0]}:${g[1]}`;
-    if (g && typeof g.start === "number" && typeof g.end === "number") return `${g.start}:${g.end}`;
-    return null;
-  })();
+  const grabText = typeof grab === "string"
+    ? grab.match(/(\d+)\s*[-:]\s*(\d+)/)?.slice(1).join(":") ?? grab
+    : Array.isArray(grab) && grab.length === 2 && typeof grab[0] === "number" && typeof grab[1] === "number"
+      ? `${grab[0]}:${grab[1]}`
+      : isRecord(grab) && typeof grab.start === "number" && typeof grab.end === "number"
+        ? `${grab.start}:${grab.end}`
+        : null;
 
   return (
     <div className={cn("sf-read-block text-[12px]", isError && "opacity-50")}>
       <div className="flex items-center gap-1.5">
-        <span
-          className={cn(
-            "shrink-0 font-mono text-[11px] font-semibold",
-            isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
-          )}
-        >
-          read
-        </span>
-        <button
-          type="button"
-          onClick={() => onOpenFile?.(path)}
-          disabled={!onOpenFile}
-          title={path}
-          className={cn(
-            "min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left font-mono text-[11px] underline-offset-2",
-            isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
-            onOpenFile && "cursor-pointer hover:text-[var(--text)] hover:underline",
-          )}
-        >
+        <span className={cn("shrink-0 font-mono text-[11px] font-semibold", isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]")}>read</span>
+        <button type="button" onClick={() => onOpenFile?.(path)} disabled={!onOpenFile} title={path} className={cn("min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left font-mono text-[11px] underline-offset-2", isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]", onOpenFile && "cursor-pointer hover:text-[var(--text)] hover:underline")}>
           {path ? path.split("/").filter(Boolean).pop() ?? path : "(no path)"}
         </button>
-        {grabText && (
-          <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">L{grabText}</span>
-        )}
-        {duration !== undefined && (
-          <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>
-        )}
+        {grabText && <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)]">L{grabText}</span>}
+        {duration !== undefined && <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">{duration}s</span>}
       </div>
     </div>
   );
 }
 
-function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void; isStreaming?: boolean }) {  const [expanded, setExpanded] = useState(false);
+function ReadToolGroup({ blocks, toolResults, toolCallDurations, onOpenFile }: { blocks: ToolCallContent[]; toolResults?: Map<string, ToolResultMessage>; toolCallDurations?: Map<string, number>; onOpenFile?: (path: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  return <section className="rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1" aria-label={`${blocks.length} read tool calls`}>
+    <button type="button" onClick={() => setExpanded((value) => !value)} className="flex w-full items-center gap-1.5 border-none bg-transparent p-0 text-left font-mono text-[11px] text-[var(--text-muted)]">
+      <ChevronDown size={12} className={cn("transition-transform", expanded && "rotate-180")} />
+      {blocks.length} reads
+    </button>
+    {expanded && <div className="mt-1 flex flex-col gap-1">{blocks.map((block) => <ReadToolBlock key={block.toolCallId} block={block} result={toolResults?.get(block.toolCallId)} duration={toolCallDurations?.get(block.toolCallId)} onOpenFile={onOpenFile} />)}</div>}
+  </section>;
+}
+
+function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming, expanded: forceExpanded = false }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (path: string) => void; isStreaming?: boolean; expanded?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const isExpanded = forceExpanded || expanded;
   const [copied, setCopied] = useState(false);
   const { t } = useI18n();
-  const inputStr = JSON.stringify(block.input, null, 2);
+  const { displayInput } = useToolArgsReveal(isStreaming ? block.input : JSON.stringify(block.input));
+  const inputStr = JSON.stringify(isStreaming ? displayInput : block.input, null, 2);
   const isEditTool = isEditToolName(block.toolName);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
 
@@ -859,11 +867,11 @@ function ToolCallBlock({ block, result, duration, onOpenFile, isStreaming }: { b
         {duration !== undefined && (
           <span style={{ fontSize: 11, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
-        <ChevronDown size={10} strokeWidth={1.6} className="shrink-0 text-[var(--text-dim)]" style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+        <ChevronDown size={10} strokeWidth={1.6} className="shrink-0 text-[var(--text-dim)]" style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
       </button>
 
       <AnimatePresence initial={false}>
-        {expanded && (
+        {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -1145,7 +1153,8 @@ function getResultDiff(result: ToolResultMessage): ResultDiff | null {
   return null;
 }
 
-function isEditToolName(toolName: string): boolean {
+function isEditToolName(toolName: string | undefined | null): boolean {
+  if (typeof toolName !== "string") return false;
   const name = toolName.toLowerCase();
   return name === "edit" ||
     name.startsWith("edit_") ||
@@ -1291,6 +1300,7 @@ function CompactionFileList({ title, files }: { title: string; files: string[] }
 
 function CustomMessageView({ message, cwd, onOpenFile }: { message: CustomMessage; cwd?: string; onOpenFile?: (filePath: string) => void }) {
   const { t } = useI18n();
+  const { showImages } = usePreferences();
   const isHiddenDisplay = message.display === false;
   const [contentExpanded, setContentExpanded] = useState(!isHiddenDisplay);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -1341,7 +1351,7 @@ function CustomMessageView({ message, cwd, onOpenFile }: { message: CustomMessag
 
         {contentExpanded ? (
           <div style={{ padding: "6px 9px" }}>
-            {images.length > 0 && (
+            {showImages && images.length > 0 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: text ? 8 : 0 }}>
                 {images.map((img, i) => {
                   const src = imageSource(img);
@@ -1538,28 +1548,36 @@ function BashExecutionView({ message, sessionId }: { message: BashExecutionMessa
 
   const isPending = !message.output && message.exitCode === undefined && !message.cancelled;
   const isError = message.cancelled || (message.exitCode !== undefined && message.exitCode !== 0);
-  const fullOutputUrl = sessionId && message.fullOutputPath
-    ? `/api/agent/${encodeURIComponent(sessionId)}/bash-output?path=${encodeURIComponent(message.fullOutputPath)}`
-    : null;
-  const showFullButton = message.truncated && fullOutputUrl && fullOutput === null;
+  const fullOutputPath = sessionId && message.fullOutputPath ? message.fullOutputPath : null;
+  const showFullButton = message.truncated && fullOutputPath && fullOutput === null;
   const displayOutput = fullOutput ?? message.output;
 
   async function loadFullOutput() {
-    if (!fullOutputUrl) return;
+    if (!sessionId || !fullOutputPath) return;
     setLoadingFull(true);
     setFullError(null);
     try {
-      const res = await fetch(fullOutputUrl);
-      const d = await res.json() as { success?: boolean; data?: { output?: string }; error?: string };
-      if (d.success) {
-        setFullOutput(d.data?.output ?? "");
+      const data = await hostCall("sessionBashOutput", { sessionId, path: fullOutputPath });
+      if (data.success) {
+        setFullOutput(data.data?.output ?? "");
       } else {
-        setFullError(d.error ?? "failed");
+        setFullError(data.error ?? "failed");
       }
     } catch (e) {
       setFullError(String(e));
     } finally {
       setLoadingFull(false);
+    }
+  }
+
+  async function copyFullOutput() {
+    if (!sessionId || !fullOutputPath) return;
+    try {
+      const data = await hostCall("sessionBashOutput", { sessionId, path: fullOutputPath });
+      if (data.success) await navigator.clipboard.writeText(data.data?.output ?? "");
+      else setFullError(data.error ?? "failed");
+    } catch (e) {
+      setFullError(String(e));
     }
   }
 
@@ -1587,7 +1605,7 @@ function BashExecutionView({ message, sessionId }: { message: BashExecutionMessa
   return (
     <div style={{ margin: "6px 0" }}>
       <ToolCallBlock block={block} result={result} />
-      {message.truncated && fullOutputUrl && (
+      {message.truncated && fullOutputPath && (
         <div style={{ padding: "4px 10px", fontSize: 11, marginTop: -1 }}>
           {showFullButton && (
             <button
@@ -1598,12 +1616,13 @@ function BashExecutionView({ message, sessionId }: { message: BashExecutionMessa
               {loadingFull ? "loading…" : "view full output"}
             </button>
           )}
-          <a
-            href={`${fullOutputUrl}&download=1`}
-            style={{ marginLeft: showFullButton ? 10 : 0, color: "var(--accent)", fontSize: 11, textDecoration: "underline" }}
+          <button
+            type="button"
+            onClick={copyFullOutput}
+            style={{ marginLeft: showFullButton ? 10 : 0, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, padding: 0, textDecoration: "underline" }}
           >
             download full output
-          </a>
+          </button>
           {fullError && <span style={{ marginLeft: 6, color: "var(--text-dim)", fontSize: 11 }}>({fullError})</span>}
         </div>
       )}

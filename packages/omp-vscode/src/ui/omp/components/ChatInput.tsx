@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
-import { PI_CLI_BUILTIN_SLASH_COMMANDS } from "@/lib/pi-slash-commands";
 import type { BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
-import type { SkillsResponse } from "@/lib/api-types";
 import { clearDraft, getDraft, setDraft, type ChatDraftImage } from "@/lib/draft-store";
 import {
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGES,
   isBase64ImageWithinLimits,
 } from "@/lib/image-attachments";
+import { EMOJI_EMOTICONS, EMOJI_SHORTCODES } from "@/lib/emoji-shortcodes";
+import { parseQueueShorthand, splitQueuedMessages } from "@/lib/queue-input";
+import { useCompleter, type CompleterRange } from "@/lib/useCompleter";
 /** Textarea free-resize ceiling: 15 lines × 20.8px line height. */
 const TEXTAREA_MAX_HEIGHT = Math.round(15 * 20.8);
 import {
@@ -19,14 +20,16 @@ import {
 import { FolderIcon, getFileIcon } from "./FileIcons";
 import { ToolbarRow } from "./chat/ToolbarRow";
 import { HistoryMenu } from "./chat/HistoryMenu";
+import ExternalEditorModal from "./ExternalEditorModal";
 import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescription, SLASH_SOURCE_ORDER, type SlashCommandPaletteItem } from "./chat/SlashPalette";
 import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
 import { Gauge, TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
 import type { ChatFooterStats } from "./chat/ChatFooterBar";
 import { useI18n } from "@/hooks/useI18n";
+import { ompExtensions } from "@/lib/ext-methods";
 import { cn } from "@/lib/utils";
-import { openImageInVSCode } from "../../bridge";
+import { hostCall, openImageInVSCode } from "../../bridge";
 
 export interface AttachedImage {
   data: string;   // base64, no prefix
@@ -35,7 +38,7 @@ export interface AttachedImage {
 }
 
 export interface ChatInputProps {
-  onSend: (message: string, images?: AttachedImage[]) => void;
+  onSend: (message: string, images?: AttachedImage[], flags?: { bashExcluded?: boolean }) => void;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
   onFollowUp?: (message: string, images?: AttachedImage[]) => void;
@@ -75,6 +78,14 @@ export interface ChatInputProps {
   stats?: ChatFooterStats | null;
   inputHistory?: string[];
   onRecallQueue?: () => void;
+  onToggleThinking?: () => void;
+  onOpenHistorySearch?: () => void;
+  onOpenModelSelector?: () => void;
+  onOpenTemporaryModelPicker?: () => void;
+  onOpenAgentHub?: () => void;
+  onDisplayReset?: () => void;
+  onToggleExpandAllTools?: () => void;
+  onToggleToolsHidden?: () => void;
   slashCommands?: SlashCommandInfo[];
   slashCommandsLoading?: boolean;
   onLoadSlashCommands?: () => Promise<SlashCommandInfo[]> | SlashCommandInfo[];
@@ -117,26 +128,38 @@ function formatTokenCount(tokens: number): string {
   return tokens.toLocaleString();
 }
 
-const WEB_COMMAND_ALIASES: SlashCommandPaletteItem[] = [
-  { name: "usage", description: "Show session message, token, and cost stats (alias for /session)", source: "builtin" },
-  { name: "models", description: "Open model selector or switch model (alias for /model)", source: "builtin" },
-  { name: "clear", description: "Start a new session (alias for /new)", source: "builtin" },
+// Local-only slash commands the webview handles natively (see tui-parity-plan Phase 0 whitelist).
+// Every other command is routed to ACP via session/prompt; the palette below is composed with
+// snapshot's availableCommands at render time.
+export const BUILTIN_SLASH_COMMANDS: SlashCommandPaletteItem[] = [
   { name: "help", description: "Show available slash commands and usage", source: "builtin" },
-  { name: "compact", description: "chat.commandCompact", source: "builtin" },
-  { name: "reload", description: "chat.commandReload", source: "builtin" },
-  { name: "name", description: "chat.commandName", source: "builtin" },
-  { name: "session", description: "chat.commandSession", source: "builtin" },
-  { name: "copy", description: "chat.commandCopy", source: "builtin" },
+  { name: "hotkeys", description: "Show all keyboard shortcuts", source: "builtin" },
+  { name: "copy", description: "Copy last assistant text/code to clipboard", source: "builtin" },
+  { name: "new", description: "Start a new session", source: "builtin" },
+  { name: "quit", description: "Close the webview panel", source: "builtin" },
+  { name: "settings", description: "Open the settings panel", source: "builtin" },
+  { name: "models", description: "Open the model selector", source: "builtin" },
 ];
 
-export const BUILTIN_SLASH_COMMANDS: SlashCommandPaletteItem[] = [
-  ...PI_CLI_BUILTIN_SLASH_COMMANDS.map((cmd: { name: string; description?: string; argumentHint?: string }) => ({
-    name: cmd.name,
-    description: (cmd.description ?? "") + (cmd.argumentHint ? ` ${cmd.argumentHint}` : ""),
-    source: "builtin" as const,
-  })),
-  ...WEB_COMMAND_ALIASES,
-].filter((cmd, index, self) => self.findIndex((c) => c.name === cmd.name) === index);
+const GITHUB_REFERENCE_RE = /(^|\s)#(?:pr|pull|issue)?(\d+)$/i;
+const PROMPT_ACTION_RE = /(^|\s)#([a-z][a-z0-9-]*)$/i;
+const INTERNAL_URL_RE = /(^|\s)([a-z]+:\/\/)([^\s]*)$/i;
+const EMOJI_RE = /(^|\s):([a-z0-9_+-]{1,})$/i;
+const INTERNAL_URL_SCHEMES: Record<string, true> = { skill: true, rule: true, omp: true, local: true, memory: true, agent: true, artifact: true, mcp: true, history: true, pr: true, issue: true };
+const PROMPT_ACTIONS = ["copy-line", "copy-prompt", "undo", "cursor-message-start", "cursor-message-end", "cursor-line-start", "cursor-line-end"] as const;
+type ComposerCompletion = { value: string; label: string };
+
+function fuzzyMatches(values: readonly string[], query: string, limit = 12): string[] {
+  const normalized = query.toLowerCase();
+  return values.filter((value) => value.toLowerCase().includes(normalized)).sort((left, right) => {
+    const prefixDelta = Number(!left.toLowerCase().startsWith(normalized)) - Number(!right.toLowerCase().startsWith(normalized));
+    return prefixDelta || left.toLowerCase().indexOf(normalized) - right.toLowerCase().indexOf(normalized) || left.localeCompare(right);
+  }).slice(0, limit);
+}
+
+function expandEmoticons(message: string): string {
+  return EMOJI_EMOTICONS.reduce((expanded, [pattern, emoji]) => expanded.replace(pattern, emoji), message);
+}
 
 function imageToDraftImage(image: AttachedImage): ChatDraftImage {
   return { data: image.data, mimeType: image.mimeType };
@@ -222,8 +245,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo, queuedMessages, liveTps, contextUsage, stats, inputHistory = [], onRecallQueue,
-  slashCommands, slashCommandsLoading, onLoadSlashCommands,
-  onBuiltinCommand,
+  onToggleThinking, onOpenHistorySearch, onOpenModelSelector, onOpenTemporaryModelPicker, onOpenAgentHub, onDisplayReset, onToggleExpandAllTools, onToggleToolsHidden,
+  slashCommands, slashCommandsLoading, onLoadSlashCommands, onBuiltinCommand,
   soundEnabled, onSoundToggle, onAudioUnlock,
   onPromptWithStreamingBehavior,
   draftKey,
@@ -251,6 +274,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [fileIndex, setFileIndex] = useState<{ cwd: string; entries: FileIndexEntry[]; truncated: boolean } | null>(null);
   const [fileIndexLoading, setFileIndexLoading] = useState(false);
   const [atServerResult, setAtServerResult] = useState<{ cwd: string; query: string; matches: FileIndexEntry[] } | null>(null);
+  const [externalEditorOpen, setExternalEditorOpen] = useState(false);
+  const emojiCompleter = useCompleter<ComposerCompletion>();
+  const githubCompleter = useCompleter<ComposerCompletion>();
+  const actionCompleter = useCompleter<ComposerCompletion>();
+  const urlCompleter = useCompleter<ComposerCompletion>();
   const [skillDormancyState, setSkillDormancyState] = useState<{
     cwd: string;
     values: Record<string, boolean>;
@@ -483,10 +511,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }, []);
 
   const handleSend = useCallback(async () => {
-    const msg = value.trim();
+    const msg = expandEmoticons(value.trim());
     if (!msg && !attachedImages.length) return;
     if (isStreaming) return;
     onAudioUnlock?.();
+    const queueBody = attachedImages.length === 0 ? parseQueueShorthand(msg) : undefined;
+    if (queueBody !== undefined) {
+      const segments = splitQueuedMessages(queueBody);
+      const isFollowUp = msg.startsWith("->");
+      const first = segments.shift();
+      if (first) {
+        if (isFollowUp && onPromptWithStreamingBehavior) onPromptWithStreamingBehavior(first, "followUp");
+        else onSend(first, undefined, { bashExcluded: first.startsWith("!!") });
+        for (const segment of segments) onFollowUp?.(segment);
+        if (initialValue === undefined) clearInput();
+        return;
+      }
+    }
     if (!attachedImages.length && msg.startsWith("/") && onBuiltinCommand) {
       const result = await onBuiltinCommand(msg);
       if (result.handled) {
@@ -494,12 +535,87 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         return;
       }
     }
-    onSend(msg, attachedImages.length ? attachedImages : undefined);
-    // Only the bottom composer clears after sending. Inline edit (has
-    // initialValue) routes onSend to the resend-confirm dialog: the draft
-    // must survive cancel, and the collapsed message shows the edited text.
+    onSend(msg, attachedImages.length ? attachedImages : undefined, { bashExcluded: msg.startsWith("!!") });
     if (initialValue === undefined) clearInput();
-  }, [value, attachedImages, isStreaming, onBuiltinCommand, onSend, clearInput, onAudioUnlock, initialValue]);
+  }, [value, attachedImages, isStreaming, onBuiltinCommand, onSend, clearInput, onAudioUnlock, initialValue, onFollowUp, onPromptWithStreamingBehavior]);
+
+  const replaceCompletion = useCallback((range: CompleterRange, insert: string) => {
+    const nextValue = `${value.slice(0, range.start)}${insert}${value.slice(range.end)}`;
+    const nextCursor = range.start + insert.length;
+    setValue(nextValue);
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(nextCursor, nextCursor);
+    });
+  }, [value]);
+
+  const closeCompleters = useCallback(() => {
+    emojiCompleter.close();
+    githubCompleter.close();
+    actionCompleter.close();
+    urlCompleter.close();
+  }, [emojiCompleter, githubCompleter, actionCompleter, urlCompleter]);
+
+  const updateCompleters = useCallback((text: string, cursor: number | null) => {
+    const beforeCursor = text.slice(0, cursor ?? text.length);
+    const emojiMatch = EMOJI_RE.exec(beforeCursor);
+    if (emojiMatch?.[2]) {
+      const query = emojiMatch[2];
+      const start = beforeCursor.length - query.length - 1;
+      emojiCompleter.openAt({ start, end: beforeCursor.length }, query);
+      emojiCompleter.setItems(fuzzyMatches(Object.keys(EMOJI_SHORTCODES), query).map((name) => ({ value: EMOJI_SHORTCODES[name] ?? "", label: `:${name}:` })));
+      githubCompleter.close(); actionCompleter.close(); urlCompleter.close();
+      return;
+    }
+    const githubMatch = GITHUB_REFERENCE_RE.exec(beforeCursor);
+    if (githubMatch?.[2]) {
+      const token = githubMatch[0].trim();
+      const qualifier = /^#(pr|pull|issue)/i.exec(token)?.[1]?.toLowerCase();
+      const number = githubMatch[2];
+      const items = qualifier === "issue" ? [`issue://${number}`] : qualifier === "pr" || qualifier === "pull" ? [`pr://${number}`] : [`pr://${number}`, `issue://${number}`];
+      githubCompleter.openAt({ start: beforeCursor.length - token.length, end: beforeCursor.length }, number);
+      githubCompleter.setItems(items.map((item) => ({ value: item, label: item })));
+      emojiCompleter.close(); actionCompleter.close(); urlCompleter.close();
+      return;
+    }
+    const actionMatch = PROMPT_ACTION_RE.exec(beforeCursor);
+    if (actionMatch?.[2]) {
+      const token = actionMatch[0].trim();
+      actionCompleter.openAt({ start: beforeCursor.length - token.length, end: beforeCursor.length }, actionMatch[2]);
+      actionCompleter.setItems(fuzzyMatches(PROMPT_ACTIONS, actionMatch[2]).map((item) => ({ value: item, label: item })));
+      emojiCompleter.close(); githubCompleter.close(); urlCompleter.close();
+      return;
+    }
+    const urlMatch = INTERNAL_URL_RE.exec(beforeCursor);
+    const scheme = urlMatch?.[2]?.slice(0, -3).toLowerCase();
+    if (urlMatch && scheme && INTERNAL_URL_SCHEMES[scheme]) {
+      const query = urlMatch[3] ?? "";
+      urlCompleter.openAt({ start: beforeCursor.length - `${urlMatch[2]}${query}`.length, end: beforeCursor.length }, query);
+      void hostCall("urlComplete", { scheme, query, cwd }).then((data) => {
+        urlCompleter.setItems(data.items.map((item) => ({ value: item.value, label: item.label ?? item.value })));
+      }).catch(() => urlCompleter.setItems([]));
+      emojiCompleter.close(); githubCompleter.close(); actionCompleter.close();
+      return;
+    }
+    closeCompleters();
+  }, [actionCompleter, closeCompleters, cwd, emojiCompleter, githubCompleter, urlCompleter]);
+
+  const acceptAction = useCallback((completion: ComposerCompletion) => {
+    const range = actionCompleter.insertRange;
+    const textarea = textareaRef.current;
+    if (!range || !textarea) return;
+    replaceCompletion(range, "");
+    const lineStart = value.lastIndexOf("\n", range.start - 1) + 1;
+    const lineEnd = value.indexOf("\n", range.end);
+    if (completion.value === "undo") document.execCommand("undo");
+    if (completion.value === "copy-line") void navigator.clipboard.writeText(value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd));
+    if (completion.value === "copy-prompt") void navigator.clipboard.writeText(value);
+    const cursor = completion.value === "cursor-message-start" ? 0 : completion.value === "cursor-message-end" ? value.length : completion.value === "cursor-line-start" ? lineStart : completion.value === "cursor-line-end" ? (lineEnd === -1 ? value.length : lineEnd) : null;
+    if (cursor !== null) requestAnimationFrame(() => textarea.setSelectionRange(cursor, cursor));
+    actionCompleter.close();
+  }, [actionCompleter, replaceCompletion, value]);
 
   const slashQuery = value.startsWith("/") && !/\s/.test(value.slice(1))
     ? value.slice(1).toLowerCase()
@@ -507,8 +623,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const filteredSlashCommands = (() => {
     if (slashQuery === null) return [];
-    const commands = [...(isStreaming ? [] : BUILTIN_SLASH_COMMANDS), ...(slashCommands ?? [])];
-    return [...commands]
+    const parentCommands: SlashCommandPaletteItem[] = slashCommands ?? [];
+    const commands: SlashCommandPaletteItem[] = [
+      ...BUILTIN_SLASH_COMMANDS,
+      ...parentCommands.flatMap((command) => [
+        command,
+        ...(command.aliases ?? []).map((alias) => ({
+          ...command,
+          name: alias,
+          aliases: undefined,
+          aliasOf: command.name,
+        })),
+      ]),
+    ];
+    return commands
       .filter((command) => {
         const name = command.name.toLowerCase();
         const description = getSlashDescription(command, t).toLowerCase();
@@ -563,11 +691,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const fetchCwd = cwd;
     const query = atQueryText;
     const timer = setTimeout(() => {
-      fetch(`/api/file-index?cwd=${encodeURIComponent(fetchCwd)}&q=${encodeURIComponent(query)}`)
-        .then((res) => {
-          if (!res.ok) throw new Error(`file search failed: ${res.status}`);
-          return res.json() as Promise<{ matches?: FileIndexEntry[] }>;
-        })
+      hostCall("fileIndex", { cwd: fetchCwd, q: query })
         .then((data) => setAtServerResult({ cwd: fetchCwd, query, matches: data.matches ?? [] }))
         .catch(() => {
           // Keep showing local matches; the next keystroke retries.
@@ -606,11 +730,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     fileIndexFetchingRef.current = cwd;
     const fetchCwd = cwd;
     setFileIndexLoading(true);
-    fetch(`/api/file-index?cwd=${encodeURIComponent(fetchCwd)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`file index failed: ${res.status}`);
-        return res.json() as Promise<{ files?: string[]; truncated?: boolean }>;
-      })
+    hostCall("fileIndex", { cwd: fetchCwd })
       .then((data) => {
         setFileIndex({ cwd: fetchCwd, entries: buildEntriesFromFiles(data.files ?? []), truncated: !!data.truncated });
         fileIndexMetaRef.current = { cwd: fetchCwd, fetchedAt: Date.now() };
@@ -776,6 +896,27 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       ? Math.min(lastIndex, slashActiveIndex + 1)
       : Math.max(0, slashActiveIndex - 1);
   }, [displayedSlashCommands.length, slashActiveIndex]);
+  const insertNewlineAtCaret = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const nextValue = `${value.slice(0, start)}\n${value.slice(end)}`;
+    setValue(nextValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + 1, start + 1);
+    });
+  }, [value]);
+
+  const copyCurrentLine = useCallback(() => {
+    const textarea = textareaRef.current;
+    const cursor = textarea?.selectionStart ?? value.length;
+    const lineStart = value.lastIndexOf("\n", cursor - 1) + 1;
+    const lineEnd = value.indexOf("\n", cursor);
+    void navigator.clipboard.writeText(value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd));
+  }, [value]);
+
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -790,6 +931,110 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         if (recentlyComposed) e.preventDefault();
         return;
       }
+      // Ctrl+R opens the local input-history search dialog.
+      if (e.ctrlKey && e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        onOpenHistorySearch?.();
+        return;
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        onToggleThinking?.();
+        return;
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        setExternalEditorOpen(true);
+        return;
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        insertNewlineAtCaret();
+        return;
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        if (e.shiftKey) onToggleToolsHidden?.(); else onToggleExpandAllTools?.();
+        return;
+      }
+      // Ctrl+Q / Ctrl+Enter queues a follow-up, or aborts an empty streaming turn.
+      if (e.ctrlKey && (e.key.toLowerCase() === "q" || e.key === "Enter")) {
+        e.preventDefault();
+        if (!value.trim() && attachedImages.length === 0 && isStreaming) onAbort(); else sendQueued("followup");
+        return;
+      }
+      // Alt+Shift+P uses the shared plan-role path.
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        onRoleChange?.("plan");
+        return;
+      }
+      if (e.altKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        onOpenModelSelector?.();
+        return;
+      }
+      if (e.altKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        onOpenTemporaryModelPicker?.();
+        return;
+      }
+      if (e.altKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        onOpenAgentHub?.();
+        return;
+      }
+      if (e.altKey && e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        if (!isStreaming) onSend("/retry");
+        return;
+      }
+      if (e.altKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        if (e.shiftKey) copyCurrentLine(); else onDisplayReset?.();
+        return;
+      }
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        void navigator.clipboard.writeText(value);
+        return;
+      }
+      if ((e.altKey || e.shiftKey) && e.key === "ArrowUp") {
+        e.preventDefault();
+        onRecallQueue?.();
+        return;
+      }
+
+      const activeCompleter = emojiCompleter.open ? emojiCompleter : githubCompleter.open ? githubCompleter : actionCompleter.open ? actionCompleter : urlCompleter.open ? urlCompleter : null;
+      if (activeCompleter && !isComposing) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeCompleter.moveActive(1);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeCompleter.moveActive(-1);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeCompleters();
+          return;
+        }
+        if ((e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) && activeCompleter.items[activeCompleter.activeIndex]) {
+          e.preventDefault();
+          const item = activeCompleter.items[activeCompleter.activeIndex];
+          if (item === undefined) return;
+          if (activeCompleter === emojiCompleter && emojiCompleter.insertRange) replaceCompletion(emojiCompleter.insertRange, item.value);
+          if (activeCompleter === githubCompleter && githubCompleter.insertRange) replaceCompletion(githubCompleter.insertRange, `${item.value} `);
+          if (activeCompleter === urlCompleter && urlCompleter.insertRange) replaceCompletion(urlCompleter.insertRange, `${item.value} `);
+          if (activeCompleter === actionCompleter) acceptAction(item);
+          closeCompleters();
+          return;
+        }
+      }
+
 
       if (historyMenuOpen && !isComposing) {
         if (e.key === "ArrowDown") {
@@ -872,7 +1117,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         }
       }
 
-      if (e.key === "ArrowUp" && !isComposing && !isStreaming && inputHistory.length > 0 && value.trim().length === 0) {
+      if (e.key === "ArrowUp" && !e.altKey && !e.shiftKey && !isComposing && !isStreaming && inputHistory.length > 0 && value.trim().length === 0) {
         e.preventDefault();
         setSlashMenuOpen(false);
         setAtMenuOpen(false);
@@ -896,15 +1141,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (isStreaming && (onSteer || onFollowUp)) {
-          // Default Enter sends as steer if available, else followup
-          sendQueued(onSteer ? "steer" : "followup");
-        } else {
-          handleSend();
-        }
+        if (isStreaming && !value.trim() && attachedImages.length === 0) onAbort();
+        else if (isStreaming && (onSteer || onFollowUp)) sendQueued(onSteer ? "steer" : "followup");
+        else handleSend();
       }
     },
-    [isStreaming, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, displayedSlashCommands, slashActiveIndex, applySlashCommand, sendQueued, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value]
+    [isStreaming, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, displayedSlashCommands, slashActiveIndex, applySlashCommand, sendQueued, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, emojiCompleter, githubCompleter, actionCompleter, urlCompleter, replaceCompletion, closeCompleters, acceptAction, attachedImages, onRecallQueue, onRoleChange, onOpenModelSelector, onOpenTemporaryModelPicker, onOpenAgentHub, onDisplayReset, onToggleExpandAllTools, onToggleToolsHidden, copyCurrentLine, insertNewlineAtCaret, onBuiltinCommand, onToggleThinking]
   );
 
   const handleInput = useCallback(() => {
@@ -948,15 +1190,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const requestCwd = cwd;
     let cancelled = false;
     setSkillDormancyState({ cwd: requestCwd, values: {} });
-    fetch(`/api/skills?cwd=${encodeURIComponent(requestCwd)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`skills fetch failed: ${res.status}`);
-        return res.json() as Promise<Partial<SkillsResponse>>;
-      })
-      .then((data) => {
+    ompExtensions(requestCwd)
+      .then(({ extensions }) => {
         if (cancelled) return;
         const dormancy: Record<string, boolean> = {};
-        for (const skill of data.skills ?? []) dormancy[skill.name] = skill.disableModelInvocation;
+        for (const extension of extensions) {
+          if (typeof extension !== "object" || extension === null || !("kind" in extension) || !("name" in extension)) continue;
+          if (extension.kind === "skill" && typeof extension.name === "string") {
+            dormancy[extension.name] = false;
+          }
+        }
         setSkillDormancyState({ cwd: requestCwd, values: dormancy });
       })
       .catch(() => {
@@ -1008,6 +1251,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         // Radix portals (model/effort pickers) live in body, not in the wrap —
         // the picker's own click handler owns the interaction, so don't collapse
         // while one is open. Closing the picker is what ends the edit state.
+        closeCompleters();
         const targetEl = e.target instanceof Element ? e.target : null;
         const inRadixPortal = !!targetEl?.closest?.("[data-radix-popper-content-wrapper]");
         if (!inRadixPortal) onCancelEditRef.current();
@@ -1147,6 +1391,34 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               t={t}
             />
           )}
+          {(() => {
+            const completer = emojiCompleter.open ? emojiCompleter : githubCompleter.open ? githubCompleter : actionCompleter.open ? actionCompleter : urlCompleter.open ? urlCompleter : null;
+            if (!completer || completer.items.length === 0) return null;
+            return (
+              <div role="listbox" aria-label="Composer completions" className="absolute bottom-full z-30 mb-2 max-h-64 w-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-panel)] py-1 shadow-lg">
+                {completer.items.map((item, index) => (
+                  <button
+                    key={`${item.value}-${index}`}
+                    type="button"
+                    role="option"
+                    aria-selected={index === completer.activeIndex}
+                    className={cn("flex w-full items-center px-3 py-1.5 text-left text-xs", index === completer.activeIndex && "bg-[var(--bg-hover)]")}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      if (completer === emojiCompleter && emojiCompleter.insertRange) replaceCompletion(emojiCompleter.insertRange, item.value);
+                      if (completer === githubCompleter && githubCompleter.insertRange) replaceCompletion(githubCompleter.insertRange, `${item.value} `);
+                      if (completer === urlCompleter && urlCompleter.insertRange) replaceCompletion(urlCompleter.insertRange, `${item.value} `);
+                      if (completer === actionCompleter) acceptAction(item);
+                      closeCompleters();
+                    }}
+                    onMouseEnter={() => completer.moveActive(index - completer.activeIndex)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
           <div
             className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--chat-input-bg)] px-3 pb-2 pt-3 transition-[border-color,background] duration-150"
             style={{
@@ -1189,10 +1461,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               setValue(e.target.value);
               setHistoryMenuOpen(false);
               updateAtQuery(e.target.value, e.target.selectionStart);
+              updateCompleters(e.target.value, e.target.selectionStart);
             }}
             onSelect={(e) => {
               const el = e.currentTarget;
               updateAtQuery(el.value, el.selectionStart);
+              updateCompleters(el.value, el.selectionStart);
             }}
             onKeyDown={handleKeyDown}
             onCompositionStart={() => {
@@ -1203,6 +1477,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               lastCompositionEndAtRef.current = Date.now();
               const el = e.currentTarget;
               updateAtQuery(el.value, el.selectionStart);
+              updateCompleters(el.value, el.selectionStart);
             }}
             onInput={handleInput}
             onPaste={handlePaste}
@@ -1249,6 +1524,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             {Math.round(liveTps as number).toLocaleString()} tok/s
           </div>
         )}
+      <ExternalEditorModal
+        open={externalEditorOpen}
+        initialValue={value}
+        onClose={() => setExternalEditorOpen(false)}
+        onSave={(text) => {
+          clearInput();
+          setValue(text);
+          setExternalEditorOpen(false);
+        }}
+      />
           </div>
         </div>
 

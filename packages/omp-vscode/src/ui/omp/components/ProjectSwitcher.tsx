@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Folder, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
-import type { SessionInfo } from "@/lib/types";
+import { hostCall } from "../../bridge";
 
 interface Project {
   name: string;
@@ -37,13 +37,12 @@ export function ProjectSwitcher({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch("/api/sessions")
-      .then((r) => r.json())
-      .then((d: { sessions?: SessionInfo[] }) => {
+    hostCall("sessionsList", {})
+      .then(({ sessions }) => {
         if (cancelled) return;
         const seen = new Set<string>();
         const list: Project[] = [];
-        for (const s of d.sessions ?? []) {
+        for (const s of sessions) {
           const root = s.projectRoot ?? s.cwd;
           if (seen.has(root)) continue;
           seen.add(root);

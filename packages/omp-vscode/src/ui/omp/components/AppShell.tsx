@@ -4,17 +4,19 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
-import { openInVSCode } from "../../bridge";
+import { hostCall, openInVSCode } from "../../bridge";
 import { ChatWindow } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
-import { ModelsConfig } from "./ModelsConfig";
-import { SkillsConfig } from "./SkillsConfig";
-import { PluginsConfig } from "./PluginsConfig";
+// Config surfaces moved to the Workbench editor tab (WorkbenchShell).
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator } from "./BranchNavigator";
+import { SessionResumeDialog } from "./SessionResumeDialog";
 import { SessionTreeNodes } from "./chat/session-tree-view";
 import { LanguagePicker } from "./LanguagePicker";
+import { applyTheme } from "./SettingsSelector";
+import { THEMES } from "@/lib/themes";
+import { PreferencesProvider } from "@/hooks/usePreferences";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import { StarfieldEmblem } from "./StarfieldEmblem";
@@ -24,7 +26,7 @@ import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { Spinner, LoadingState } from "./ui/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Check, Copy, Gauge, History, Map } from "lucide-react";
+import { Check, Copy, Gauge, History, Map, Settings } from "lucide-react";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -51,6 +53,10 @@ type SessionCopyField = "file" | "id";
 const TOP_BAR_ICON_BUTTON_SIZE = 36;
 
 export function AppShell() {
+  return <PreferencesProvider><AppShellContent /></PreferencesProvider>;
+}
+
+function AppShellContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [initialNavigation] = useState(() => getInitialNavigation(searchParams));
@@ -59,6 +65,7 @@ export function AppShell() {
   const { locale, t: translate } = useI18n();
   const isMobile = useIsMobile();
   useViewportHeight();
+
 
   // VS Code positions the webview overlay via CSS anchor(); it only
   // re-computes on interaction (e.g. opening a dropdown), which can leave
@@ -70,6 +77,11 @@ export function AppShell() {
       window.scrollTo(0, 0);
     }, 400);
     return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("omp.theme");
+    const theme = THEMES.find((candidate) => candidate.name === savedTheme);
+    if (theme) applyTheme(theme);
   }, []);
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   // When user clicks +, we only store the cwd — no fake session id
@@ -86,10 +98,7 @@ export function AppShell() {
   // on mount to skip the cwd's resume (fresh session, not continue).
   const forceNewSessionRef = useRef(false);
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
-  const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
-  const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
-  const [pluginsConfigOpen, setPluginsConfigOpen] = useState(false);
   const [projectTrust, setProjectTrust] = useState<ProjectTrustStatus | null>(null);
   const [projectTrustDialogOpen, setProjectTrustDialogOpen] = useState(false);
   const [projectTrustBusy, setProjectTrustBusy] = useState(false);
@@ -170,6 +179,7 @@ export function AppShell() {
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
   const branchLeafChangeFnRef = useRef<((leafId: string | null) => Promise<void>) | null>(null);
+  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
 
   const handleBranchDataChange = useCallback((tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => Promise<void>) => {
     setBranchTree(tree);
@@ -179,6 +189,12 @@ export function AppShell() {
 
   const handleBranchLeafChange = useCallback(async (leafId: string | null): Promise<void> => {
     await branchLeafChangeFnRef.current?.(leafId);
+  }, []);
+
+  useEffect(() => {
+    const openResume = () => setResumeDialogOpen(true);
+    window.addEventListener("omp:resume-session", openResume);
+    return () => window.removeEventListener("omp:resume-session", openResume);
   }, []);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
@@ -224,10 +240,7 @@ export function AppShell() {
     setActiveTopPanel((cur) => cur === panel ? null : panel);
   }, [isMobile]);
 
-  const openSessionStatsPanel = useCallback(() => {
-    if (isMobile) setSidebarOpen(false);
-    setActiveTopPanel("session");
-  }, [isMobile]);
+
 
   const handleSidebarToggle = useCallback(() => {
     if (isMobile) setActiveTopPanel(null);
@@ -277,21 +290,13 @@ export function AppShell() {
     const requestedCwd = initialNavigation.requestedCwd;
     if (!requestedCwd) return;
 
-    const controller = new AbortController();
+    let active = true;
     setInitialCwdStatus("validating");
     setInitialCwdError(null);
 
-    void fetch("/api/cwd/validate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cwd: requestedCwd }),
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({})) as { cwd?: string; error?: string };
-        if (!response.ok || !data.cwd) {
-          throw new Error(data.error ?? `HTTP ${response.status}`);
-        }
+    void hostCall("cwdValidate", { cwd: requestedCwd })
+      .then((data) => {
+        if (!data.cwd) throw new Error(data.error ?? "Failed to validate directory");
 
         // The sidebar will notify us when it adopts this cwd. Avoid remounting
         // the just-created empty chat during that initial synchronization.
@@ -300,12 +305,12 @@ export function AppShell() {
         setInitialCwdStatus("ready");
       })
       .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
+        if (!active) return;
         setInitialCwdError(error instanceof Error ? error.message : String(error));
         setInitialCwdStatus("error");
       });
 
-    return () => controller.abort();
+    return () => { active = false; };
   }, [initialNavigation]);
 
   const handleCwdChange = useCallback((cwd: string | null, projectRoot?: string | null) => {
@@ -402,10 +407,9 @@ export function AppShell() {
   // handleCwdChange relies on. Hydrate it from the session list so switching
   // worktrees right after creating a session doesn't close the chat.
   const hydrateSelectedSession = useCallback((sessionId: string) => {
-    void fetch("/api/sessions")
-      .then((r) => (r.ok ? (r.json() as Promise<{ sessions: SessionInfo[] }>) : null))
-      .then((d) => {
-        const full = d?.sessions.find((s) => s.id === sessionId);
+    void hostCall("sessionsList", {})
+      .then(({ sessions }) => {
+        const full = sessions.find((s) => s.id === sessionId);
         if (!full) return;
         setSelectedSession((prev) => (prev && prev.id === sessionId && !prev.projectRoot ? full : prev));
       })
@@ -534,20 +538,16 @@ export function AppShell() {
     setProjectTrustError(null);
     if (!projectTrustCwd) return;
 
-    const controller = new AbortController();
-    fetch(`/api/project-trust?cwd=${encodeURIComponent(projectTrustCwd)}`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json() as ProjectTrustStatus & { error?: string };
-        if (!response.ok || data.error) throw new Error(data.error ?? `HTTP ${response.status}`);
-        setProjectTrust(data);
+    let active = true;
+    void hostCall("projectTrustGet", { cwd: projectTrustCwd })
+      .then((data) => {
+        if (!active) return;
+        setProjectTrust({ trusted: data.trusted, requiresTrust: !data.trusted });
       })
       .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        console.error("Failed to load project trust:", error);
+        if (active) console.error("Failed to load project trust:", error);
       });
-    return () => controller.abort();
+    return () => { active = false; };
   }, [projectTrustCwd]);
 
   const handleTrustProject = useCallback(async () => {
@@ -555,14 +555,14 @@ export function AppShell() {
     setProjectTrustBusy(true);
     setProjectTrustError(null);
     try {
-      const response = await fetch("/api/project-trust", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cwd: projectTrustCwd }),
-      });
-      const data = await response.json() as ProjectTrustStatus & { error?: string };
-      if (!response.ok || data.error) throw new Error(data.error ?? `HTTP ${response.status}`);
-      setProjectTrust(data);
+      const data = await hostCall("projectTrustSet", { cwd: projectTrustCwd });
+      if (typeof data !== "object" || data === null || !("trusted" in data) || typeof data.trusted !== "boolean") {
+        const error = typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+          ? data.error
+          : "Failed to trust project";
+        throw new Error(error);
+      }
+      setProjectTrust({ trusted: data.trusted, requiresTrust: !data.trusted });
       setProjectTrustDialogOpen(false);
       setModelsRefreshKey((key) => key + 1);
       setSessionKey((key) => key + 1);
@@ -607,67 +607,30 @@ export function AppShell() {
         onAtMention={handleAtMention}
         onAtMentions={handleAtMentions}
       />
-      <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
-        {([
-          {
-            label: translate("common.models"),
-            onClick: () => setModelsConfigOpen(true),
-            disabled: false,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-                <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-                <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-                <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-                <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-              </svg>
-            ),
-          },
-          {
-            label: translate("common.skills"),
-            onClick: () => setSkillsConfigOpen(true),
-            disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            ),
-          },
-          {
-            label: translate("common.plugins"),
-            onClick: () => setPluginsConfigOpen(true),
-            disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 7V2" />
-                <path d="M15 7V2" />
-                <path d="M6 13V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5a6 6 0 0 1-12 0Z" />
-                <path d="M12 19v3" />
-              </svg>
-            ),
-          },
-        ] as { label: string; onClick: () => void; disabled: boolean; icon: React.ReactNode }[]).map(({ label, onClick, disabled, icon }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
-            style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              height: 32, padding: 0, background: "none", border: "none",
-              borderRadius: 9, color: "var(--text-muted)", cursor: disabled ? "default" : "pointer",
-              fontSize: 12, opacity: disabled ? 0.35 : 1,
-              transition: "background 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+      <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "stretch", gap: 4 }}>
+        <button
+          type="button"
+          onClick={() => { void hostCall("openWorkbench", {}); }}
+          title={translate("common.workbench") || "Open Workbench"}
+          style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            height: 32, padding: 0, background: "none", border: "none",
+            borderRadius: 9, color: "var(--text-muted)", cursor: "pointer",
+            fontSize: 12,
+            transition: "background 0.12s, color 0.12s",
+          }}
+          onMouseEnter={(event) => { event.currentTarget.style.background = "var(--bg-hover)"; event.currentTarget.style.color = "var(--text)"; }}
+          onMouseLeave={(event) => { event.currentTarget.style.background = "none"; event.currentTarget.style.color = "var(--text-muted)"; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="9" rx="1.5" />
+            <rect x="14" y="3" width="7" height="5" rx="1.5" />
+            <rect x="14" y="12" width="7" height="9" rx="1.5" />
+            <rect x="3" y="16" width="7" height="5" rx="1.5" />
+          </svg>
+          {translate("common.workbench") || "Workbench"}
+        </button>
+      {resumeDialogOpen && <SessionResumeDialog currentCwd={activeCwd} onClose={() => setResumeDialogOpen(false)} onSelectSession={(session) => { setResumeDialogOpen(false); handleSelectSession(session); }} />}
       </div>
     </>
   );
@@ -980,6 +943,7 @@ export function AppShell() {
                 tree={branchTree}
                 activeLeafId={branchActiveLeafId}
                 onLeafChange={handleBranchLeafChange}
+                sessionId={selectedSession?.id}
                 inline
                 compact={isMobile}
                 containerRef={topBarRef}
@@ -1017,6 +981,9 @@ export function AppShell() {
               </button>
             </div>
           )}
+          <Button type="button" variant="ghost" size="sm" onClick={() => { void hostCall("openWorkbench", {}); }} title="Open Workbench" aria-label="Open Workbench" className="h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)]">
+            <Settings size={15} />
+          </Button>
           {/* Session panel entry — stats moved to the ChatFooterBar */}
           {showChat && (
             <Button
@@ -1202,7 +1169,8 @@ export function AppShell() {
               onBranchDataChange={handleBranchDataChange}
               onSystemPromptChange={handleSystemPromptChange}
               onSessionStatsChange={handleSessionStatsChange}
-              onSessionStatsPanelOpen={openSessionStatsPanel}
+              onOpenSettings={() => { void hostCall("openWorkbench", {}); }}
+              onOpenResumeDialog={() => setResumeDialogOpen(true)}
               onContextUsageChange={handleContextUsageChange}
               onOpenFile={handleOpenLinkedFile}
               cwdName={activeCwdName}
@@ -1323,27 +1291,13 @@ export function AppShell() {
         </div>
       </div>
     </div>
-    {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {projectTrustDialogOpen && projectTrustCwd && (
       <ProjectTrustDialog
         cwd={projectTrustCwd}
         busy={projectTrustBusy}
         error={projectTrustError}
-        onCancel={() => {
-          if (!projectTrustBusy) setProjectTrustDialogOpen(false);
-        }}
-        onConfirm={() => void handleTrustProject()}
-      />
-    )}
-    {skillsConfigOpen && projectTrustCwd && (
-      <SkillsConfig cwd={projectTrustCwd} onClose={() => setSkillsConfigOpen(false)} />
-    )}
-    {pluginsConfigOpen && projectTrustCwd && (
-      <PluginsConfig
-        cwd={projectTrustCwd}
-        sessionId={selectedSession?.id ?? null}
-        onClose={() => setPluginsConfigOpen(false)}
-        onReloaded={() => setSessionKey((k) => k + 1)}
+        onCancel={() => setProjectTrustDialogOpen(false)}
+        onConfirm={handleTrustProject}
       />
     )}
     </>

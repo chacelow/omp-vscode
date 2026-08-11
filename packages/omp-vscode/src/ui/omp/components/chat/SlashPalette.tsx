@@ -5,12 +5,14 @@ import type { SlashCommandInfo } from "@/hooks/useAgentSession";
 // Groups commands by source (builtin/extension/prompt/skill), dormant skills
 // sink to the bottom of their group.
 
-export type SlashCommandPaletteItem = SlashCommandInfo | {
+export interface SlashCommandPaletteItem {
   name: string;
-  description: string;
-  source: "builtin";
-  argumentHint?: string;
-};
+  description?: string;
+  inputHint?: string;
+  aliases?: string[];
+  aliasOf?: string;
+  source: SlashCommandInfo["source"] | "builtin";
+}
 
 type SlashCommandSource = SlashCommandPaletteItem["source"];
 
@@ -31,7 +33,8 @@ export const SLASH_SOURCE_ORDER: Record<SlashCommandSource, number> = {
 };
 
 export function getSlashDescription(command: SlashCommandPaletteItem, t: (key: string) => string): string {
-  return command.source === "builtin" ? t(command.description) : command.description ?? "";
+  if (command.aliasOf) return `(alias of /${command.aliasOf})`;
+  return command.source === "builtin" ? t(command.description ?? "") : command.description ?? "";
 }
 
 // Skill slash commands are named "skill:<skillName>"; look the skill up in the
@@ -130,8 +133,9 @@ export const SlashPalette = memo(function SlashPalette({
               return (
                 <button key={`${command.source}:${command.name}`} ref={(node) => { itemRefs.current[index] = node; }} type="button" onMouseDown={(event) => { event.preventDefault(); onApply(command); }} onMouseEnter={() => onHover(index)} className={`flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-[var(--text)] ${active ? "bg-[var(--bg-selected)]" : "hover:bg-[var(--bg-hover)]"}`}>
                   <span className="shrink-0 font-mono text-[13px]">/{highlightMatch(command.name, query)}</span>
+                  {command.inputHint && <span className="min-w-0 truncate font-mono text-[11px] text-[var(--text-dim)]">{command.inputHint}</span>}
                   {dormant && <span className="rounded-[3px] border border-[var(--border)] px-1 text-[9px] text-[var(--text-dim)]">{t("chat.dormant")}</span>}
-                  {command.description && <span className="min-w-0 truncate text-[11px] text-[var(--text-dim)]">{highlightMatch(getSlashDescription(command, t), query)}</span>}
+                  {getSlashDescription(command, t) && <span className="min-w-0 truncate text-[11px] text-[var(--text-dim)]">{highlightMatch(getSlashDescription(command, t), query)}</span>}
                 </button>
               );
             })}
@@ -153,8 +157,9 @@ export const SlashPalette = memo(function SlashPalette({
                     return (
                       <button key={`${command.source}:${command.name}`} ref={(node) => { itemRefs.current[index] = node; }} type="button" onMouseDown={(event) => { event.preventDefault(); onApply(command); }} onMouseEnter={() => onHover(index)} className={`flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-[var(--text)] ${active ? "bg-[var(--bg-selected)]" : "hover:bg-[var(--bg-hover)]"}`}>
                         <span className="shrink-0 font-mono text-[13px]">/{command.name}</span>
+                        {command.inputHint && <span className="min-w-0 truncate font-mono text-[11px] text-[var(--text-dim)]">{command.inputHint}</span>}
                         {dormant && <span className="rounded-[3px] border border-[var(--border)] px-1 text-[9px] text-[var(--text-dim)]">{t("chat.dormant")}</span>}
-                        {command.description && <span className="min-w-0 truncate text-[11px] text-[var(--text-dim)]">{getSlashDescription(command, t)}</span>}
+                        {getSlashDescription(command, t) && <span className="min-w-0 truncate text-[11px] text-[var(--text-dim)]">{getSlashDescription(command, t)}</span>}
                       </button>
                     );
                   })}

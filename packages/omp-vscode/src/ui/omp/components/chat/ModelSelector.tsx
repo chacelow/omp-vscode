@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo } from "react";
+import { useState, useMemo, memo } from "react";
 import { Bot, Check } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -52,6 +52,7 @@ function filterModelOptions(options: ModelOption[], query: string): ModelOption[
 export interface ModelSelectorProps {
   model?: { provider: string; modelId: string } | null;
   modelList?: Array<{ id: string; name: string; provider: string }>;
+  modelThinkingLevelMaps?: Record<string, Record<string, string | null>>;
   modelNames?: Record<string, string>;
   modelError?: string | null;
   thinkingLevel?: string;
@@ -64,7 +65,7 @@ export interface ModelSelectorProps {
 
 export const ModelSelector = memo(function ModelSelector({
   model, modelList, modelNames, modelError, thinkingLevel, isStreaming,
-  onModelChange, onModelOpen, onThinkingLevelChange, t,
+  onModelChange, onModelOpen, onThinkingLevelChange, modelThinkingLevelMaps, t,
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
@@ -153,7 +154,11 @@ export const ModelSelector = memo(function ModelSelector({
                           : "text-[var(--text-muted)]",
                       )}
                     >
-                      {level}
+                      <span className="flex-1">{level}</span>
+                      {model && (() => {
+                        const values = Object.values(modelThinkingLevelMaps?.[`${model.provider}:${model.modelId}`] ?? {}).filter((value): value is string => typeof value === "string" && value.length > 0);
+                        return values.length > 0 ? <span className="rounded bg-[var(--bg-hover)] px-1 font-mono text-[10px] text-[var(--text-muted)]">{values.join("–")}</span> : null;
+                      })()}
                     </Button>
                   );
                 })}

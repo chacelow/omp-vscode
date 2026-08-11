@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
@@ -11,6 +11,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { GitFork, Plus, RefreshCw } from "lucide-react";
+import { acpRequest, hostCall } from "../../bridge";
+import { ompSessionsListAll, type OmpSessionSummary } from "@/lib/ext-methods";
 
 declare global {
   interface Window {
@@ -99,7 +101,14 @@ interface WorktreeState {
 }
 
 const UNREAD_SESSIONS_STORAGE_KEY = "omp-web:unread-session-ids";
-const RUNNING_SESSIONS_POLL_MS = 2500;
+function isWorktreeEntry(value: unknown): value is WorktreeEntry {
+  return typeof value === "object" && value !== null
+    && "path" in value && typeof value.path === "string"
+    && "branch" in value && (typeof value.branch === "string" || value.branch === null)
+    && "isMain" in value && typeof value.isMain === "boolean";
+}
+
+
 
 function loadUnreadSessionIds(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -285,6 +294,62 @@ function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
   return roots;
 }
 
+function toSessionInfo(session: OmpSessionSummary): SessionInfo {
+  const timestamp = session.updatedAt ?? new Date(0).toISOString();
+  return {
+    path: "",
+    id: session.sessionId,
+    cwd: session.cwd,
+    name: session.title,
+    created: timestamp,
+    modified: timestamp,
+    messageCount: session._meta?.messageCount ?? 0,
+    firstMessage: session.title ?? "",
+  };
+}
+
+function useSessions(
+  setSessions: Dispatch<SetStateAction<SessionInfo[]>>,
+  setRunningIds: Dispatch<SetStateAction<Set<string>>>,
+  setError: Dispatch<SetStateAction<string | null>>,
+  setUnreadIds: Dispatch<SetStateAction<Set<string>>>,
+): () => Promise<void> {
+  return useCallback(async () => {
+    const hostResult = hostCall("sessionsList", {});
+    const extResult = ompSessionsListAll(100).then((result) => result.sessions.map(toSessionInfo));
+
+    try {
+      const firstResult = await Promise.race([
+        hostResult.then((result) => ({
+          sessions: result.sessions,
+          runningSessionIds: result.runningSessionIds ?? [],
+        })),
+        extResult.then((sessions) => ({ sessions, runningSessionIds: [] })),
+      ]);
+      setSessions(firstResult.sessions);
+      setRunningIds(new Set(firstResult.runningSessionIds));
+      setError(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    }
+
+    try {
+      const authoritative = await hostResult;
+      setSessions(authoritative.sessions);
+      setRunningIds(new Set(authoritative.runningSessionIds ?? []));
+      const existingIds = new Set(authoritative.sessions.map((session) => session.id));
+      setUnreadIds((previous) => {
+        if (previous.size === 0) return previous;
+        const next = new Set([...previous].filter((id) => existingIds.has(id)));
+        return next.size === previous.size ? previous : next;
+      });
+      setError(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    }
+  }, [setError, setRunningIds, setSessions, setUnreadIds]);
+}
+
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
 
 function useScramble(target: string, running: boolean): string {
@@ -417,44 +482,29 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(() => new Set());
   const [unreadSessionIds, setUnreadSessionIds] = useState<Set<string>>(() => loadUnreadSessionIds());
   const previousRunningSessionIdsRef = useRef<Set<string>>(new Set());
-  // Once polling has delivered a snapshot it is the source of truth for
-  // running state; late /api/sessions responses must not overwrite it.
-  const runningPollAuthoritativeRef = useRef(false);
   const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const explorerRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileExplorerRef = useRef<FileExplorerHandle>(null);
+  const loadSourceSessions = useSessions(
+    setAllSessions,
+    setRunningSessionIds,
+    setError,
+    setUnreadSessionIds,
+  );
 
   const loadSessions = useCallback(async (showLoading = false) => {
     try {
       if (showLoading) setLoading(true);
-      const res = await fetch("/api/sessions");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json() as { sessions: SessionInfo[]; runningSessionIds?: string[] };
-      setAllSessions(data.sessions);
-      // Treat the fetched running set as an initial fallback only. Once the
-      // lightweight poll is live, a slow session-list fetch cannot overwrite it.
-      if (!runningPollAuthoritativeRef.current) {
-        setRunningSessionIds(new Set(data.runningSessionIds ?? []));
-      }
-      // Drop unread markers for sessions that no longer exist (e.g. deleted).
-      const existingIds = new Set(data.sessions.map((s) => s.id));
-      setUnreadSessionIds((prev) => {
-        if (prev.size === 0) return prev;
-        const next = new Set([...prev].filter((id) => existingIds.has(id)));
-        return next.size === prev.size ? prev : next;
-      });
-      setError(null);
+      await loadSourceSessions();
       if (!showLoading) {
         setSessionRefreshDone(true);
         if (sessionRefreshTimerRef.current) clearTimeout(sessionRefreshTimerRef.current);
         sessionRefreshTimerRef.current = setTimeout(() => setSessionRefreshDone(false), 2000);
       }
-    } catch (e) {
-      setError(String(e));
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, []);
+  }, [loadSourceSessions]);
 
   const initialLoadDone = useRef(false);
   useEffect(() => {
@@ -469,64 +519,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     saveUnreadSessionIds(unreadSessionIds);
   }, [unreadSessionIds]);
 
-  useEffect(() => {
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let controller: AbortController | null = null;
-
-    const clearTimer = () => {
-      if (timer) clearTimeout(timer);
-      timer = null;
-    };
-
-    const schedule = () => {
-      clearTimer();
-      if (stopped || document.visibilityState !== "visible") return;
-      timer = setTimeout(() => void poll(), RUNNING_SESSIONS_POLL_MS);
-    };
-
-    const poll = async () => {
-      if (stopped || document.visibilityState !== "visible") return;
-      const current = new AbortController();
-      controller?.abort();
-      controller = current;
-      try {
-        const res = await fetch("/api/agent/running", {
-          cache: "no-store",
-          signal: current.signal,
-        });
-        if (!res.ok) return;
-        const data = await res.json() as { runningSessionIds?: string[] };
-        if (stopped || controller !== current) return;
-        runningPollAuthoritativeRef.current = true;
-        setRunningSessionIds(new Set(data.runningSessionIds ?? []));
-      } catch {
-        // Keep the last known state; the next visible-tab poll retries.
-      } finally {
-        if (controller === current) controller = null;
-        schedule();
-      }
-    };
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void poll();
-        return;
-      }
-      clearTimer();
-      controller?.abort();
-      controller = null;
-    };
-
-    void poll();
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      stopped = true;
-      clearTimer();
-      controller?.abort();
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, []);
 
   useEffect(() => {
     const previous = previousRunningSessionIdsRef.current;
@@ -563,8 +555,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   }, [explorerRefreshKey]);
 
   useEffect(() => {
-    fetch("/api/home").then((r) => r.json()).then((d: { home?: string }) => {
-      if (d.home) setHomeDir(d.home);
+    void hostCall("home", {}).then(({ home }) => {
+      if (home) setHomeDir(home);
     }).catch(() => {});
   }, []);
 
@@ -612,21 +604,25 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     }
     let cancelled = false;
     setWorktreeLoadingCwd(selectedCwd);
-    fetch(`/api/worktrees?cwd=${encodeURIComponent(selectedCwd)}`)
-      .then((r) => r.json())
-      .then((d: { projectRoot?: string; isGit?: boolean; isTopLevel?: boolean; worktrees?: WorktreeEntry[]; error?: string }) => {
+    hostCall("worktreesList", { cwd: selectedCwd })
+      .then((data) => {
         if (cancelled) return;
         setWorktreeLoadingCwd(null);
-        if (d.error || !d.projectRoot) {
+        if (typeof data !== "object" || data === null || !("projectRoot" in data) || typeof data.projectRoot !== "string") {
           setWorktreeState(null);
           return;
         }
+        const isGit = "isGit" in data && data.isGit === true;
+        const isTopLevel = "isTopLevel" in data && data.isTopLevel === true;
+        const worktrees = "worktrees" in data && Array.isArray(data.worktrees)
+          ? data.worktrees.filter(isWorktreeEntry)
+          : [];
         setWorktreeState({
           forCwd: selectedCwd,
-          projectRoot: d.projectRoot,
-          isGit: d.isGit ?? false,
-          isTopLevel: d.isTopLevel ?? false,
-          worktrees: d.worktrees ?? [],
+          projectRoot: data.projectRoot,
+          isGit,
+          isTopLevel,
+          worktrees,
         });
       })
       .catch(() => {
@@ -667,14 +663,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     setCustomPathValidating(true);
     setCustomPathError(null);
     try {
-      const res = await fetch("/api/cwd/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cwd: path }),
-      });
-      const data = await res.json().catch(() => ({})) as { cwd?: string; error?: string };
-      if (!res.ok || data.error) {
-        setCustomPathError(data.error ?? `HTTP ${res.status}`);
+      const data = await hostCall("cwdValidate", { cwd: path });
+      if (!data.cwd) {
+        setCustomPathError(data.error ?? "Failed to validate directory");
         return;
       }
       setSelectedCwd(data.cwd ?? path);
@@ -695,8 +686,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   }, []);
   const handleDefaultCwd = useCallback(async () => {
     try {
-      const res = await fetch("/api/default-cwd", { method: "POST" });
-      const data = await res.json() as { cwd?: string; error?: string };
+      const data = await hostCall("defaultCwd", {});
       if (data.cwd) {
         setSelectedCwd(data.cwd);
         setCustomPathOpen(false);
@@ -715,16 +705,15 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     setWtBusy(true);
     setWtError(null);
     try {
-      const res = await fetch("/api/worktrees", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cwd: worktreeState.projectRoot, branch }),
-      });
-      const data = await res.json().catch(() => ({})) as { path?: string; error?: string };
-      if (!res.ok || data.error || !data.path) {
-        setWtError(data.error ?? `HTTP ${res.status}`);
+      const data = await hostCall("worktreesCreate", { cwd: worktreeState.projectRoot, branch });
+      if (typeof data !== "object" || data === null || !("path" in data) || typeof data.path !== "string") {
+        const error = typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+          ? data.error
+          : "Failed to create worktree";
+        setWtError(error);
         return;
       }
+      const createdPath = data.path;
       setWtNewOpen(false);
       setWtNewBranch("");
       setWtDropdownOpen(false);
@@ -733,10 +722,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       // treating the new cwd as a different project).
       setWorktreeState((prev) => prev ? {
         ...prev,
-        forCwd: data.path!,
-        worktrees: [...prev.worktrees, { path: data.path!, branch, isMain: false }],
+        forCwd: createdPath,
+        worktrees: [...prev.worktrees, { path: createdPath, branch, isMain: false }],
       } : prev);
-      setSelectedCwd(data.path);
+      setSelectedCwd(createdPath);
       setWtRefreshKey((k) => k + 1);
     } catch (e) {
       setWtError(e instanceof Error ? e.message : String(e));
@@ -750,19 +739,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     setWtBusy(true);
     setWtError(null);
     try {
-      const res = await fetch("/api/worktrees", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cwd: worktreeState.projectRoot, path, force }),
-      });
-      const data = await res.json().catch(() => ({})) as { error?: string; dirty?: boolean };
-      if (!res.ok) {
-        if (data.dirty && !force) {
+      const data = await hostCall("worktreesDelete", { cwd: worktreeState.projectRoot, path, force });
+      if (typeof data !== "object" || data === null || !("success" in data) || data.success !== true) {
+        if (typeof data === "object" && data !== null && "dirty" in data && data.dirty === true && !force) {
           // Dirty worktree — ask the user to confirm a force removal
           setWtConfirmRemove(path);
           return;
         }
-        setWtError(data.error ?? `HTTP ${res.status}`);
+        const error = typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+          ? data.error
+          : "Failed to remove worktree";
+        setWtError(error);
         return;
       }
       setWtConfirmRemove(null);
@@ -1830,11 +1817,7 @@ function SessionItem({
     setRenaming(false);
     if (name === (session.name ?? "")) return;
     try {
-      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      await hostCall("sessionRename", { sessionId: session.id, name });
       onRenamed?.();
     } catch {
       // ignore
@@ -1845,7 +1828,12 @@ function SessionItem({
     setConfirmDelete(false);
     setDeleting(true);
     try {
-      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+      try {
+        await acpRequest({ type: "acp/deleteSession", sessionId: session.id });
+      } catch {
+        // ACP deletion may already have removed the session.
+      }
+      await hostCall("sessionDelete", { sessionId: session.id });
       onDeleted?.(session.id);
     } catch {
       setDeleting(false);

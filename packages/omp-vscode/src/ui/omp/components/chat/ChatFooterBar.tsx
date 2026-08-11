@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from "react";
 import { GitBranch, Shrink, Square, Volume2, VolumeX } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
+import { hostCall } from "../../../bridge";
 
 // Toolbar row BELOW the input card: left = compact + sound (moved out of
 // the composer), right = token usage, context ring, generation rate.
@@ -25,6 +26,10 @@ export const ChatFooterBar = memo(function ChatFooterBar({
   onSoundToggle,
   cwd,
   tps,
+  activeModes,
+  fastMode,
+  onRoleChange,
+  onBranchFrom,
 }: {
   t: (key: string) => string;
   isStreaming?: boolean;
@@ -35,6 +40,10 @@ export const ChatFooterBar = memo(function ChatFooterBar({
   onSoundToggle?: () => void;
   cwd?: string;
   tps?: number | null;
+  onBranchFrom?: () => void;
+  fastMode?: boolean;
+  onRoleChange?: (role: string) => void;
+  activeModes?: readonly string[];
 }) {
   const [branch, setBranch] = useState<string | null>(null);
 
@@ -44,9 +53,8 @@ export const ChatFooterBar = memo(function ChatFooterBar({
       return;
     }
     let active = true;
-    void fetch(`/api/cwd/git-branch?cwd=${encodeURIComponent(cwd)}`)
-      .then((res) => res.ok ? res.json() as Promise<{ branch?: string | null }> : null)
-      .then((data) => { if (active) setBranch(data?.branch ?? null); })
+    void hostCall("cwdGitBranch", { cwd })
+      .then((data) => { if (active) setBranch(data.branch); })
       .catch(() => { if (active) setBranch(null); });
     return () => { active = false; };
   }, [cwd]);
@@ -87,7 +95,28 @@ export const ChatFooterBar = memo(function ChatFooterBar({
             {soundEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
           </Button>
         )}
+        {onBranchFrom && <Button type="button" onClick={onBranchFrom} variant="ghost" size="sm" className="h-5 rounded-[6px] px-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)]">Branch from…</Button>}
       </div>
+        {activeModes && activeModes.length > 0 && (
+          <span
+            className="max-w-48 truncate rounded-full border border-[var(--border)] px-1.5 py-0.5 font-medium text-[10px] text-[var(--text-muted)]"
+            title={`Active modes: ${activeModes.join(", ")}`}
+          >
+            {activeModes.join(" · ")}
+          </span>
+        )}
+      {fastMode && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onRoleChange?.("fast")}
+          title="Fast mode is active"
+          className="h-5 rounded-full border border-amber-400/50 bg-amber-400/10 px-1.5 font-mono text-[10px] font-semibold text-amber-600 hover:bg-amber-400/20"
+        >
+          FAST
+        </Button>
+      )}
 
       <div className="flex-1" />
 

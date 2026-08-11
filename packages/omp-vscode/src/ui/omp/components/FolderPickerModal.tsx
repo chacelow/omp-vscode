@@ -4,19 +4,17 @@ import { useEffect, useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { FolderIcon } from "./FileIcons";
+import { hostCall } from "../../bridge";
 
 interface DirectoryItem {
   name: string;
   path: string;
   modified?: string;
 }
-
 interface ApiResponse {
-  currentPath: string;
-  parentPath: string | null;
-  homeDir: string;
-  drives: string[];
-  directories: DirectoryItem[];
+  path?: string;
+  parent?: string | null;
+  entries?: DirectoryItem[];
   error?: string;
 }
 
@@ -50,19 +48,18 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
     setLoading(true);
     setError(null);
     try {
-      const url = pathQuery ? `/api/fs/directories?path=${encodeURIComponent(pathQuery)}` : "/api/fs/directories";
-      const res = await fetch(url);
-      const data = (await res.json()) as ApiResponse;
-      if (!res.ok || data.error) {
-        setError(data.error ?? `HTTP ${res.status}`);
+      const data = await hostCall("fsDirectoriesList", pathQuery ? { path: pathQuery } : {}) as ApiResponse;
+      if (data.error) {
+        setError(data.error);
         return;
       }
-      setCurrentPath(data.currentPath);
-      setSelectedPath(data.currentPath);
-      setParentPath(data.parentPath);
-      setHomeDir(data.homeDir);
-      setDrives(data.drives ?? []);
-      setDirectories(data.directories ?? []);
+      const currentDirectory = data.path ?? "";
+      setCurrentPath(currentDirectory);
+      setSelectedPath(currentDirectory);
+      setParentPath(data.parent ?? null);
+      setHomeDir("");
+      setDrives([]);
+      setDirectories(data.entries ?? []);
       setFilterQuery("");
       setCreatingFolder(false);
       setNewFolderName("");
@@ -102,14 +99,9 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
     setLoading(true);
     setCreateError(null);
     try {
-      const res = await fetch("/api/fs/directories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentPath: currentPath, folderName: name }),
-      });
-      const data = (await res.json()) as { success?: boolean; path?: string; error?: string };
-      if (!res.ok || data.error || !data.path) {
-        setCreateError(data.error ?? `HTTP ${res.status}`);
+      const data = await hostCall("fsDirectoriesCreate", { parentPath: currentPath, folderName: name }) as { success?: boolean; path?: string; error?: string };
+      if (data.error || !data.path) {
+        setCreateError(data.error ?? "Unable to create folder");
         return;
       }
       setCreatingFolder(false);

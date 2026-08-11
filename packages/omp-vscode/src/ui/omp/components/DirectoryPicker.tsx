@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/hooks/useI18n";
+import { hostCall } from "../../bridge";
 
 interface DirectoryEntry {
   name: string;
@@ -18,11 +19,13 @@ interface BrowseResponse {
 }
 
 async function loadDirectories(directory?: string): Promise<BrowseResponse> {
-  const query = directory ? `?path=${encodeURIComponent(directory)}` : "";
-  const response = await fetch(`/api/cwd/browse${query}`);
-  const data = await response.json() as BrowseResponse;
-  if (!response.ok || data.error) throw new Error(data.error ?? `HTTP ${response.status}`);
-  return data;
+  const data = await hostCall("cwdBrowse", directory ? { path: directory } : {});
+  if (data.error) throw new Error(data.error);
+  return {
+    path: data.path,
+    parentPath: data.parent,
+    directories: data.entries?.filter((entry) => entry.isDir),
+  };
 }
 
 function FolderIcon() {

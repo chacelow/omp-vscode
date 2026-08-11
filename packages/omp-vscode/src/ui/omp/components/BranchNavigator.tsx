@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, type KeyboardEvent, type MouseEvent } from "react";
 import type { SessionEntry, SessionTreeNode } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
+import { hostCall } from "../../bridge";
 
 interface Props {
   tree: SessionTreeNode[];
   activeLeafId: string | null;
+  sessionId?: string | null;
   onLeafChange: (leafId: string | null) => void;
   /** When true, renders as a compact inline button for embedding in a top bar */
   inline?: boolean;
@@ -86,18 +88,24 @@ interface TreeNodeProps {
   activePathIds: Set<string>;
   depth: number;
   isLast: boolean;
-  parentLines: boolean[]; // whether ancestor at each depth has more siblings after
+  parentLines: boolean[];
   onSelect: (id: string) => void;
+  onEditLabel: (entryId: string, label: string) => void;
+  editingId: string | null;
+  onStartEdit: (entryId: string, label: string) => void;
 }
 
-function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelect }: TreeNodeProps) {
+function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelect, onEditLabel, editingId, onStartEdit }: TreeNodeProps) {
   const { node: rep, skipped } = compress(node);
   const isActive = activePathIds.has(rep.entry.id);
   const isOnPath = activePathIds.has(node.entry.id) || activePathIds.has(rep.entry.id);
-  const label = getLabel(rep.entry);
+  const label = node.label?.trim() || getLabel(rep.entry);
   const role = rep.entry.type === "message" && "message" in rep.entry
     ? (rep.entry.message as { role: string }).role
     : null;
+  const editing = editingId === rep.entry.id;
+  const [draftLabel, setDraftLabel] = useState(label);
+  useEffect(() => { if (editing) setDraftLabel(label); }, [editing, label]);
 
   return (
     <div>
@@ -110,6 +118,7 @@ function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelec
           cursor: "pointer",
         }}
         onClick={() => onSelect(rep.entry.id)}
+        onContextMenu={(event: MouseEvent<HTMLDivElement>) => { event.preventDefault(); onStartEdit(rep.entry.id, label); }}
       >
         {/* Indent guide lines */}
         {parentLines.map((hasLine, i) => (
@@ -186,22 +195,32 @@ function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelec
           </span>
         )}
 
-        {/* Label */}
-        <span style={{
-          fontSize: 11,
-          color: isActive ? "var(--text)" : isOnPath ? "var(--text-muted)" : "var(--text-dim)",
-          fontWeight: isActive ? 500 : 400,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          flex: 1,
-          minWidth: 0,
-        }}>
-          {label}
-        </span>
+        {editing ? (
+          <input
+            aria-label="Entry label"
+            autoFocus
+            value={draftLabel}
+            onChange={(event) => setDraftLabel(event.target.value)}
+            onBlur={() => onEditLabel(rep.entry.id, draftLabel)}
+            onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onEditLabel(rep.entry.id, draftLabel); } if (event.key === "Escape") onEditLabel(rep.entry.id, label); }}
+            style={{ flex: 1, minWidth: 0, fontSize: 11, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--accent)" }}
+          />
+        ) : (
+          <span style={{
+            fontSize: 11,
+            color: isActive ? "var(--text)" : isOnPath ? "var(--text-muted)" : "var(--text-dim)",
+            fontWeight: isActive ? 500 : 400,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: 1,
+            minWidth: 0,
+          }}>
+            {label}
+          </span>
+        )}
       </div>
 
-      {/* Children */}
       {rep.children.map((child, idx) => (
         <TreeNodeView
           key={child.entry.id}
@@ -211,18 +230,23 @@ function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelec
           isLast={idx === rep.children.length - 1}
           parentLines={[...parentLines, !isLast]}
           onSelect={onSelect}
+          onEditLabel={onEditLabel}
+          editingId={editingId}
+          onStartEdit={onStartEdit}
         />
       ))}
     </div>
   );
 }
 
-export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, containerRef, open: openProp, onToggle, hasSession, compact }: Props) {
+export function BranchNavigator({ tree, activeLeafId, onLeafChange, sessionId, inline, containerRef, open: openProp, onToggle, hasSession, compact }: Props) {
   const { t } = useI18n();
   const [openInternal, setOpenInternal] = useState(false);
   const open = openProp !== undefined ? openProp : openInternal;
   const btnRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [filter, setFilter] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !inline) return;
@@ -246,6 +270,11 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
   const handleSelect = useCallback((id: string) => {
     onLeafChange(id);
   }, [onLeafChange]);
+  const handleEditLabel = useCallback((entryId: string, label: string) => {
+    setEditingId(null);
+    if (!sessionId || !label.trim()) return;
+    void hostCall("sessionRenameEntry", { sessionId, entryId, label: label.trim() });
+  }, [sessionId]);
 
   const noBranchReason = !hasSession
     ? t("i18n.noActiveSession")
@@ -256,6 +285,29 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
   const compressed = tree.length > 0 ? compress(tree[0]) : null;
   const firstNode = compressed?.node ?? null;
   const hasContent = !noBranchReason && firstNode && firstNode.children.length > 1;
+  const filteredChildren = useMemo(() => firstNode?.children.filter((node) => {
+    const query = filter.trim().toLowerCase();
+    return !query || getLabel(node.entry).toLowerCase().includes(query) || node.label?.toLowerCase().includes(query);
+  }) ?? [], [filter, firstNode]);
+  const onTreeKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    const ids = filteredChildren.map((node) => compress(node).node.entry.id);
+    const current = activeLeafId ? ids.indexOf(activeLeafId) : -1;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End" || event.key === "PageDown" || event.key === "PageUp") {
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? ids.length - 1 : event.key === "ArrowDown" || event.key === "PageDown" ? Math.min(ids.length - 1, current + (event.key === "PageDown" ? 5 : 1)) : Math.max(0, current - (event.key === "PageUp" ? 5 : 1));
+      if (ids[next]) onLeafChange(ids[next]);
+    }
+    if (event.key === "Enter" && event.shiftKey && activeLeafId && sessionId) {
+      event.preventDefault();
+      const summary = window.prompt("Summary for this branch");
+      if (summary?.trim()) {
+        void hostCall("sessionAppendSummary", { sessionId, entryId: activeLeafId, summary: summary.trim() })
+          .then(() => onLeafChange(activeLeafId));
+      }
+      return;
+    }
+    if (event.key === "Enter" && activeLeafId) { event.preventDefault(); onLeafChange(activeLeafId); }
+  }, [activeLeafId, filteredChildren, onLeafChange, sessionId]);
 
   const branchIcon = (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: hasContent ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }}>
@@ -315,17 +367,10 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
             zIndex: 500,
           }}>
             {hasContent && firstNode ? (
-              <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
-                {firstNode.children.map((child, idx) => (
-                  <TreeNodeView
-                    key={child.entry.id}
-                    node={child}
-                    activePathIds={activePathIds}
-                    depth={0}
-                    isLast={idx === firstNode.children.length - 1}
-                    parentLines={[]}
-                    onSelect={handleSelect}
-                  />
+              <div tabIndex={0} onKeyDown={onTreeKeyDown} style={{ padding: "4px 12px 8px", maxHeight: 260, overflowY: "auto" }}>
+                <input aria-label="Filter branches" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter branches" style={{ width: "100%", marginBottom: 4 }} />
+                {filteredChildren.map((child, idx) => (
+                  <TreeNodeView key={child.entry.id} node={child} activePathIds={activePathIds} depth={0} isLast={idx === filteredChildren.length - 1} parentLines={[]} onSelect={handleSelect} onEditLabel={handleEditLabel} editingId={editingId} onStartEdit={(entryId) => setEditingId(entryId)} />
                 ))}
               </div>
             ) : (
@@ -376,17 +421,10 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
           zIndex: 100,
         }}>
           {hasContent && firstNode ? (
-            <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
-              {firstNode.children.map((child, idx) => (
-                <TreeNodeView
-                  key={child.entry.id}
-                  node={child}
-                  activePathIds={activePathIds}
-                  depth={0}
-                  isLast={idx === firstNode.children.length - 1}
-                  parentLines={[]}
-                  onSelect={handleSelect}
-                />
+            <div tabIndex={0} onKeyDown={onTreeKeyDown} style={{ padding: "4px 12px 8px", maxHeight: 260, overflowY: "auto" }}>
+              <input aria-label="Filter branches" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter branches" style={{ width: "100%", marginBottom: 4 }} />
+              {filteredChildren.map((child, idx) => (
+                <TreeNodeView key={child.entry.id} node={child} activePathIds={activePathIds} depth={0} isLast={idx === filteredChildren.length - 1} parentLines={[]} onSelect={handleSelect} onEditLabel={handleEditLabel} editingId={editingId} onStartEdit={(entryId) => setEditingId(entryId)} />
               ))}
             </div>
           ) : (
