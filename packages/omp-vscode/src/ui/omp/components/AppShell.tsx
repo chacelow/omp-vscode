@@ -838,82 +838,38 @@ function AppShellContent() {
             </button>
           )}
           {showChat && (
-            <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
-              <button
+            <div className="relative flex h-full items-stretch">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setTreeOpen((o) => !o)}
-                disabled={!selectedSession}
                 title={translate("history.full")}
                 aria-label={translate("history.full")}
                 aria-pressed={treeOpen}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  height: "100%",
-                  padding: "0 12px",
-                  background: treeOpen ? "var(--bg-selected)" : "none",
-                  border: "none",
-                  borderTop: treeOpen ? "2px solid var(--accent)" : "2px solid transparent",
-                  borderRight: "1px solid var(--border)",
-                  color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
-                  cursor: selectedSession ? "pointer" : "not-allowed",
-                  opacity: selectedSession ? 1 : 0.45,
-                  flexShrink: 0,
-                  fontSize: 11,
-                  whiteSpace: "nowrap",
-                  transition: "color 0.1s, background 0.1s, opacity 0.1s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!selectedSession) return;
-                  e.currentTarget.style.color = "var(--text)";
-                  e.currentTarget.style.background = treeOpen ? "var(--bg-selected)" : "var(--bg-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = selectedSession ? "var(--text-muted)" : "var(--text-dim)";
-                  e.currentTarget.style.background = treeOpen ? "var(--bg-selected)" : "none";
-                }}
+                className={cn(
+                  "h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
+                  treeOpen && "bg-[var(--bg-selected)] text-[var(--text)]"
+                )}
               >
-                <History size={12} style={{ color: selectedSession ? "var(--text-muted)" : "var(--text-dim)", flexShrink: 0 }} />
-                <span>{t("Full history", "完整历史")}</span>
-              </button>
-              <button
+                <History size={15} />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setMinimapOpen((o) => !o)}
-                disabled={!selectedSession}
                 title={translate("i18n.sessionMap") ?? "Conversation map"}
                 aria-label={translate("i18n.sessionMap") ?? "Conversation map"}
                 aria-pressed={minimapOpen}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  height: "100%",
-                  padding: "0 12px",
-                  background: minimapOpen ? "var(--bg-selected)" : "none",
-                  border: "none",
-                  borderTop: minimapOpen ? "2px solid var(--accent)" : "2px solid transparent",
-                  borderRight: "1px solid var(--border)",
-                  color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
-                  cursor: selectedSession ? "pointer" : "not-allowed",
-                  opacity: selectedSession ? 1 : 0.45,
-                  flexShrink: 0,
-                  fontSize: 11,
-                  whiteSpace: "nowrap",
-                  transition: "color 0.1s, background 0.1s, opacity 0.1s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!selectedSession) return;
-                  e.currentTarget.style.color = "var(--text)";
-                  e.currentTarget.style.background = minimapOpen ? "var(--bg-selected)" : "var(--bg-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = selectedSession ? "var(--text-muted)" : "var(--text-dim)";
-                  e.currentTarget.style.background = minimapOpen ? "var(--bg-selected)" : "none";
-                }}
+                className={cn(
+                  "h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
+                  minimapOpen && "bg-[var(--bg-selected)] text-[var(--text)]"
+                )}
               >
-                <Map size={12} style={{ color: selectedSession ? "var(--text-muted)" : "var(--text-dim)", flexShrink: 0 }} />
-                <span>{translate("i18n.sessionMap") ?? "Map"}</span>
-              </button>
-              {treeOpen && branchTree.length > 0 && (
+                <Map size={15} />
+              </Button>
+              {treeOpen && (
                 <div
                   style={{
                     position: "absolute",
@@ -929,56 +885,56 @@ function AppShellContent() {
                     boxShadow: "0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
                   }}
                 >
-                  <SessionTreeNodes
-                    tree={branchTree}
-                    activeIds={new Set(branchActiveLeafId ? [branchActiveLeafId] : [])}
-                    onSelect={async (entryId) => {
-                      await handleBranchLeafChange(entryId);
-                      setTreeOpen(false);
-                    }}
-                  />
+                  {branchTree.length > 0 ? (
+                    <SessionTreeNodes
+                      tree={branchTree}
+                      activeIds={new Set(branchActiveLeafId ? [branchActiveLeafId] : [])}
+                      onSelect={async (entryId) => {
+                        await handleBranchLeafChange(entryId);
+                        setTreeOpen(false);
+                      }}
+                    />
+                  ) : (
+                    <p className="p-3 text-xs text-[var(--text-dim)]">
+                      {translate("history.unsaved") ?? "Full history unavailable — send a message first."}
+                    </p>
+                  )}
                 </div>
               )}
-                <BranchNavigator
+              <BranchNavigator
                 tree={branchTree}
                 activeLeafId={branchActiveLeafId}
                 onLeafChange={handleBranchLeafChange}
                 sessionId={selectedSession?.id}
                 inline
-                compact={isMobile}
+                compact
                 containerRef={topBarRef}
                 open={activeTopPanel === "branches"}
                 onToggle={() => toggleTopPanel("branches")}
                 hasSession
               />
-              <button
+              <Button
                 ref={systemBtnRef}
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => toggleTopPanel("system")}
-                 title={translate("system.prompt")}
-                 aria-label={translate("system.prompt")}
+                title={translate("system.prompt")}
+                aria-label={translate("system.prompt")}
                 aria-pressed={activeTopPanel === "system"}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  height: "100%", padding: "0 12px",
-                  background: activeTopPanel === "system" ? "var(--bg-selected)" : "none",
-                  border: "none",
-                  borderTop: activeTopPanel === "system" ? "2px solid var(--accent)" : "2px solid transparent",
-                  borderRight: "1px solid var(--border)",
-                  cursor: "pointer",
-                  color: activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)",
-                  fontSize: 11, whiteSpace: "nowrap", transition: "color 0.1s, background 0.1s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)"; }}
+                className={cn(
+                  "h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
+                  activeTopPanel === "system" && "bg-[var(--bg-selected)] text-[var(--text)]",
+                  systemPrompt && "text-[var(--accent)]"
+                )}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: systemPrompt ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="8" y1="13" x2="16" y2="13" />
                   <line x1="8" y1="17" x2="13" y2="17" />
                 </svg>
-                 {!isMobile && <span>{translate("system.label")}</span>}
-              </button>
+              </Button>
             </div>
           )}
           <Button type="button" variant="ghost" size="sm" onClick={() => { void hostCall("openWorkbench", {}); }} title="Open Workbench" aria-label="Open Workbench" className="h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)]">
@@ -995,12 +951,11 @@ function AppShellContent() {
               aria-label={translate("session.title")}
               aria-pressed={activeTopPanel === "session"}
               className={cn(
-                "ml-auto h-[calc(100%-8px)] gap-1.5 rounded-[7px] px-2.5 text-[11px] text-[var(--text-muted)]",
+                "ml-auto h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
                 activeTopPanel === "session" && "bg-[var(--bg-selected)] text-[var(--text)]",
               )}
             >
-              <Gauge size={13} />
-              {!isMobile && <span>{translate("session.title")}</span>}
+              <Gauge size={15} />
             </Button>
           )}
           {/* Top panel dropdown — shared, only one active at a time */}

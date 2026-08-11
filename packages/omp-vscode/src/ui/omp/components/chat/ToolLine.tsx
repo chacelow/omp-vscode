@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import { motion } from "motion/react";
 import { ChevronDown, ChevronRight, Copy, Check, ExternalLink, FileText, Folder, Search } from "lucide-react";
 import {
   Popover,
@@ -208,20 +209,40 @@ function ToolLineBase({
 }: ToolLineBaseProps) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
+  const openTimer = useRef<number | null>(null);
   const cancelClose = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
       closeTimer.current = null;
     }
   };
+  const cancelOpen = () => {
+    if (openTimer.current !== null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  };
   const scheduleClose = () => {
+    cancelOpen();
     cancelClose();
     if (!hover) return;
     closeTimer.current = window.setTimeout(() => setOpen(false), 120);
   };
-  const openNow = () => {
+  /** Hovering the row starts a short delay before opening; a second entry
+   *  while the popover is already open keeps it open with no flicker. */
+  const scheduleOpen = () => {
     cancelClose();
-    if (hover) setOpen(true);
+    if (!hover || open) return;
+    if (openTimer.current !== null) return;
+    openTimer.current = window.setTimeout(() => {
+      openTimer.current = null;
+      setOpen(true);
+    }, 250);
+  };
+  /** Used by the popover content itself: definitively keep it open. */
+  const keepOpen = () => {
+    cancelOpen();
+    cancelClose();
   };
 
   const primaryNode = onPrimaryClick ? (
@@ -257,9 +278,9 @@ function ToolLineBase({
         "group flex w-full min-w-0 items-center gap-1.5 py-0.5 text-[12px]",
         isError && "opacity-70"
       )}
-      onMouseEnter={openNow}
+      onMouseEnter={scheduleOpen}
       onMouseLeave={scheduleClose}
-      onFocus={openNow}
+      onFocus={scheduleOpen}
       onBlur={scheduleClose}
     >
       <StatusDot isError={isError} isPending={isPending} />
@@ -295,18 +316,23 @@ function ToolLineBase({
   // area continuous: the transparent PopoverContent extends right up to the
   // row, so moving the pointer down never crosses dead space.
   return (
-    <Popover open={open} onOpenChange={(next) => (next ? openNow() : scheduleClose())}>
+    <Popover open={open} onOpenChange={(next) => (next ? setOpen(true) : scheduleClose())}>
       <PopoverTrigger asChild>{row}</PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={0}
-        onMouseEnter={openNow}
+        onMouseEnter={keepOpen}
         onMouseLeave={scheduleClose}
         className="w-[min(520px,90vw)] max-w-none border-none bg-transparent p-0 shadow-none"
       >
-        <div className="mt-1.5 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-panel)] text-[var(--text)] shadow-md">
+        <motion.div
+          initial={{ opacity: 0, y: -4, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          className="mt-1.5 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-panel)] text-[var(--text)] shadow-md"
+        >
           {hover}
-        </div>
+        </motion.div>
       </PopoverContent>
     </Popover>
   );

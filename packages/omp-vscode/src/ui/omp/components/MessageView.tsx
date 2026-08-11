@@ -101,6 +101,14 @@ function loadThinkingContent(
   }
   return request;
 }
+export interface AssistantHoverMeta {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  durationSec?: number;
+  tps?: number;
+}
+
 
 interface Props {
   message: AgentMessage;
@@ -139,6 +147,13 @@ interface Props {
   showThinking?: boolean;
   expandAllTools?: boolean;
   toolsHidden?: boolean;
+  /**
+   * Shared assistant metadata sink. Assistant messages call this on mouse
+   * enter with their in/out/cache/duration/tps stats, and with `null` on
+   * mouse leave, so the layout can render a single hover-only meta strip
+   * (near the input footer) instead of repeating stats under every message.
+   */
+  onHoverMeta?: (meta: AssistantHoverMeta | null) => void;
 }
 
 function formatTime(ts?: number): string | null {
@@ -199,6 +214,7 @@ export const MessageView = memo(
     showThinking = true,
     expandAllTools = false,
     toolsHidden = false,
+    onHoverMeta,
   }: Props) {
     if (message.role === "user") {
       return (
@@ -237,6 +253,7 @@ export const MessageView = memo(
             showThinking={showThinking}
             expandAllTools={expandAllTools}
             toolsHidden={toolsHidden}
+            onHoverMeta={onHoverMeta}
           />
         </div>
       );
@@ -294,7 +311,8 @@ export const MessageView = memo(
       prev.hideFork === next.hideFork &&
       prev.showThinking === next.showThinking &&
       prev.expandAllTools === next.expandAllTools &&
-      prev.toolsHidden === next.toolsHidden
+      prev.toolsHidden === next.toolsHidden &&
+      prev.onHoverMeta === next.onHoverMeta
     );
   }
 );
@@ -516,6 +534,7 @@ function AssistantMessageView({
   showThinking = true,
   expandAllTools = false,
   toolsHidden = false,
+  onHoverMeta,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -533,6 +552,7 @@ function AssistantMessageView({
   showThinking?: boolean;
   expandAllTools?: boolean;
   toolsHidden?: boolean;
+  onHoverMeta?: (meta: AssistantHoverMeta | null) => void;
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
@@ -695,10 +715,25 @@ function AssistantMessageView({
     return Math.round((out * 1000) / durMs);
   }, [isStreaming, message.usage, engineDurationMs]);
 
+  // Publish own stats to a shared meta panel on hover. Values are computed
+  // lazily inside the callback so we don't re-subscribe every render.
+  const publishMeta = onHoverMeta
+    ? () => onHoverMeta({
+        input: message.usage?.input,
+        output: message.usage?.output,
+        cacheRead: message.usage?.cacheRead,
+        durationSec: engineDurationMs !== undefined ? engineDurationMs / 1000 : durationHover ?? undefined,
+        tps: tps ?? completedTps ?? undefined,
+      })
+    : undefined;
+  const clearMeta = onHoverMeta ? () => onHoverMeta(null) : undefined;
+
   return (
     <div
       className="group assistant-message"
       style={{ marginBottom: endsWithTool ? 2 : 16, position: "relative" }}
+      onMouseEnter={publishMeta}
+      onMouseLeave={clearMeta}
     >
       {/* Model label / streaming estimate — hidden from layout; the hover
           tooltip above shows model, usage and tok/s instead. */}
@@ -911,41 +946,8 @@ function AssistantMessageView({
           Error: {providerError}
         </div>
       )}
-      {(!isStreaming && (message.usage || time || canFork)) ||
-      (isStreaming && (tps !== null || durationHover !== null)) ? (
+      {(!isStreaming && (time || canFork)) ? (
         <div className="assistant-message-meta mt-1 flex min-w-0 flex-nowrap items-center justify-end gap-3 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
-          {!isStreaming && message.usage && (
-            <>
-              <span className="assistant-meta-usage flex shrink-0 items-center gap-1">
-                <ArrowUpRight size={10} strokeWidth={1.8} />
-                {message.usage.input?.toLocaleString()} in
-                <ArrowDownRight size={10} strokeWidth={1.8} className="ml-1" />
-                {message.usage.output?.toLocaleString()} out
-              </span>
-              {message.usage.cacheRead ? (
-                <span className="assistant-meta-cache flex shrink-0 items-center gap-1">
-                  <Database size={10} strokeWidth={1.8} />
-                  {message.usage.cacheRead.toLocaleString()} cache R
-                </span>
-              ) : null}
-            </>
-          )}
-          {(engineDurationMs !== undefined || durationHover !== null) && (
-            <span className="assistant-meta-duration flex shrink-0 items-center gap-1">
-              <Clock size={10} strokeWidth={1.8} />
-              {(engineDurationMs !== undefined
-                ? engineDurationMs / 1000
-                : durationHover
-              )?.toFixed(1)}
-              s
-            </span>
-          )}
-          {(tps !== null || completedTps !== null) && (
-            <span className="assistant-meta-throughput flex shrink-0 items-center gap-1">
-              <Gauge size={10} strokeWidth={1.8} />
-              {Math.round(tps ?? completedTps ?? 0).toLocaleString()} tok/s
-            </span>
-          )}
           {canFork && (
             <Button
               type="button"

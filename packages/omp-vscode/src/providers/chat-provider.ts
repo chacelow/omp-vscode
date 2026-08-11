@@ -234,8 +234,23 @@ export class ChatProvider implements vscode.WebviewViewProvider {
 
         case "openFile": {
           const uri = vscode.Uri.file(msg.path);
-          const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: false });
+          try {
+            await vscode.workspace.fs.stat(uri);
+          } catch {
+            void vscode.window.showWarningMessage(
+              `File not found: ${msg.path}`,
+            );
+            this.log.appendLine(`[openFile] missing: ${msg.path}`);
+            this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+            break;
+          }
+          try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc, { preview: false });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            void vscode.window.showErrorMessage(`Failed to open ${msg.path}: ${message}`);
+          }
           this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
           break;
         }

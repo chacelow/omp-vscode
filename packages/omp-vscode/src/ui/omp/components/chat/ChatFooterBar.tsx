@@ -1,9 +1,17 @@
 import { memo, useEffect, useState } from "react";
-import { GitBranch, Shrink, Square, Volume2, VolumeX } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { ArrowDownRight, ArrowUpRight, Clock, Database, Gauge, GitBranch, Shrink, Square, Volume2, VolumeX } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { hostCall } from "../../../bridge";
 
+export interface AssistantMetaSummary {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  durationSec?: number;
+  tps?: number;
+}
 // Toolbar row BELOW the input card: left = compact + sound (moved out of
 // the composer), right = token usage, context ring, generation rate.
 
@@ -30,6 +38,7 @@ export const ChatFooterBar = memo(function ChatFooterBar({
   fastMode,
   onRoleChange,
   onBranchFrom,
+  hoveredMeta,
 }: {
   t: (key: string) => string;
   isStreaming?: boolean;
@@ -44,6 +53,7 @@ export const ChatFooterBar = memo(function ChatFooterBar({
   fastMode?: boolean;
   onRoleChange?: (role: string) => void;
   activeModes?: readonly string[];
+  hoveredMeta?: AssistantMetaSummary | null;
 }) {
   const [branch, setBranch] = useState<string | null>(null);
 
@@ -119,10 +129,47 @@ export const ChatFooterBar = memo(function ChatFooterBar({
       )}
 
       <div className="flex-1" />
-
-      {/* RIGHT: tps only — context ring moved into the input toolbar */}
-      <div className="flex items-center gap-2">
-        {tps !== null && tps !== undefined && (
+      <div className="relative flex min-h-[16px] items-center gap-2">
+        <AnimatePresence initial={false}>
+          {hoveredMeta && (
+            <motion.div
+              key="hovered-meta"
+              initial={{ opacity: 0, y: 2 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 2 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="flex items-center gap-3 font-mono text-[10px] text-[var(--text-dim)] tabular-nums"
+            >
+              {hoveredMeta.input !== undefined && hoveredMeta.output !== undefined && (
+                <span className="flex items-center gap-1">
+                  <ArrowUpRight size={10} strokeWidth={1.8} />
+                  {hoveredMeta.input.toLocaleString()} in
+                  <ArrowDownRight size={10} strokeWidth={1.8} className="ml-1" />
+                  {hoveredMeta.output.toLocaleString()} out
+                </span>
+              )}
+              {hoveredMeta.cacheRead ? (
+                <span className="flex items-center gap-1">
+                  <Database size={10} strokeWidth={1.8} />
+                  {hoveredMeta.cacheRead.toLocaleString()} cache R
+                </span>
+              ) : null}
+              {hoveredMeta.durationSec !== undefined && (
+                <span className="flex items-center gap-1">
+                  <Clock size={10} strokeWidth={1.8} />
+                  {hoveredMeta.durationSec.toFixed(1)}s
+                </span>
+              )}
+              {hoveredMeta.tps !== undefined && (
+                <span className="flex items-center gap-1">
+                  <Gauge size={10} strokeWidth={1.8} />
+                  {Math.round(hoveredMeta.tps).toLocaleString()} tok/s
+                </span>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!hoveredMeta && tps !== null && tps !== undefined && (
           <span
             className="font-mono"
             style={{ color: tps >= 50 ? "#53b3cb" : tps >= 30 ? "#9bc53d" : tps >= 15 ? "#f9c22e" : "#e01a4f" }}

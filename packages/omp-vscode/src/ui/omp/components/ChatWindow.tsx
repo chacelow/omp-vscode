@@ -29,7 +29,7 @@ import {
   getDisplayableAssistantBlocks,
   splitFinalAssistantBlocks,
 } from "@/lib/message-display";
-import { MessageView } from "./MessageView";
+import { MessageView, type AssistantHoverMeta } from "./MessageView";
 import {
   ChatInput,
   type ChatInputHandle,
@@ -499,6 +499,11 @@ export function ChatWindow({
   const [displayResetKey, setDisplayResetKey] = useState(0);
   const [agentHubOpen, setAgentHubOpen] = useState(false);
   const [historySearchOpen, setHistorySearchOpen] = useState(false);
+  const [hoveredMeta, setHoveredMeta] = useState<AssistantHoverMeta | null>(null);
+  const handleHoverMeta = useCallback(
+    (meta: AssistantHoverMeta | null) => setHoveredMeta(meta),
+    [],
+  );
 
   useEffect(() => {
     if (
@@ -988,6 +993,7 @@ export function ChatWindow({
       activeModes={activeModes}
       fastMode={fastMode}
       onRoleChange={handleRoleChange}
+      hoveredMeta={hoveredMeta}
     />
   );
 
@@ -1418,6 +1424,7 @@ export function ChatWindow({
                           showThinking={showThinking}
                           expandAllTools={expandAllTools}
                           toolsHidden={toolsHidden}
+                          onHoverMeta={handleHoverMeta}
                         />
                       );
                       if (
@@ -1713,6 +1720,7 @@ export function ChatWindow({
                       showThinking={showThinking}
                       expandAllTools={expandAllTools}
                       toolsHidden={toolsHidden}
+                      onHoverMeta={handleHoverMeta}
                     />
                   )}
 
@@ -1765,6 +1773,7 @@ export function ChatWindow({
                       sessionId={
                         session?.id ?? sessionIdRef.current ?? undefined
                       }
+                      onHoverMeta={handleHoverMeta}
                     />
                   )}
 
