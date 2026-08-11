@@ -22,3 +22,6 @@ out/
 
 # Ad-hoc session/agent scratch dirs.
 /.agents/
+
+# Managed by the skills tool.
+/skills-lock.json
