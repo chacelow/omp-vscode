@@ -40,7 +40,7 @@ import {
 import { useI18n } from "@/hooks/useI18n";
 import { usePreferences } from "@/hooks/usePreferences";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
-import { ExploringGroup, ToolLine, isExploringTool, isLineStyleTool } from "./chat/ToolLine";
+import { ExploringGroup, ToolLine, isBashTool, isExploringTool, isLineStyleTool } from "./chat/ToolLine";
 import {
   getAssistantErrorMessage,
   isEmptyThinkingBlock,
@@ -856,7 +856,7 @@ function AssistantMessageView({
                 group.push(candidate);
                 next += 1;
               }
-              if (group.length >= 3) {
+              if (group.length >= 2) {
                 rendered.push(
                   <ExploringGroup
                     key={`${entryId ?? "stream"}-explore-${originalIndex}`}
@@ -864,24 +864,57 @@ function AssistantMessageView({
                     toolResults={toolResults}
                     toolCallDurations={toolCallDurations}
                     onOpenFile={onOpenFile}
+                    variant="exploring"
                   />
                 );
                 index = next;
                 continue;
               }
-              // Fewer than 3 exploring tools — render each as a bare line.
-              for (const explored of group) {
+              rendered.push(
+                <ToolLine
+                  key={`${entryId ?? "stream"}-line-${block.toolCallId}`}
+                  block={block}
+                  result={toolResults?.get(block.toolCallId)}
+                  duration={toolCallDurations?.get(block.toolCallId)}
+                  onOpenFile={onOpenFile}
+                />
+              );
+              index += 1;
+              continue;
+            }
+            if (block.type === "toolCall" && isBashTool(block)) {
+              const group: ToolCallContent[] = [block];
+              let next = index + 1;
+              while (next < blockItems.length) {
+                const candidate = blockItems[next].block;
+                if (candidate.type !== "toolCall" || !isBashTool(candidate)) break;
+                group.push(candidate);
+                next += 1;
+              }
+              if (group.length >= 2) {
                 rendered.push(
-                  <ToolLine
-                    key={`${entryId ?? "stream"}-line-${explored.toolCallId}`}
-                    block={explored}
-                    result={toolResults?.get(explored.toolCallId)}
-                    duration={toolCallDurations?.get(explored.toolCallId)}
+                  <ExploringGroup
+                    key={`${entryId ?? "stream"}-bash-${originalIndex}`}
+                    blocks={group}
+                    toolResults={toolResults}
+                    toolCallDurations={toolCallDurations}
                     onOpenFile={onOpenFile}
+                    variant="bash"
                   />
                 );
+                index = next;
+                continue;
               }
-              index = next;
+              rendered.push(
+                <ToolLine
+                  key={`${entryId ?? "stream"}-line-${block.toolCallId}`}
+                  block={block}
+                  result={toolResults?.get(block.toolCallId)}
+                  duration={toolCallDurations?.get(block.toolCallId)}
+                  onOpenFile={onOpenFile}
+                />
+              );
+              index += 1;
               continue;
             }
             if (block.type === "toolCall" && isLineStyleTool(block)) {

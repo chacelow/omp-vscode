@@ -150,6 +150,37 @@ function parseGrepMatches(result: ToolResultMessage | undefined): Array<{
   return out;
 }
 
+/** Split a POSIX path into `{ dir, base }`. Missing dir → empty string. */
+function splitPath(path: string): { dir: string; base: string } {
+  const clean = path.replace(/\/+$/, "");
+  const lastSlash = clean.lastIndexOf("/");
+  if (lastSlash < 0) return { dir: "", base: clean };
+  return { dir: clean.slice(0, lastSlash), base: clean.slice(lastSlash + 1) };
+}
+
+/** Aggregate ripgrep-style matches into one row per file. */
+interface FileMatchGroup {
+  path: string;
+  matches: number;
+  firstLine?: number;
+}
+function groupMatchesByFile(
+  matches: Array<{ path: string; line?: number; preview: string }>,
+): FileMatchGroup[] {
+  const order: string[] = [];
+  const byPath = new Map<string, FileMatchGroup>();
+  for (const match of matches) {
+    let bucket = byPath.get(match.path);
+    if (!bucket) {
+      bucket = { path: match.path, matches: 0, firstLine: match.line };
+      byPath.set(match.path, bucket);
+      order.push(match.path);
+    }
+    bucket.matches += 1;
+  }
+  return order.map((path) => byPath.get(path)!);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Base line primitive                                                        */
 /* -------------------------------------------------------------------------- */
@@ -424,7 +455,9 @@ function GrepLine({ block, result, duration, onOpenFile }: {
       ? `in ${scope}`
       : "no matches";
 
-  const hover = matches.length > 0 ? (
+  const fileGroups = useMemo(() => groupMatchesByFile(matches), [matches]);
+
+  const hover = fileGroups.length > 0 ? (
     <div className="p-3">
       <div className="mb-1 flex items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
         <Search size={10} />
@@ -432,29 +465,33 @@ function GrepLine({ block, result, duration, onOpenFile }: {
         {scope && <span className="text-[var(--text-dim)]">· in {scope}</span>}
       </div>
       <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-        {matches.slice(0, 100).map((match, index) => (
-          <button
-            key={`${match.path}-${match.line ?? index}-${index}`}
-            type="button"
-            onClick={() => onOpenFile?.(match.path)}
-            className="block w-full min-w-0 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)]"
-          >
-            <div className="flex min-w-0 items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
-              <span className="truncate">{match.path}</span>
-              {match.line !== undefined && (
-                <span className="shrink-0 text-[var(--text-dim)]">:{match.line}</span>
+        {fileGroups.slice(0, 100).map((entry) => {
+          const { dir, base } = splitPath(entry.path);
+          return (
+            <button
+              key={entry.path}
+              type="button"
+              onClick={() => onOpenFile?.(entry.firstLine ? `${entry.path}:${entry.firstLine}` : entry.path)}
+              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)]"
+            >
+              <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
+              <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
+                {base}
+              </span>
+              {dir && (
+                <span className="min-w-0 truncate font-mono text-[10px] text-[var(--text-dim)]">
+                  {dir}
+                </span>
               )}
-            </div>
-            {match.preview && (
-              <div className="mt-0.5 truncate font-mono text-[10px] text-[var(--text-dim)]">
-                {match.preview}
-              </div>
-            )}
-          </button>
-        ))}
-        {matches.length > 100 && (
+              <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--text-dim)]">
+                {entry.matches} {entry.matches === 1 ? "match" : "matches"}
+              </span>
+            </button>
+          );
+        })}
+        {fileGroups.length > 100 && (
           <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
-            +{matches.length - 100} more…
+            +{fileGroups.length - 100} more files…
           </div>
         )}
       </div>
@@ -493,16 +530,27 @@ function GlobLine({ block, result, duration, onOpenFile }: {
         {files.length} {files.length === 1 ? "file" : "files"}
       </div>
       <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-        {files.slice(0, 200).map((file, index) => (
-          <button
-            key={`${file}-${index}`}
-            type="button"
-            onClick={() => onOpenFile?.(file)}
-            className="block w-full truncate rounded px-1.5 py-0.5 text-left font-mono text-[11px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-          >
-            {file}
-          </button>
-        ))}
+        {files.slice(0, 200).map((file, index) => {
+          const { dir, base } = splitPath(file);
+          return (
+            <button
+              key={`${file}-${index}`}
+              type="button"
+              onClick={() => onOpenFile?.(file)}
+              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)]"
+            >
+              <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
+              <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
+                {base}
+              </span>
+              {dir && (
+                <span className="min-w-0 truncate font-mono text-[10px] text-[var(--text-dim)]">
+                  {dir}
+                </span>
+              )}
+            </button>
+          );
+        })}
         {files.length > 200 && (
           <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
             +{files.length - 200} more…
@@ -760,47 +808,56 @@ export function ToolLine({
 /* -------------------------------------------------------------------------- */
 
 /**
- * Collapsible group for 3+ consecutive exploring tool calls. Live while any
- * child is still running (auto-expanded), auto-collapses when the run ends.
+ * Collapsible group for 2+ consecutive tool calls sharing a bucket. Live while
+ * any child is running (auto-expanded), auto-collapses when the run ends.
+ *
+ * `variant`:
+ * - "exploring" — read / grep / glob / fetch / web_search
+ * - "bash"      — shell commands
  */
 export function ExploringGroup({
   blocks,
   toolResults,
   toolCallDurations,
   onOpenFile,
+  variant = "exploring",
 }: {
   blocks: ToolCallContent[];
   toolResults?: Map<string, ToolResultMessage>;
   toolCallDurations?: Map<string, number>;
   onOpenFile?: (path: string) => void;
+  variant?: "exploring" | "bash";
 }) {
-  const live = blocks.some((block) => {
-    const result = toolResults?.get(block.toolCallId);
-    return !result;
-  });
+  const live = blocks.some((block) => !toolResults?.get(block.toolCallId));
   const failed = blocks.reduce((count, block) => {
     const result = toolResults?.get(block.toolCallId);
     return count + (result?.isError ? 1 : 0);
   }, 0);
   const [expanded, setExpanded] = useState(live);
-  // Auto-collapse once the whole group settles.
   useMemo(() => {
     if (!live) setExpanded(false);
   }, [live]);
 
+  let label: string;
   const summaryParts: string[] = [];
-  const searches = blocks.filter((block) => {
-    const name = (block.toolName || "").toLowerCase();
-    return name === "grep" || name === "glob" || name === "web_search" || name === "websearch" || block.toolKind === "search";
-  }).length;
-  const reads = blocks.filter((block) => (block.toolName || "").toLowerCase() === "read" || block.toolKind === "read").length;
-  const fetches = blocks.filter((block) => {
-    const name = (block.toolName || "").toLowerCase();
-    return name === "fetch" || name === "web_fetch" || name === "webfetch" || block.toolKind === "fetch";
-  }).length;
-  if (searches > 0) summaryParts.push(`${searches} ${searches === 1 ? "search" : "searches"}`);
-  if (reads > 0) summaryParts.push(`${reads} ${reads === 1 ? "file" : "files"}`);
-  if (fetches > 0) summaryParts.push(`${fetches} ${fetches === 1 ? "fetch" : "fetches"}`);
+  if (variant === "bash") {
+    label = live ? "Running" : "Ran";
+    summaryParts.push(`${blocks.length} ${blocks.length === 1 ? "command" : "commands"}`);
+  } else {
+    label = live ? "Exploring" : "Explored";
+    const searches = blocks.filter((block) => {
+      const name = (block.toolName || "").toLowerCase();
+      return name === "grep" || name === "glob" || name === "web_search" || name === "websearch" || block.toolKind === "search";
+    }).length;
+    const reads = blocks.filter((block) => (block.toolName || "").toLowerCase() === "read" || block.toolKind === "read").length;
+    const fetches = blocks.filter((block) => {
+      const name = (block.toolName || "").toLowerCase();
+      return name === "fetch" || name === "web_fetch" || name === "webfetch" || block.toolKind === "fetch";
+    }).length;
+    if (searches > 0) summaryParts.push(`${searches} ${searches === 1 ? "search" : "searches"}`);
+    if (reads > 0) summaryParts.push(`${reads} ${reads === 1 ? "file" : "files"}`);
+    if (fetches > 0) summaryParts.push(`${fetches} ${fetches === 1 ? "fetch" : "fetches"}`);
+  }
   if (failed > 0) summaryParts.push(`${failed} failed`);
 
   return (
@@ -816,7 +873,7 @@ export function ExploringGroup({
           <ChevronRight size={12} className="shrink-0 text-[var(--text-dim)]" />
         )}
         <span className="font-mono text-[11px] font-semibold text-[var(--text)]">
-          {live ? "Exploring" : "Explored"}
+          {label}
         </span>
         <span className="truncate font-mono text-[10px] text-[var(--text-dim)]">
           {summaryParts.join(" · ")}

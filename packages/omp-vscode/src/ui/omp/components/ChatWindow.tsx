@@ -216,20 +216,26 @@ function withAssistantBlocks(
 function ProcessDetailsGroup({
   messageCount,
   toolCallCount,
+  durationSec,
   children,
   t,
 }: {
   messageCount: number;
   toolCallCount: number;
+  durationSec?: number;
   children: ReactNode;
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
-  const parts = [
-    t("chat.processDetails"),
-    `${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`,
-  ];
+  const parts = [t("chat.processDetails")];
+  if (durationSec !== undefined && durationSec > 0) {
+    const minutes = Math.floor(durationSec / 60);
+    const seconds = durationSec % 60;
+    const formatted = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    parts.push(`Worked for ${formatted}`);
+  }
+  parts.push(`${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`);
   if (toolCallCount > 0)
     parts.push(
       `${toolCallCount} ${t(toolCallCount === 1 ? "chat.toolCall" : "chat.toolCalls")}`
@@ -1615,6 +1621,7 @@ export function ChatWindow({
                               countToolCalls(messages, visibleProcessIndices) +
                               countToolCallBlocks(finalSplit.processBlocks)
                             }
+                            durationSec={groupDuration}
                           >
                             {visibleProcessIndices.map((processIdx) =>
                               renderMessage(processIdx, {
@@ -1655,21 +1662,6 @@ export function ChatWindow({
                             messageOverride: finalAnswerMessage,
                           })
                         );
-                        if (
-                          groupDuration !== undefined &&
-                          groupDuration > 0 &&
-                          !isLiveTail
-                        ) {
-                          rendered.push(
-                            <div
-                              key={`turn-duration-${userIdx}`}
-                              className="mt-0.5 flex items-center justify-end gap-1 pr-1 font-mono text-[10px] text-[var(--text-dim)] tabular-nums"
-                            >
-                              <Clock size={10} strokeWidth={1.8} />
-                              {groupDuration}s
-                            </div>
-                          );
-                        }
                       }
                       for (
                         let renderIdx = finalAssistantIdx + 1;

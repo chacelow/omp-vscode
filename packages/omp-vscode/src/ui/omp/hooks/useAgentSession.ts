@@ -310,6 +310,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessages>({ steering: [], followUp: [] });
   const [snapshot, setSnapshot] = useState<AcpSessionState | null>(null);
   const [pendingRestoreModel, setPendingRestoreModel] = useState<SelectedModel | null>(null);
+  // Optimistic model override: shows immediately on picker click and clears
+  // once the ACP snapshot catches up. Without it the picker looks unresponsive
+  // while omp round-trips setConfigOption.
+  const [optimisticModel, setOptimisticModel] = useState<SelectedModel | null>(null);
   const activeModes = useMemo(() => activeModesFromSnapshot(snapshot), [snapshot]);
   const [interactionDialog, setInteractionDialog] = useState<InteractionDialog | null>(null);
 
@@ -338,7 +342,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const option = snapshot?.configOptions.find((config) => config.category === "model");
     return parseModel(typeof option?.currentValue === "string" ? option.currentValue : undefined);
   }, [snapshot]);
-  const displayModel = currentModel ?? (isNew ? (newSessionModel ?? newSessionDefaultModel) : null) ?? readLastModel() ?? modelRoles.default ?? null;
+  // Once the snapshot's model matches the optimistic pick, drop the override.
+  useEffect(() => {
+    if (!optimisticModel || !currentModel) return;
+    if (currentModel.provider === optimisticModel.provider && currentModel.modelId === optimisticModel.modelId) {
+      setOptimisticModel(null);
+    }
+  }, [currentModel, optimisticModel]);
+  const displayModel = optimisticModel ?? currentModel ?? (isNew ? (newSessionModel ?? newSessionDefaultModel) : null) ?? readLastModel() ?? modelRoles.default ?? null;
   const fastMode = Boolean(snapshot?.currentMode && /fast/i.test(snapshot.currentMode));
   const bashRunning = false;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -408,8 +419,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const optimisticKey = optimisticUserMessageKeyRef.current;
       if (!optimisticKey) return enriched;
       const hasAuthoritativeMessage = enriched.some((message) => message.role === "user" && messageText(message) === optimisticKey);
-      if (hasAuthoritativeMessage) optimisticUserMessageKeyRef.current = null;
-      return enriched;
+      if (hasAuthoritativeMessage) {
+        optimisticUserMessageKeyRef.current = null;
+        return enriched;
+      }
+      // Snapshot hasn't picked up the just-sent user message yet — carry the
+      // optimistic row forward from `current` so it doesn't visibly vanish
+      // between send and first agent chunk.
+      const optimistic = current.find((message) => message.role === "user" && messageText(message) === optimisticKey);
+      if (!optimistic) return enriched;
+      return [...enriched, optimistic];
     });
     const wasRunning = agentRunningRef.current;
     agentRunningRef.current = state.promptPending;
@@ -578,14 +597,30 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleLeafChange = useCallback(async (leafId: string | null) => { if (leafId) await handleNavigate(leafId); }, [handleNavigate]);
 
   const handleModelChange = useCallback(async (provider: string, modelId: string) => {
-    const sid = sessionIdRef.current ?? await ensureNewSession(); if (!sid) return;
-    try { await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "model", value: `${provider}/${modelId}` }); }
-    catch { await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(`/model ${provider}/${modelId}`) }); }
-    saveLastModel(provider, modelId); setNewSessionModel({ provider, modelId });
+    // Optimistic: paint the picker with the chosen model immediately so the
+    // click feels instant, then round-trip through omp in the background.
+    setOptimisticModel({ provider, modelId });
+    saveLastModel(provider, modelId);
+    setNewSessionModel({ provider, modelId });
+    const sid = sessionIdRef.current ?? await ensureNewSession();
+    if (!sid) return;
+    try {
+      await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "model", value: `${provider}/${modelId}` });
+    } catch {
+      try {
+        await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(`/model ${provider}/${modelId}`) });
+      } catch {
+        // Rollback the optimistic paint if both channels fail.
+        setOptimisticModel(null);
+      }
+    }
   }, [ensureNewSession]);
+
   const handleThinkingLevelChange = useCallback(async (level: ThinkingLevelOption) => {
-    setThinkingLevel(level); if (level === "auto") return;
-    const sid = sessionIdRef.current ?? await ensureNewSession(); if (!sid) return;
+    setThinkingLevel(level);
+    if (level === "auto") return;
+    const sid = sessionIdRef.current ?? await ensureNewSession();
+    if (!sid) return;
     try { await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "thinking", value: level }); }
     catch { await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(`/thinking-level ${level}`) }); }
   }, [ensureNewSession]);
@@ -687,7 +722,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     else if (event.type === "acp/elicitationRequest") setInteractionDialog(event.request);
     else if (event.type === "acp/error") setError(event.message);
   }), [addNotice, applySnapshot]);
-  useEffect(() => { if (!session) return; sessionIdRef.current = session.id; void loadSession(session.id, true); void loadModels(); return () => { void acpRequest({ type: "acp/unsubscribeSession", sessionId: session.id }); }; }, [loadModels, loadSession, session]);
+  // Load a session on `session.id` change only. React may hand us a new
+  // `session` OBJECT with the same id (e.g. AppShell hydrates missing
+  // projectRoot metadata after promoteNewSession) — re-running loadSession
+  // in that case wipes messages, shows the loading overlay, then races the
+  // ACP replay to rebuild them, producing a visible flicker and doubled
+  // rows during the merge.
+  useEffect(() => {
+    if (!session) return;
+    if (sessionIdRef.current === session.id) {
+      void loadModels();
+      return;
+    }
+    sessionIdRef.current = session.id;
+    void loadSession(session.id, true);
+    void loadModels();
+    return () => { void acpRequest({ type: "acp/unsubscribeSession", sessionId: session.id }); };
+  }, [loadModels, loadSession, session?.id, session]);
   useEffect(() => {
     if (session || !isNew || !newSessionCwd || sessionIdRef.current) return;
     let cancelled = false;

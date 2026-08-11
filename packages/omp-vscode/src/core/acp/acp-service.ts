@@ -107,6 +107,21 @@ function toToolCallEntry(tc: ToolCall): ToolCall {
   };
 }
 
+/**
+ * Fold a streamed content chunk into an existing block list. When the incoming
+ * chunk is a `text` block AND the last existing block is also `text`, the two
+ * strings are concatenated so a paragraph doesn't render as N separate lines.
+ * Non-text blocks (images, tool calls) are appended as-is.
+ */
+function mergeContentBlocks(prev: readonly ContentBlock[], next: ContentBlock): ContentBlock[] {
+  const tail = prev[prev.length - 1];
+  if (next.type === "text" && tail?.type === "text") {
+    const merged: ContentBlock = { ...tail, text: (tail.text ?? "") + (next.text ?? "") };
+    return [...prev.slice(0, -1), merged];
+  }
+  return [...prev, next];
+}
+
 /** The single owner of the OMP ACP process, connection, and session state. */
 export class AcpService {
   private readonly executable = resolveOmpBinary();
@@ -607,19 +622,28 @@ export class AcpService {
       case "agent_message_chunk":
       case "agent_thought_chunk": {
         const content = update.content;
-        // Add to messages
         const existing = this.sessions.get(sessionId);
         if (existing) {
           const newMessages = [...existing.messages];
-          // Find or create message with this messageId
-          const msgIdx = newMessages.findIndex((m) => m.id === update.messageId);
+          // Fallback: if omp forgot to send `messageId`, coalesce into the
+          // last message of the same role rather than pushing a fresh row
+          // per chunk. That was the "one line per chunk" bug.
+          const targetRole = update.sessionUpdate === "user_message_chunk" ? "user" : "assistant";
+          const msgIdx = update.messageId
+            ? newMessages.findIndex((m) => m.id === update.messageId)
+            : newMessages.findLastIndex((m) => m.role === targetRole);
           if (msgIdx >= 0) {
             const prev = newMessages[msgIdx];
             if (prev.role !== "toolCall") {
-              newMessages[msgIdx] = { ...prev, content: [...prev.content, content] };
+              // If the incoming chunk is text and the tail block is also
+              // text, concatenate their strings — the ACP stream fragments
+              // text one delta at a time; the renderer treats each block
+              // as a paragraph, so unmerged fragments show as one line each.
+              const nextContent = mergeContentBlocks(prev.content, content);
+              newMessages[msgIdx] = { ...prev, content: nextContent };
             }
           } else {
-            newMessages.push({ id: update.messageId ?? crypto.randomUUID(), role: update.sessionUpdate === "user_message_chunk" ? "user" : "assistant", content: [content] });
+            newMessages.push({ id: update.messageId ?? crypto.randomUUID(), role: targetRole, content: [content] });
           }
           patch.messages = newMessages;
         }
