@@ -233,23 +233,36 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           break;
 
         case "openFile": {
-          const uri = vscode.Uri.file(msg.path);
+          // Agents commonly append line ranges to paths (`file.ts:12`, `file.ts:12-24`,
+          // `file.ts#L12`, `file.ts#L12-24`). Split them off before touching the FS
+          // so the actual file is found; otherwise `stat` would falsely report the
+          // path as missing and the "File not found" warning would fire on valid files.
+          const raw = msg.path;
+          const rangeMatch = raw.match(/^(?<file>.+?)(?:[:#]L?(?<start>\d+)(?:[-:]L?(?<end>\d+))?)?$/);
+          const filePath = rangeMatch?.groups?.file ?? raw;
+          const startLine = rangeMatch?.groups?.start ? Math.max(0, Number.parseInt(rangeMatch.groups.start, 10) - 1) : null;
+          const endLine = rangeMatch?.groups?.end ? Math.max(0, Number.parseInt(rangeMatch.groups.end, 10) - 1) : startLine;
+          const uri = vscode.Uri.file(filePath);
           try {
             await vscode.workspace.fs.stat(uri);
           } catch {
-            void vscode.window.showWarningMessage(
-              `File not found: ${msg.path}`,
-            );
-            this.log.appendLine(`[openFile] missing: ${msg.path}`);
+            void vscode.window.showWarningMessage(`File not found: ${filePath}`);
+            this.log.appendLine(`[openFile] missing: ${filePath}`);
             this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
             break;
           }
           try {
             const doc = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(doc, { preview: false });
+            const options: vscode.TextDocumentShowOptions = { preview: false };
+            if (startLine !== null) {
+              const start = new vscode.Position(startLine, 0);
+              const end = new vscode.Position(endLine ?? startLine, 0);
+              options.selection = new vscode.Range(start, end);
+            }
+            await vscode.window.showTextDocument(doc, options);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            void vscode.window.showErrorMessage(`Failed to open ${msg.path}: ${message}`);
+            void vscode.window.showErrorMessage(`Failed to open ${filePath}: ${message}`);
           }
           this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
           break;

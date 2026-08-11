@@ -26,6 +26,10 @@ const buttonVariants = cva(
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "size-9",
+        // Compact 28×28 icon-only button for dense toolbars (top bar,
+        // composer). `rounded-md` gives a square-with-rounded-corners hover
+        // halo, not a wide rectangle.
+        toolbar: "h-7 w-7 shrink-0 rounded-md p-0 [&_svg:not([class*='size-'])]:size-[15px]",
       },
     },
     defaultVariants: {

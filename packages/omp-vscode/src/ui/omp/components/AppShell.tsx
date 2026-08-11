@@ -26,7 +26,7 @@ import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { Spinner, LoadingState } from "./ui/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Check, Copy, Gauge, History, Map, Settings } from "lucide-react";
+import { Check, Copy, FileText, Gauge, History, Map, PanelLeftClose, PanelLeftOpen, Settings, ShieldAlert } from "lucide-react";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -49,8 +49,6 @@ import type { ChatInputHandle } from "./ChatInput";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 
 type SessionCopyField = "file" | "id";
-
-const TOP_BAR_ICON_BUTTON_SIZE = 36;
 
 export function AppShell() {
   return <PreferencesProvider><AppShellContent /></PreferencesProvider>;
@@ -766,125 +764,63 @@ function AppShellContent() {
       {/* Center: chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar with sidebar toggle */}
-        <div ref={topBarRef} style={{ position: "relative", display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
+        <div ref={topBarRef} className="relative flex flex-shrink-0 items-center gap-0.5 border-b border-[var(--border)] bg-[var(--bg-panel)] px-1.5" style={{ height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)" }}>
           {initialCwdStatus === "validating" && (
-            <Spinner size={12} className="ml-3 shrink-0 text-[var(--text-dim)]" />
+            <Spinner size={12} className="mx-1 shrink-0 text-[var(--text-dim)]" />
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="toolbar"
             onClick={handleSidebarToggle}
-             title={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
-             aria-label={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
-              background: "none", border: "none", borderRight: "1px solid var(--border)",
-              color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+            title={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
+            aria-label={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
+            aria-pressed={sidebarOpen}
+            className={cn("text-[var(--text-muted)]", sidebarOpen && "text-[var(--text)]")}
           >
-            {sidebarOpen ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
+            {sidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+          </Button>
           <LanguagePicker />
           {showChat && projectTrust?.requiresTrust && !projectTrust.trusted && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="toolbar"
               onClick={() => {
                 setProjectTrustError(null);
                 setProjectTrustDialogOpen(true);
               }}
               title={translate("trust.resourcesNotLoaded")}
               aria-label={translate("trust.resourcesNotLoaded")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                height: "100%",
-                padding: isMobile ? "0 10px" : "0 12px",
-                background: "none",
-                border: "none",
-                borderRight: "1px solid var(--border)",
-                color: "#d97706",
-                cursor: "pointer",
-                flexShrink: 0,
-                fontSize: 11,
-                whiteSpace: "nowrap",
-              }}
+              className="text-[#d97706] hover:text-[#f59e0b]"
             >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-                <path d="M12 8v4" />
-                <path d="M12 16h.01" />
-              </svg>
-              {!isMobile && <span>{translate("trust.resourcesNotLoaded")}</span>}
-            </button>
+              <ShieldAlert />
+            </Button>
           )}
           {showChat && (
-            <div className="relative flex h-full items-stretch">
+            <>
               <Button
-                type="button"
                 variant="ghost"
-                size="sm"
+                size="toolbar"
                 onClick={() => setTreeOpen((o) => !o)}
                 title={translate("history.full")}
                 aria-label={translate("history.full")}
                 aria-pressed={treeOpen}
-                className={cn(
-                  "h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
-                  treeOpen && "bg-[var(--bg-selected)] text-[var(--text)]"
-                )}
+                className={cn("text-[var(--text-muted)]", treeOpen && "bg-[var(--bg-selected)] text-[var(--text)]")}
               >
-                <History size={15} />
+                <History />
               </Button>
               <Button
-                type="button"
                 variant="ghost"
-                size="sm"
+                size="toolbar"
                 onClick={() => setMinimapOpen((o) => !o)}
                 title={translate("i18n.sessionMap") ?? "Conversation map"}
                 aria-label={translate("i18n.sessionMap") ?? "Conversation map"}
                 aria-pressed={minimapOpen}
-                className={cn(
-                  "h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
-                  minimapOpen && "bg-[var(--bg-selected)] text-[var(--text)]"
-                )}
+                className={cn("text-[var(--text-muted)]", minimapOpen && "bg-[var(--bg-selected)] text-[var(--text)]")}
               >
-                <Map size={15} />
+                <Map />
               </Button>
               {treeOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    zIndex: 60,
-                    maxHeight: "min(60vh, 420px)",
-                    overflowY: "auto",
-                    padding: "8px 10px",
-                    background: "var(--bg-panel)",
-                    borderBottom: "1px solid var(--border)",
-                    boxShadow: "0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.10))",
-                  }}
-                >
+                <div className="absolute inset-x-0 top-full z-[60] max-h-[min(60vh,420px)] overflow-y-auto border-b border-[var(--border)] bg-[var(--bg-panel)] p-2 shadow-[0_10px_28px_var(--vscode-widget-shadow,rgba(0,0,0,0.10))]">
                   {branchTree.length > 0 ? (
                     <SessionTreeNodes
                       tree={branchTree}
@@ -915,47 +851,46 @@ function AppShellContent() {
               />
               <Button
                 ref={systemBtnRef}
-                type="button"
                 variant="ghost"
-                size="sm"
+                size="toolbar"
                 onClick={() => toggleTopPanel("system")}
                 title={translate("system.prompt")}
                 aria-label={translate("system.prompt")}
                 aria-pressed={activeTopPanel === "system"}
                 className={cn(
-                  "h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
+                  "text-[var(--text-muted)]",
                   activeTopPanel === "system" && "bg-[var(--bg-selected)] text-[var(--text)]",
-                  systemPrompt && "text-[var(--accent)]"
+                  systemPrompt && "text-[var(--accent)]",
                 )}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="8" y1="13" x2="16" y2="13" />
-                  <line x1="8" y1="17" x2="13" y2="17" />
-                </svg>
+                <FileText />
               </Button>
-            </div>
+            </>
           )}
-          <Button type="button" variant="ghost" size="sm" onClick={() => { void hostCall("openWorkbench", {}); }} title="Open Workbench" aria-label="Open Workbench" className="h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)]">
-            <Settings size={15} />
+          <Button
+            variant="ghost"
+            size="toolbar"
+            onClick={() => { void hostCall("openWorkbench", {}); }}
+            title="Open Workbench"
+            aria-label="Open Workbench"
+            className="text-[var(--text-muted)]"
+          >
+            <Settings />
           </Button>
-          {/* Session panel entry — stats moved to the ChatFooterBar */}
           {showChat && (
             <Button
-              type="button"
               variant="ghost"
-              size="sm"
+              size="toolbar"
               onClick={() => toggleTopPanel("session")}
               title={translate("session.title")}
               aria-label={translate("session.title")}
               aria-pressed={activeTopPanel === "session"}
               className={cn(
-                "ml-auto h-[calc(100%-8px)] w-9 rounded-[7px] p-0 text-[var(--text-muted)] transition-colors",
+                "ml-auto text-[var(--text-muted)]",
                 activeTopPanel === "session" && "bg-[var(--bg-selected)] text-[var(--text)]",
               )}
             >
-              <Gauge size={15} />
+              <Gauge />
             </Button>
           )}
           {/* Top panel dropdown — shared, only one active at a time */}

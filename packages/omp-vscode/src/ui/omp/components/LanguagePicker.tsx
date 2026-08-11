@@ -1,34 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
+import { Globe } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 import { useTheme } from "@/hooks/useTheme";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 const LANG_OPTIONS: { id: "en" | "zh-CN"; label: string; sub: string; flag: string }[] = [
   { id: "en", label: "English", sub: "English", flag: "🇺🇸" },
   { id: "zh-CN", label: "中文", sub: "Chinese (Simplified)", flag: "🇨🇳" },
 ];
 
-const GlobeIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-    style={{ flexShrink: 0 }}
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" y1="12" x2="22" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-);
-
-export function LanguagePicker() {
+export function LanguagePicker(): JSX.Element {
   const { locale, setLocale } = useI18n();
   const { isStarfield } = useTheme();
   const [open, setOpen] = useState(false);
@@ -50,69 +34,26 @@ export function LanguagePicker() {
     };
   }, [open]);
 
+  const activeLabel = locale === "zh-CN" ? "中文" : "English";
+
   return (
-    <div ref={rootRef} style={{ position: "relative", flexShrink: 0 }}>
-      {/* Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          // Quick toggle on primary click or open dropdown on secondary
-          setOpen((v) => !v);
-        }}
-        title={`Language: ${locale === "zh-CN" ? "中文" : "English"} (Click to switch)`}
+    <div ref={rootRef} className="relative shrink-0">
+      <Button
+        variant="ghost"
+        size="toolbar"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        title={`Language: ${activeLabel}`}
         aria-label="Switch language"
         aria-haspopup="listbox"
         aria-expanded={open}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 5,
-          height: 36,
-          padding: "0 10px",
-          background: "none",
-          border: "none",
-          borderRight: "1px solid var(--border)",
-          color: isStarfield ? "#d99b26" : "var(--text-muted)",
-          cursor: "pointer",
-          fontSize: 11,
-          whiteSpace: "nowrap",
-          transition: "color 0.12s, background 0.12s",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--bg-hover)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "none";
-        }}
+        className={cn(
+          "text-[var(--text-muted)]",
+          isStarfield && "text-[#d99b26]",
+          open && "bg-[var(--bg-selected)] text-[var(--text)]",
+        )}
       >
-        <GlobeIcon />
-        <span
-          style={{
-            fontFamily: "var(--font-mono, monospace)",
-            letterSpacing: "0.04em",
-            fontSize: 10,
-            fontWeight: 600,
-            opacity: 0.9,
-          }}
-        >
-          {locale === "zh-CN" ? "中文" : "EN"}
-        </span>
-        {/* Chevron */}
-        <svg
-          width="8"
-          height="8"
-          viewBox="0 0 10 10"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}
-          aria-hidden="true"
-        >
-          <polyline points="2 3.5 5 6.5 8 3.5" />
-        </svg>
-      </button>
+        <Globe />
+      </Button>
 
       {/* Dropdown Menu */}
       {open && (
