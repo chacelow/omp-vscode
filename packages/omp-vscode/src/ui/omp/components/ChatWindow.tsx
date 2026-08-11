@@ -547,11 +547,12 @@ export function ChatWindow({
       setVisibleCount((prev) => getNextVisibleCount(prev));
     };
     container.addEventListener("scroll", check, { passive: true });
-    // Also probe once on mount / after messages change — if the user was
-    // already sitting near the top, we want to fill the viewport.
     check();
     return () => container.removeEventListener("scroll", check);
-  }, [scrollContainerRef, messages.length]);
+    // `loading` matters because the scroll container is unmounted while the
+    // session-loading state is shown; once loading flips false the container
+    // is fresh and we need to (re)attach the listener.
+  }, [scrollContainerRef, loading, messages.length]);
 
   // Release the loading guard once the new page has been prepended and the
   // scroll restoration effect below has run.

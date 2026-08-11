@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, Copy, Check, ExternalLink, FileText, Folder, Search } from "lucide-react";
 import {
   Popover,
@@ -207,6 +207,23 @@ function ToolLineBase({
   icon,
 }: ToolLineBaseProps) {
   const [open, setOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    if (!hover) return;
+    closeTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+  const openNow = () => {
+    cancelClose();
+    if (hover) setOpen(true);
+  };
+
   const primaryNode = onPrimaryClick ? (
     <button
       type="button"
@@ -232,16 +249,18 @@ function ToolLineBase({
     </span>
   );
 
+  // The row spans the full width of the message column so that the hover hit
+  // area covers the whole line regardless of content length.
   const row = (
     <div
       className={cn(
-        "group flex min-w-0 items-center gap-1.5 text-[12px]",
+        "group flex w-full min-w-0 items-center gap-1.5 py-0.5 text-[12px]",
         isError && "opacity-70"
       )}
-      onMouseEnter={hover ? () => setOpen(true) : undefined}
-      onMouseLeave={hover ? () => setOpen(false) : undefined}
-      onFocus={hover ? () => setOpen(true) : undefined}
-      onBlur={hover ? () => setOpen(false) : undefined}
+      onMouseEnter={openNow}
+      onMouseLeave={scheduleClose}
+      onFocus={openNow}
+      onBlur={scheduleClose}
     >
       <StatusDot isError={isError} isPending={isPending} />
       {icon}
@@ -272,17 +291,22 @@ function ToolLineBase({
 
   if (!hover) return row;
 
+  // sideOffset={0} + inner margin makes the visual gap while keeping the hit
+  // area continuous: the transparent PopoverContent extends right up to the
+  // row, so moving the pointer down never crosses dead space.
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(next) => (next ? openNow() : scheduleClose())}>
       <PopoverTrigger asChild>{row}</PopoverTrigger>
       <PopoverContent
         align="start"
-        sideOffset={6}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        className="w-[min(520px,90vw)] max-w-none p-0"
+        sideOffset={0}
+        onMouseEnter={openNow}
+        onMouseLeave={scheduleClose}
+        className="w-[min(520px,90vw)] max-w-none border-none bg-transparent p-0 shadow-none"
       >
-        {hover}
+        <div className="mt-1.5 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-panel)] text-[var(--text)] shadow-md">
+          {hover}
+        </div>
       </PopoverContent>
     </Popover>
   );
