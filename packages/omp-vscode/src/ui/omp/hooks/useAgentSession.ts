@@ -411,6 +411,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (hasAuthoritativeMessage) optimisticUserMessageKeyRef.current = null;
       return enriched;
     });
+    const wasRunning = agentRunningRef.current;
     agentRunningRef.current = state.promptPending;
     setAgentRunning(state.promptPending);
     const activeTools = Object.entries(state.toolCalls).flatMap(([id, tool]) => tool.status === "in_progress" ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }] : []);
@@ -445,7 +446,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setLiveTps(null);
       tpsRef.current = { chars: 0, startedAt: 0 };
       if (isCompacting) setIsCompacting(false);
-      onAgentEnd?.();
+      // Only fire onAgentEnd on the pending→idle transition, not on every
+      // idle snapshot. omp publishes snapshots for usage_update / plan /
+      // tool_call state that arrive after the agent has settled, and each
+      // one would otherwise re-fire onAgentEnd → bump sidebar refreshKey →
+      // spam worktreesList/sessionsList every couple of seconds.
+      if (wasRunning) onAgentEnd?.();
     }
   }, [isCompacting, onAgentEnd]);
 
@@ -727,12 +733,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }).finally(() => setPendingRestoreModel(null));
   }, [pendingRestoreModel, snapshot?.stopReason]);
 
-  // ACP doesn't emit per-message usage/duration/ttft. omp persists them to the
-  // session JSONL — refetch on every turn end and merge onto local messages by
-  // assistant-index alignment.
+  // ACP doesn't emit per-message usage/duration/ttft. omp persists them to
+  // the session JSONL — refetch once per turn end and merge onto local
+  // messages by assistant-index alignment. Firing on every snapshot revision
+  // spams sessionTail because omp publishes snapshots for usage_update,
+  // plan, and tool_call state after the turn settles.
+  const lastHydratedStopReasonRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!snapshot || snapshot.promptPending) return;
-    if (!snapshot.stopReason && (snapshot.messages?.length ?? 0) === 0) return;
+    if (!snapshot.stopReason) return;
+    if (lastHydratedStopReasonRef.current === snapshot.stopReason && (snapshot.messages?.length ?? 0) === 0) return;
+    // Signature that changes only on a real turn boundary: stopReason + count.
+    const signature = `${snapshot.stopReason}#${snapshot.messages?.length ?? 0}`;
+    if (lastHydratedStopReasonRef.current === signature) return;
+    lastHydratedStopReasonRef.current = signature;
     const sessionId = sessionIdRef.current;
     if (!sessionId) return;
     let cancelled = false;
@@ -759,7 +773,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [snapshot?.promptPending, snapshot?.stopReason, snapshot?.revision]);
+  }, [snapshot?.promptPending, snapshot?.stopReason, snapshot?.messages?.length]);
 
 
   return {
