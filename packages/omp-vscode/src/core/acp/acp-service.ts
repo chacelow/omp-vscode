@@ -614,7 +614,10 @@ export class AcpService {
           // Find or create message with this messageId
           const msgIdx = newMessages.findIndex((m) => m.id === update.messageId);
           if (msgIdx >= 0) {
-            newMessages[msgIdx] = { ...newMessages[msgIdx], content: [...newMessages[msgIdx].content, content] };
+            const prev = newMessages[msgIdx];
+            if (prev.role !== "toolCall") {
+              newMessages[msgIdx] = { ...prev, content: [...prev.content, content] };
+            }
           } else {
             newMessages.push({ id: update.messageId ?? crypto.randomUUID(), role: update.sessionUpdate === "user_message_chunk" ? "user" : "assistant", content: [content] });
           }
