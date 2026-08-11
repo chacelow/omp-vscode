@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type JSX } from "react";
 import { hostCall } from "../../../bridge";
 import { ompExtensions } from "@/lib/ext-methods";
 import { McpAddWizard } from "../panels/McpAddWizard";
+import { useI18n } from "@/hooks/useI18n";
 
 type McpScope = "user" | "project";
 
@@ -17,7 +18,7 @@ function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-function parseMcpServer(extension: unknown): McpServer | null {
+function parseMcpServer(extension: unknown, unknownTransport: string): McpServer | null {
   if (!extension || typeof extension !== "object") return null;
   const value = extension as Record<string, unknown>;
   if (value.kind !== "mcp") return null;
@@ -31,8 +32,8 @@ function parseMcpServer(extension: unknown): McpServer | null {
   const raw = value.raw;
   const rawValue = raw && typeof raw === "object" ? raw as Record<string, unknown> : undefined;
   const transport = rawValue && "transport" in rawValue
-    ? readString(rawValue.transport) ?? "(unknown transport)"
-    : "(unknown transport)";
+    ? readString(rawValue.transport) ?? unknownTransport
+    : unknownTransport;
   const description = rawValue && "description" in rawValue
     ? readString(rawValue.description)
     : undefined;
@@ -71,6 +72,7 @@ function ServerRow({
   onTest: () => void;
   onRemove: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const scope = server.level as McpScope;
   return (
     <section
@@ -115,10 +117,10 @@ function ServerRow({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <button type="button" disabled={testing || removing} onClick={onTest} style={actionButtonStyle}>
-          {testing ? "Testing…" : "Test"}
+          {testing ? t("mcp.state.testing") : t("mcp.action.test")}
         </button>
         <button type="button" disabled={testing || removing} onClick={onRemove} style={actionButtonStyle}>
-          {removing ? "Removing…" : "Remove"}
+          {t("mcp.action.remove")}
         </button>
       </div>
     </section>
@@ -126,6 +128,7 @@ function ServerRow({
 }
 
 export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
+  const { t } = useI18n();
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,14 +142,14 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
     setError(null);
     try {
       const result = await ompExtensions(cwd);
-      setServers(result.extensions.map(parseMcpServer).filter((server): server is McpServer => server !== null));
+      setServers(result.extensions.map((extension) => parseMcpServer(extension, t("mcp.transport.unknown"))).filter((server): server is McpServer => server !== null));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to load MCP servers.");
       setServers([]);
     } finally {
       setLoading(false);
     }
-  }, [cwd]);
+  }, [cwd, t]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -158,12 +161,14 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
     const key = `${server.level}:${server.name}`;
     const scope = server.level as McpScope;
     setTesting(key);
-    showStatus(server, "Testing connection…");
+    showStatus(server, t("mcp.state.testing"));
     try {
       const result = await hostCall("mcpTest", { name: server.name, scope });
-      showStatus(server, result.ok ? result.output ?? "Connection succeeded." : result.error ?? "Connection failed.");
+      const state = result.ok ? t("mcp.state.success") : t("mcp.state.failed");
+      const detail = result.ok ? result.output : result.error;
+      showStatus(server, detail ? `${state}: ${detail}` : state);
     } catch (reason) {
-      showStatus(server, reason instanceof Error ? reason.message : "Connection test failed.");
+      showStatus(server, `${t("mcp.state.failed")}: ${reason instanceof Error ? reason.message : "Connection test failed."}`);
     } finally {
       setTesting(null);
     }
@@ -171,7 +176,7 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
 
   const removeServer = async (server: McpServer) => {
     const scope = server.level as McpScope;
-    if (!window.confirm(`Remove MCP server “${server.name}” from ${scope} configuration?`)) return;
+    if (!window.confirm(t("mcp.confirmRemove", { name: server.name }))) return;
 
     const key = `${server.level}:${server.name}`;
     setRemoving(key);
@@ -219,16 +224,16 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
       <main style={{ boxSizing: "border-box", margin: "0 auto", maxWidth: 920, padding: "20px 24px 32px" }}>
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>MCP servers</h1>
+            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{t("mcp.title")}</h1>
             <p style={{ margin: "4px 0 0", color: "var(--text-dim)", fontSize: 12 }}>Manage Model Context Protocol server connections.</p>
           </div>
-          <button type="button" title="Reload MCP servers" aria-label="Reload MCP servers" disabled={loading} onClick={() => void reload()} style={actionButtonStyle}>↻</button>
+          <button type="button" title={t("mcp.action.reload")} aria-label={t("mcp.action.reload")} disabled={loading} onClick={() => void reload()} style={actionButtonStyle}>↻</button>
         </header>
 
         {loading ? <p role="status" style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}>Loading MCP servers…</p> : null}
         {error ? <p role="alert" style={{ color: "var(--vscode-errorForeground, #f48771)", fontSize: 12, marginTop: 16 }}>{error}</p> : null}
-        {!loading && !error && !hasConfiguredServers ? <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}>No MCP servers configured. Click “Add Server” to configure one.</p> : null}
-        {!loading && !error ? <>{renderSection("User servers", userServers)}{renderSection("Project servers", projectServers)}</> : null}
+        {!loading && !error && !hasConfiguredServers ? <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}>{t("mcp.empty")}</p> : null}
+        {!loading && !error ? <>{renderSection(t("mcp.section.user"), userServers)}{renderSection(t("mcp.section.project"), projectServers)}</> : null}
 
         <button
           type="button"
@@ -244,7 +249,7 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
             padding: "7px 12px",
           }}
         >
-          Add MCP server
+          {t("mcp.action.add")}
         </button>
       </main>
     </div>

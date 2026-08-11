@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type JSX } from "react";
 import { ompUsage } from "../../lib/ext-methods";
+import { useI18n } from "@/hooks/useI18n";
 
 type UnknownRecord = Record<string, unknown>;
 type UsageAmount = { used?: number; usedFraction?: number; remainingFraction?: number; unit?: string };
@@ -74,12 +75,12 @@ function formatProviderName(id: string): string {
   return id.split(/[-_]/g).map((part) => part ? part[0].toUpperCase() + part.slice(1) : "").join(" ");
 }
 
-function formatUsageAmount(amount: UsageAmount): string {
+function formatUsageAmount(amount: UsageAmount, t: (key: string, params?: Record<string, string | number>) => string): string {
   const used = amount.used ?? (amount.usedFraction === undefined ? undefined : amount.usedFraction * 100);
   const remaining = amount.remainingFraction ?? (amount.usedFraction === undefined ? undefined : Math.max(0, 1 - amount.usedFraction));
   const unit = amount.unit === "percent" ? "%" : amount.unit ? ` ${amount.unit}` : "";
-  const usedText = used === undefined ? "unknown used" : `${used.toFixed(2)}${unit} used`;
-  return `${usedText}${remaining === undefined ? "" : ` (${(remaining * 100).toFixed(1)}% left)`}`;
+  const usedText = used === undefined ? t("usage.usedUnknown") : t("usage.usedText", { amount: `${used.toFixed(2)}${unit}` });
+  return `${usedText}${remaining === undefined ? "" : t("usage.remainingText", { percent: (remaining * 100).toFixed(1) })}`;
 }
 
 function limitTitle(limit: UsageLimit): string {
@@ -92,6 +93,7 @@ function limitTitle(limit: UsageLimit): string {
 const buttonStyle = { padding: "4px 10px", border: "1px solid var(--vscode-button-border, transparent)", borderRadius: 2, background: "var(--vscode-button-secondaryBackground)", color: "var(--vscode-button-secondaryForeground)", fontFamily: "var(--vscode-font-family)", fontSize: 12, cursor: "pointer" } as const;
 
 export function UsagePanel({ onOpenReset }: { onOpenReset: () => void }): JSX.Element {
+  const { t } = useI18n();
   const [reports, setReports] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,12 +126,12 @@ export function UsagePanel({ onOpenReset }: { onOpenReset: () => void }): JSX.El
   return <div style={{ width: "100%", height: "100%", overflow: "auto", color: "var(--vscode-foreground, var(--text))" }}>
     <div style={{ maxWidth: 920, padding: "20px 24px 32px" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, paddingBottom: 14, borderBottom: "1px solid var(--vscode-settings-headerBorder, var(--border))" }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Usage{latestFetchedAt ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>({formatDuration(now - latestFetchedAt)} ago)</span> : null}</h2>
-        <div style={{ display: "flex", gap: 8 }}><button type="button" onClick={onOpenReset} style={buttonStyle}>Reset credit…</button><button type="button" onClick={() => void reload()} disabled={loading} style={buttonStyle}>{loading ? "Loading…" : "Reload"}</button></div>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{t("usage.title")}{latestFetchedAt ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{t("usage.fetchedAgo", { duration: formatDuration(now - latestFetchedAt) })}</span> : null}</h2>
+        <div style={{ display: "flex", gap: 8 }}><button type="button" onClick={onOpenReset} style={buttonStyle}>{t("usage.action.reset")}</button><button type="button" onClick={() => void reload()} disabled={loading} style={buttonStyle}>{loading ? t("common.loading") : t("usage.action.reload")}</button></div>
       </header>
       {error ? <p role="status" style={{ margin: "14px 0 0", color: "var(--vscode-errorForeground, #f14c4c)", fontSize: 13 }}>{error}</p> : null}
-      {!loading && reports.length === 0 ? <p style={{ margin: "20px 0 0", fontSize: 13, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>No usage data available yet.</p> : null}
-      {!loading && reports.length > 0 && groups.length === 0 ? <p style={{ margin: "20px 0 0", fontSize: 13, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>No usage data available yet.</p> : null}
+      {!loading && reports.length === 0 ? <p style={{ margin: "20px 0 0", fontSize: 13, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{t("usage.empty")}</p> : null}
+      {!loading && reports.length > 0 && groups.length === 0 ? <p style={{ margin: "20px 0 0", fontSize: 13, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{t("usage.empty")}</p> : null}
       {groups.map(([provider, providerReports]) => {
         const providerNotes = [...new Set(providerReports.flatMap((report) => report.notes))];
         return <section key={provider} style={{ marginTop: 24 }}>
@@ -140,20 +142,21 @@ export function UsagePanel({ onOpenReset }: { onOpenReset: () => void }): JSX.El
             const savedResets = report.resetCredits?.availableCount ?? 0;
             return <div key={`${account}-${reportIndex}`} style={{ marginTop: 12, padding: 12, border: "1px solid var(--vscode-settings-headerBorder, var(--border))", borderRadius: 2 }}>
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: savedResets > 0 || report.limits.length > 0 ? 10 : 0 }}>{account}</div>
-              {savedResets > 0 ? <div style={{ marginBottom: 10 }}><span style={{ display: "inline-block", padding: "2px 6px", borderRadius: 2, background: "var(--vscode-badge-background, var(--accent))", color: "var(--vscode-badge-foreground, var(--text))", fontSize: 11 }}>{savedResets} saved resets available — spend via /usage reset</span>{report.resetCredits?.credits.map((credit, index) => {
+              {savedResets > 0 ? <div style={{ marginBottom: 10 }}><span style={{ display: "inline-block", padding: "2px 6px", borderRadius: 2, background: "var(--vscode-badge-background, var(--accent))", color: "var(--vscode-badge-foreground, var(--text))", fontSize: 11 }}>{t(savedResets === 1 ? "usage.savedResets" : "usage.savedResets.plural", { count: savedResets })}</span>{report.resetCredits?.credits.map((credit, index) => {
                 const expiresAt = credit.expiresAt ? Date.parse(credit.expiresAt) : Number.NaN;
                 if (Number.isNaN(expiresAt)) return null;
-                return <div key={index} style={{ marginTop: 4, fontSize: 11, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{expiresAt > now ? `expires in ${formatDuration(expiresAt - now)} (${credit.expiresAt?.slice(0, 10)})` : `expired (${credit.expiresAt?.slice(0, 10)})`}</div>;
+                const date = credit.expiresAt?.slice(0, 10) ?? "";
+                return <div key={index} style={{ marginTop: 4, fontSize: 11, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{expiresAt > now ? t("usage.expiresIn", { duration: formatDuration(expiresAt - now), date }) : t("usage.expired", { date })}</div>;
               })}</div> : null}
-              {report.limits.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>No limits reported.</p> : report.limits.map((limit, index) => {
+              {report.limits.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{t("usage.noLimits")}</p> : report.limits.map((limit, index) => {
                 const fraction = limit.amount.usedFraction === undefined ? undefined : Math.min(1, Math.max(0, limit.amount.usedFraction));
                 const color = fraction === undefined || fraction < 0.7 ? "var(--vscode-testing-iconPassed, #73c991)" : fraction < 0.9 ? "var(--vscode-editorWarning-foreground, #cca700)" : "var(--vscode-testing-iconFailed, #f14c4c)";
                 const resetsAt = limit.window?.resetsAt;
                 return <div key={`${limit.label}-${index}`} style={{ paddingTop: index ? 12 : 0, marginTop: index ? 12 : 0, borderTop: index ? "1px solid var(--vscode-settings-headerBorder, var(--border))" : undefined }}>
                   <div style={{ fontSize: 12, fontWeight: 600 }}>{limitTitle(limit)}</div>
-                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{formatUsageAmount(limit.amount)}</div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{formatUsageAmount(limit.amount, t)}</div>
                   <div aria-label={fraction === undefined ? "Usage unavailable" : `${Math.round(fraction * 100)}% used`} style={{ height: 6, marginTop: 8, borderRadius: 2, background: fraction === undefined ? "var(--vscode-progressBar-background, var(--border))" : `linear-gradient(to right, ${color} 0%, ${color} ${fraction * 100}%, var(--vscode-progressBar-background, var(--border)) ${fraction * 100}%, var(--vscode-progressBar-background, var(--border)) 100%)` }} />
-                  {resetsAt && resetsAt > now ? <div style={{ marginTop: 5, fontSize: 11, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{limit.window?.resetLabel ?? "resets"} in {formatDuration(resetsAt - now)}</div> : null}
+                  {resetsAt && resetsAt > now ? <div style={{ marginTop: 5, fontSize: 11, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{t("usage.resetsIn", { duration: formatDuration(resetsAt - now) })}</div> : null}
                   {limit.notes.length > 0 ? <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.45, color: "var(--vscode-descriptionForeground, var(--text-dim))" }}>{limit.notes.join(" • ")}</div> : null}
                 </div>;
               })}

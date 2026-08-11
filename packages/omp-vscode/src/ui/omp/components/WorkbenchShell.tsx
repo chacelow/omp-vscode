@@ -1,12 +1,13 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
+  useMemo,
   useState,
   type JSX,
   type ReactNode,
 } from "react";
+import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
@@ -34,30 +35,59 @@ type WorkbenchTab =
   | "usage"
   | "auth";
 
-const TABS: { id: WorkbenchTab; label: string; hint: string }[] = [
-  { id: "settings", label: "Settings", hint: "General preferences" },
-  { id: "models", label: "Models", hint: "Providers and role assignments" },
-  { id: "skills", label: "Skills", hint: "Installed skills" },
-  { id: "plugins", label: "Plugins", hint: "Extension modules" },
-  { id: "mcp", label: "MCP", hint: "Model Context Protocol servers" },
-  { id: "agents", label: "Agents", hint: "Custom agent definitions" },
-  { id: "usage", label: "Usage", hint: "Token spend and provider usage" },
-  { id: "auth", label: "Auth", hint: "Provider credentials" },
-];
-
-
-const TAB_SUBTITLE: Record<WorkbenchTab, string> = {
-  settings: "General preferences · saved automatically",
-  models: "Providers and models · ~/.omp/agent/models.yml",
-  skills: "Installed skills and sources",
-  plugins: "Extension modules",
-  mcp: "Model Context Protocol servers",
-  agents: "Custom agent definitions",
-  usage: "Token spend and provider usage",
-  auth: "Provider credentials",
+type WorkbenchTabDefinition = {
+  id: WorkbenchTab;
+  label: string;
+  hint: string;
 };
 
 export function WorkbenchShell(): JSX.Element {
+  const { t } = useI18n();
+  const TABS = useMemo<WorkbenchTabDefinition[]>(
+    () => [
+      {
+        id: "settings",
+        label: t("workbench.tab.settings"),
+        hint: t("workbench.tab.settings.hint"),
+      },
+      {
+        id: "models",
+        label: t("workbench.tab.models"),
+        hint: t("workbench.tab.models.hint"),
+      },
+      {
+        id: "skills",
+        label: t("workbench.tab.skills"),
+        hint: t("workbench.tab.skills.hint"),
+      },
+      {
+        id: "plugins",
+        label: t("workbench.tab.plugins"),
+        hint: t("workbench.tab.plugins.hint"),
+      },
+      {
+        id: "mcp",
+        label: t("workbench.tab.mcp"),
+        hint: t("workbench.tab.mcp.hint"),
+      },
+      {
+        id: "agents",
+        label: t("workbench.tab.agents"),
+        hint: t("workbench.tab.agents.hint"),
+      },
+      {
+        id: "usage",
+        label: t("workbench.tab.usage"),
+        hint: t("workbench.tab.usage.hint"),
+      },
+      {
+        id: "auth",
+        label: t("workbench.tab.auth"),
+        hint: t("workbench.tab.auth.hint"),
+      },
+    ],
+    [t]
+  );
   const [tab, setTab] = useState<WorkbenchTab>("settings");
   const [cwd, setCwd] = useState<string>(
     () => document.getElementById("app")?.getAttribute("data-cwd") ?? ""
@@ -138,12 +168,12 @@ export function WorkbenchShell(): JSX.Element {
               <div
                 style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}
               >
-                OMP
+                {t("workbench.title")}
               </div>
               <div
                 style={{ marginTop: 2, fontSize: 10, color: "var(--text-dim)" }}
               >
-                Workbench
+                {t("workbench.subtitle")}
               </div>
             </div>
           ) : null}
@@ -225,7 +255,7 @@ export function WorkbenchShell(): JSX.Element {
                   textWrap: "pretty",
                 }}
               >
-                {TAB_SUBTITLE[tab]}
+                {t(`workbench.tab.${tab}.hint`)}
               </p>
             </div>
           </header>

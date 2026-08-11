@@ -10,6 +10,7 @@ import {
 } from "react";
 import { X } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useI18n } from "@/hooks/useI18n";
 import { hostCall } from "../../bridge";
 import {
   SETTINGS,
@@ -109,6 +110,7 @@ function SettingCard({
   onChange,
   onOpenModelRoles,
   compact,
+  t,
 }: {
   def: SettingDef;
   value: unknown;
@@ -117,6 +119,7 @@ function SettingCard({
   onChange: (value: unknown) => void;
   onOpenModelRoles: ReactNode;
   compact: boolean;
+  t: (key: string) => string;
 }): JSX.Element {
   const label = def.label;
   const path = def.path;
@@ -128,7 +131,8 @@ function SettingCard({
     options,
     unavailable,
     onChange,
-    onOpenModelRoles
+    onOpenModelRoles,
+    t
   );
 
   return (
@@ -186,7 +190,8 @@ function renderControl(
   options: readonly SelectOption[],
   unavailable: boolean,
   onChange: (value: unknown) => void,
-  modelRoles: ReactNode
+  modelRoles: ReactNode,
+  t: (key: string) => string
 ): JSX.Element {
   if (def.type === "modelRoles") {
     return <div style={{ marginTop: 4 }}>{modelRoles}</div>;
@@ -215,7 +220,9 @@ function renderControl(
           }}
         />
         <span style={{ color: "var(--text-muted)", fontSize: 12 }}>
-          {value === true ? "Enabled" : "Disabled"}
+          {value === true
+            ? t("settings.boolean.enabled")
+            : t("settings.boolean.disabled")}
         </span>
       </label>
     );
@@ -388,6 +395,7 @@ export function SettingsPanel({
   onClose,
   onQueueModeChange,
 }: SettingsPanelProps): JSX.Element {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     SETTINGS_TABS[0].id
@@ -511,6 +519,7 @@ export function SettingsPanel({
   }, [activeTab, visibleSettings]);
 
   const modelRoles = <ModelRolesPanel cwd={cwd} sessionId={null} />;
+  const footerHint = t("workbench.footer.settings");
 
   const inner = (
     <div
@@ -571,12 +580,12 @@ export function SettingsPanel({
         >
           {activeTab === "appearance" ? (
             <div style={{ margin: "12px 0 0", padding: "8px 12px", border: "1px solid var(--vscode-inputValidation-warningBorder, var(--border))", borderRadius: 4, background: "var(--vscode-inputValidation-warningBackground, var(--bg-panel))", color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5 }}>
-              These settings target the TUI (`omp` in a terminal): theme colors, status-line format, Nerd-Font glyphs, inline-image protocol. The VS Code webview uses VS Code's own theme, so most of them have no visible effect here — they are still persisted to <code>~/.omp/agent/config.yml</code> and shared with the CLI.
+              {t("settings.appearance.tuiNote")}
             </div>
           ) : null}
           {groupedSections.length === 0 ? (
             <p style={{ padding: 20, color: "var(--text-dim)", fontSize: 13 }}>
-              No settings available in this tab.
+              {t("settings.emptyTab")}
             </p>
           ) : (
             groupedSections.map(({ group, defs }) => (
@@ -611,6 +620,7 @@ export function SettingsPanel({
                       onChange={(next) => saveValue(def.path, next)}
                       onOpenModelRoles={modelRoles}
                       compact={isMobile}
+                      t={t}
                     />
                   );
                 })}
@@ -628,7 +638,7 @@ export function SettingsPanel({
           flexShrink: 0,
         }}
       >
-        Saved automatically to ~/.omp/agent/config.yml
+        {footerHint}
       </footer>
     </div>
   );

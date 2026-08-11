@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type JSX } from "react";
 import { acpRequest, hostCall } from "../../../bridge";
+import { useI18n } from "@/hooks/useI18n";
 import {
   MODEL_ROLES,
   MODEL_ROLE_IDS,
@@ -51,6 +52,7 @@ function toModelOptions(modelList: unknown): ModelOption[] {
 }
 
 export function ModelRolesPanel({ cwd, sessionId }: { cwd: string; sessionId?: string | null }): JSX.Element {
+  const { t } = useI18n();
   const [models, setModels] = useState<ModelOption[]>([]);
   const [assignments, setAssignments] = useState<Record<ModelRole, Assignment>>(() => Object.fromEntries(
     MODEL_ROLE_IDS.map((role) => [role, { model: "", thinking: "auto" }]),
@@ -93,7 +95,7 @@ export function ModelRolesPanel({ cwd, sessionId }: { cwd: string; sessionId?: s
   };
 
   if (models.length === 0) {
-    return <p style={{ margin: 0, padding: 16, color: "var(--text-dim)", fontSize: 13 }}>Configure a provider first.</p>;
+    return <p style={{ margin: 0, padding: 16, color: "var(--text-dim)", fontSize: 13 }}>{t("modelRole.emptyState")}</p>;
   }
 
   return <div style={{ color: "var(--text)", background: "var(--bg)", width: "100%" }}>
@@ -101,12 +103,12 @@ export function ModelRolesPanel({ cwd, sessionId }: { cwd: string; sessionId?: s
       const info = MODEL_ROLES[role];
       const assignment = assignments[role];
       return <div key={role} style={{ display: "grid", gridTemplateColumns: "minmax(130px, 1fr) minmax(180px, 2fr) minmax(120px, 1fr)", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
-        <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>{info.tag}</span><strong style={{ fontSize: 13 }}>{info.name}</strong></div>
-        <select aria-label={`${info.name} model`} value={assignment.model} onChange={(event) => save(role, { ...assignment, model: event.target.value })} style={{ minWidth: 0, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-panel)", color: "var(--text)" }}>
+        <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>{info.tag}</span><strong style={{ fontSize: 13 }}>{t("modelRole." + role) ?? MODEL_ROLES[role].name}</strong></div>
+        <select aria-label={`${t("modelRole." + role) ?? info.name} ${t("modelRole.modelLabel")}`} value={assignment.model} onChange={(event) => save(role, { ...assignment, model: event.target.value })} style={{ minWidth: 0, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-panel)", color: "var(--text)" }}>
           <option value="">Select a model</option>
           {modelGroups.map(([provider, providerModels]) => <optgroup key={provider} label={provider}>{providerModels.map((model) => <option key={`${model.provider}/${model.id}`} value={`${model.provider}/${model.id}`}>{model.label}</option>)}</optgroup>)}
         </select>
-        <select aria-label={`${info.name} thinking level`} value={assignment.thinking} onChange={(event) => save(role, { ...assignment, thinking: event.target.value })} style={{ minWidth: 0, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-panel)", color: "var(--text)" }}>
+        <select aria-label={`${t("modelRole." + role) ?? info.name} ${t("modelRole.thinkingLabel")}`} value={assignment.thinking} onChange={(event) => save(role, { ...assignment, thinking: event.target.value })} style={{ minWidth: 0, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-panel)", color: "var(--text)" }}>
           {THINKING_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
         </select>
       </div>;
