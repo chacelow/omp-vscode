@@ -519,53 +519,49 @@ export function ChatWindow({
   // Only render the last N messages initially. When the user scrolls to the
   // top, load another page while keeping the scroll position stable.
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
-  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [branchSelectorOpen, setBranchSelectorOpen] = useState(false);
-  const sentinelRef = useRef<HTMLElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const hasMoreRef = useRef<boolean>(false);
+  const loadingEarlierRef = useRef<boolean>(false);
   // Message DOM refs for scroll-into-view (minimap was removed for the
   // sidebar; the refs are still used for auto-scroll to the latest message).
   const messageRefs = useRef<Array<HTMLDivElement | null>>([]);
   const prevScrollDistanceRef = useRef<number | null>(null);
 
-  // IntersectionObserver on the sentinel div at the top of the message list.
-  // Fires when the sentinel enters (or comes within 300px of) the container's
-  // viewport, then loads the next page of older messages. The rootMargin
-  // prefetches so scrolling stays smooth even on fast wheels.
+  // Auto-load earlier messages when the user scrolls near the top of the
+  // container. IntersectionObserver misbehaves in some VS Code webview
+  // layouts (nested flex + programmatic scrolls), so a plain scroll listener
+  // reads scrollTop directly — simpler and more reliable.
   useEffect(() => {
-    const sentinel = sentinelRef.current;
     const container = scrollContainerRef.current;
-    if (!sentinel || !container) return;
-    const load = () => {
+    if (!container) return;
+    const THRESHOLD_PX = 320;
+    const check = (): void => {
+      if (!hasMoreRef.current || loadingEarlierRef.current) return;
+      if (container.scrollTop > THRESHOLD_PX) return;
+      loadingEarlierRef.current = true;
       prevScrollDistanceRef.current = captureScrollDistance(
         container.scrollHeight,
         container.scrollTop
       );
-      setLoadingEarlier(true);
       setVisibleCount((prev) => getNextVisibleCount(prev));
     };
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) load();
-      },
-      { root: container, threshold: 0, rootMargin: "300px 0px 0px 0px" }
-    );
-    observer.observe(sentinel);
-    // Store the load fn on the sentinel so the manual click handler can reuse it.
-    (sentinel as HTMLElement & { __loadEarlier?: () => void }).__loadEarlier = load;
-    return () => {
-      observer.disconnect();
-      delete (sentinel as HTMLElement & { __loadEarlier?: () => void }).__loadEarlier;
-    };
-  }, [visibleCount, messages.length, scrollContainerRef]);
+    container.addEventListener("scroll", check, { passive: true });
+    // Also probe once on mount / after messages change — if the user was
+    // already sitting near the top, we want to fill the viewport.
+    check();
+    return () => container.removeEventListener("scroll", check);
+  }, [scrollContainerRef, messages.length]);
 
-  // Clear the loading indicator once the new page has been prepended and the
+  // Release the loading guard once the new page has been prepended and the
   // scroll restoration effect below has run.
   useEffect(() => {
-    if (loadingEarlier) {
-      const t = setTimeout(() => setLoadingEarlier(false), 60);
-      return () => clearTimeout(t);
-    }
-  }, [visibleCount, loadingEarlier]);
+    if (!loadingEarlierRef.current) return;
+    const timer = setTimeout(() => {
+      loadingEarlierRef.current = false;
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [visibleCount]);
 
   // After visibleCount increases (more messages prepended), restore the
   // scroll position so the viewport doesn't jump.
@@ -1680,27 +1676,27 @@ export function ChatWindow({
                       rendered.length,
                       visibleCount
                     );
+                    // Keep the imperative refs in sync so the scroll
+                    // listener can bail out when there's nothing more to
+                    // load / a load is already in flight.
+                    hasMoreRef.current = hasMore;
                     return (
                       <>
                         {hasMore && (
-                          <button
-                            ref={(el) => { sentinelRef.current = el; }}
-                            type="button"
-                            onClick={() => {
-                              const el = sentinelRef.current as (HTMLElement & { __loadEarlier?: () => void }) | null;
-                              el?.__loadEarlier?.();
-                            }}
-                            aria-busy={loadingEarlier}
-                            className="mx-auto my-2 flex w-full max-w-[420px] cursor-pointer items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-panel)] px-3 py-2 text-center text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text)]"
+                          <div
+                            ref={sentinelRef}
+                            role="status"
+                            aria-live="polite"
+                            className="mx-auto my-1 flex items-center justify-center gap-2 py-2 text-[12px] text-[var(--text-muted)]"
                           >
-                            {loadingEarlier ? (
-                              <Shimmer className="text-xs" duration={1.6} spread={1}>
-                                {t("chat.loadingEarlier", { count: startIndex })}
-                              </Shimmer>
-                            ) : (
-                              <span>{t("chat.loadEarlier", { count: startIndex })}</span>
-                            )}
-                          </button>
+                            <span
+                              className="size-1.5 animate-pulse rounded-full bg-current"
+                              aria-hidden="true"
+                            />
+                            <Shimmer className="text-[12px]" duration={2.5} spread={1}>
+                              {t("chat.loadEarlier", { count: startIndex })}
+                            </Shimmer>
+                          </div>
                         )}
                         {rendered.slice(startIndex)}
                       </>

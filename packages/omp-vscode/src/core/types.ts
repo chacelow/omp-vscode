@@ -33,11 +33,34 @@ export interface ThinkingContent {
   deferred?: boolean;
 }
 
+export type ToolCallKind =
+  | "read"
+  | "edit"
+  | "delete"
+  | "move"
+  | "search"
+  | "execute"
+  | "think"
+  | "fetch"
+  | "switch_mode"
+  | "other";
+
+export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
+
+export interface ToolCallLocation {
+  path: string;
+  line?: number;
+}
+
 export interface ToolCallContent {
   type: "toolCall";
   toolCallId: string;
   toolName: string;
   input: Record<string, unknown>;
+  toolKind?: ToolCallKind;
+  title?: string;
+  status?: ToolCallStatus;
+  locations?: ToolCallLocation[];
 }
 
 export type AssistantContentBlock = TextContent | ImageContent | ThinkingContent | ToolCallContent;

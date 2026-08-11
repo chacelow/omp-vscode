@@ -9,6 +9,8 @@ import type {
   ExtensionWidgetItem,
   SessionInfo,
   SessionTreeNode,
+  ToolCallKind,
+  ToolCallStatus,
   ToolResultMessage,
 } from "@/lib/types";
 import { getToolNamesForPreset } from "@/lib/tool-presets";
@@ -185,12 +187,21 @@ function blocksToContent(blocks: readonly ContentBlock[]): DisplayContent {
   }
   return result;
 }
+function normalizeKind(kind: string | undefined): ToolCallKind | undefined {
+  const allowed: readonly ToolCallKind[] = ["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"];
+  return kind && (allowed as readonly string[]).includes(kind) ? (kind as ToolCallKind) : undefined;
+}
+function normalizeStatus(status: string | undefined): ToolCallStatus | undefined {
+  const allowed: readonly ToolCallStatus[] = ["pending", "in_progress", "completed", "failed"];
+  return status && (allowed as readonly string[]).includes(status) ? (status as ToolCallStatus) : undefined;
+}
 function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMessage[] {
   if (message.role !== "toolCall" || !tool) return [];
   const toolName = tool.name?.trim() || tool.kind || tool.title || "tool";
   const input = typeof tool.rawInput === "object" && tool.rawInput !== null && !Array.isArray(tool.rawInput)
     ? tool.rawInput as Record<string, unknown>
     : {};
+  const locations = (tool.locations ?? []).flatMap((location) => location.path ? [{ path: location.path, line: typeof location.line === "number" ? location.line : undefined }] : []);
   let output = "";
   if (typeof tool.rawOutput === "string") output = tool.rawOutput;
   else if (tool.rawOutput !== undefined) {
@@ -198,7 +209,22 @@ function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMes
   } else {
     output = (tool.content ?? []).flatMap((item) => item.type === "content" && item.content.type === "text" ? [item.content.text] : item.type === "diff" ? [item.newText] : []).join("\n");
   }
-  const call: AssistantMessage = { role: "assistant", content: [{ type: "toolCall", toolCallId: message.toolCallId, toolName, input }], model: "", provider: "", timestamp: Date.now() };
+  const call: AssistantMessage = {
+    role: "assistant",
+    content: [{
+      type: "toolCall",
+      toolCallId: message.toolCallId,
+      toolName,
+      input,
+      toolKind: normalizeKind(tool.kind ?? undefined),
+      title: tool.title ?? undefined,
+      status: normalizeStatus(tool.status ?? undefined),
+      locations: locations.length > 0 ? locations : undefined,
+    }],
+    model: "",
+    provider: "",
+    timestamp: Date.now(),
+  };
   if (tool.status !== "completed" && tool.status !== "failed") return [call];
   const result: ToolResultMessage = { role: "toolResult", toolCallId: message.toolCallId, toolName, content: output ? [{ type: "text", text: output }] : [], isError: tool.status === "failed", timestamp: Date.now() };
   return [call, result];

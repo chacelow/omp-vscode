@@ -38,11 +38,38 @@ export interface ThinkingContent {
   deferred?: boolean;
 }
 
+export type ToolCallKind =
+  | "read"
+  | "edit"
+  | "delete"
+  | "move"
+  | "search"
+  | "execute"
+  | "think"
+  | "fetch"
+  | "switch_mode"
+  | "other";
+
+export type ToolCallStatus = "pending" | "in_progress" | "completed" | "failed";
+
+export interface ToolCallLocation {
+  path: string;
+  line?: number;
+}
+
 export interface ToolCallContent {
   type: "toolCall";
   toolCallId: string;
   toolName: string;
   input: Record<string, unknown>;
+  /** ACP tool category. Drives grouping and inline renderer selection. */
+  toolKind?: ToolCallKind;
+  /** Human-readable title supplied by the agent. */
+  title?: string;
+  /** Live execution status; absent for historical messages. */
+  status?: ToolCallStatus;
+  /** Files affected by this call — used by inline hover panels. */
+  locations?: ToolCallLocation[];
 }
 
 export type AssistantContentBlock = TextContent | ImageContent | ThinkingContent | ToolCallContent;
