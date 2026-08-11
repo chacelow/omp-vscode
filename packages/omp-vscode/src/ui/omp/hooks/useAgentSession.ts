@@ -9,6 +9,7 @@ import type {
   ExtensionWidgetItem,
   SessionInfo,
   SessionTreeNode,
+  ToolResultMessage,
 } from "@/lib/types";
 import { getToolNamesForPreset } from "@/lib/tool-presets";
 import type { SessionStatsInfo } from "@/lib/pi-types";
@@ -20,7 +21,7 @@ import type {
   AcpPermissionRequest,
   AcpSessionState,
 } from "../../../core/acp/protocol";
-import type { ContentBlock, ElicitationContentValue } from "@agentclientprotocol/sdk";
+import type { ContentBlock, ElicitationContentValue, ToolCall } from "@agentclientprotocol/sdk";
 
 export interface SessionData {
   sessionId: string;
@@ -184,6 +185,29 @@ function blocksToContent(blocks: readonly ContentBlock[]): DisplayContent {
   }
   return result;
 }
+function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMessage[] {
+  if (message.role !== "toolCall" || !tool) return [];
+  const toolName = tool.name?.trim() || tool.kind || tool.title || "tool";
+  const input = typeof tool.rawInput === "object" && tool.rawInput !== null && !Array.isArray(tool.rawInput)
+    ? tool.rawInput as Record<string, unknown>
+    : {};
+  let output = "";
+  if (typeof tool.rawOutput === "string") output = tool.rawOutput;
+  else if (tool.rawOutput !== undefined) {
+    try { output = JSON.stringify(tool.rawOutput, null, 2); } catch { output = String(tool.rawOutput); }
+  } else {
+    output = (tool.content ?? []).flatMap((item) => item.type === "content" && item.content.type === "text" ? [item.content.text] : item.type === "diff" ? [item.newText] : []).join("\n");
+  }
+  const call: AssistantMessage = { role: "assistant", content: [{ type: "toolCall", toolCallId: message.toolCallId, toolName, input }], model: "", provider: "", timestamp: Date.now() };
+  if (tool.status !== "completed" && tool.status !== "failed") return [call];
+  const result: ToolResultMessage = { role: "toolResult", toolCallId: message.toolCallId, toolName, content: output ? [{ type: "text", text: output }] : [], isError: tool.status === "failed", timestamp: Date.now() };
+  return [call, result];
+}
+
+function toAgentMessages(message: AcpMessage, tools: Record<string, ToolCall>): AgentMessage[] {
+  return message.role === "toolCall" ? toolMessages(message, tools[message.toolCallId]) : [toAgentMessage(message)];
+}
+
 function toAgentMessage(message: AcpMessage): AgentMessage {
   const content = blocksToContent(message.content);
   if (message.role === "user") {
@@ -336,7 +360,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const applySnapshot = useCallback((state: AcpSessionState) => {
     if (state.sessionId !== sessionIdRef.current) return;
     setSnapshot(state);
-    const nextMessages = state.messages.map(toAgentMessage);
+    const nextMessages = state.messages.flatMap((message) => toAgentMessages(message, state.toolCalls));
     setMessages((current) => {
       // ACP snapshots strip per-message usage/duration/ttft/timestamp because
       // ACP doesn't emit them. Preserve the JSONL-derived stats already on

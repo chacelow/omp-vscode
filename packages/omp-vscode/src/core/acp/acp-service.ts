@@ -10,6 +10,7 @@ import {
   type CreateElicitationResponse,
   type SessionMode,
   type ToolCall,
+  type ToolCallUpdate,
 } from "@agentclientprotocol/sdk";
 import { resolveOmpBinary } from "../omp-binary";
 import type {
@@ -623,15 +624,21 @@ export class AcpService {
       }
       case "tool_call": {
         const tc = update as ToolCall & { sessionUpdate: "tool_call" };
-        patch.toolCalls = { ...patch.toolCalls, [tc.toolCallId]: toToolCallEntry(tc) };
+        const existing = this.sessions.get(sessionId);
+        const toolCalls = existing?.toolCalls ?? {};
+        patch.toolCalls = { ...toolCalls, [tc.toolCallId]: toToolCallEntry(tc) };
+        if (existing && !existing.messages.some((message) => message.role === "toolCall" && message.toolCallId === tc.toolCallId)) {
+          patch.messages = [...existing.messages, { id: `tool-${tc.toolCallId}`, role: "toolCall", toolCallId: tc.toolCallId, content: [] }];
+        }
         break;
       }
       case "tool_call_update": {
-        const tcu = update as import("@agentclientprotocol/sdk").ToolCallUpdate & { sessionUpdate: "tool_call_update" };
-        const existingTc = patch.toolCalls?.[tcu.toolCallId] ?? this.sessions.get(sessionId)?.toolCalls[tcu.toolCallId];
+        const tcu = update as ToolCallUpdate & { sessionUpdate: "tool_call_update" };
+        const toolCalls = this.sessions.get(sessionId)?.toolCalls ?? {};
+        const existingTc = toolCalls[tcu.toolCallId];
         if (existingTc) {
-          const merged = toToolCallEntry({ ...existingTc, title: tcu.title ?? existingTc.title, kind: tcu.kind ?? existingTc.kind, status: tcu.status ?? existingTc.status, name: tcu.name ?? existingTc.name, content: tcu.content ?? existingTc.content, locations: tcu.locations ?? undefined });
-          patch.toolCalls = { ...patch.toolCalls, [tcu.toolCallId]: merged };
+          const merged = toToolCallEntry({ ...existingTc, title: tcu.title ?? existingTc.title, kind: tcu.kind ?? existingTc.kind, status: tcu.status ?? existingTc.status, name: tcu.name ?? existingTc.name, content: tcu.content ?? existingTc.content, locations: tcu.locations ?? undefined, rawInput: tcu.rawInput ?? existingTc.rawInput, rawOutput: tcu.rawOutput ?? existingTc.rawOutput });
+          patch.toolCalls = { ...toolCalls, [tcu.toolCallId]: merged };
         }
         break;
       }

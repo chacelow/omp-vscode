@@ -19,12 +19,9 @@ export interface AcpSessionInfo {
   messageCount?: number;
 }
 
-export interface AcpMessage {
-  id: string;
-  role: "user" | "assistant" | "thought";
-  content: ContentBlock[];
-  local?: boolean; // true = optimistic user insert, not from ACP
-}
+export type AcpMessage =
+  | { id: string; role: "user" | "assistant" | "thought"; content: ContentBlock[]; local?: boolean }
+  | { id: string; role: "toolCall"; toolCallId: string; content: [] };
 
 export interface AcpSessionState extends AcpSessionInfo {
   messages: AcpMessage[];
