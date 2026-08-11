@@ -1388,6 +1388,7 @@ export function ChatWindow({
                       }
                       if (options.showTimestamp !== undefined)
                         showTimestamp = options.showTimestamp;
+                      const isStreamingTail = streamState.isStreaming && msg.role === "assistant" && idx === messages.length - 1;
                       const view = (
                         <MessageView
                           key={`${keyPrefix}-view-${idx}`}
@@ -1430,6 +1431,7 @@ export function ChatWindow({
                           showThinking={showThinking}
                           expandAllTools={expandAllTools}
                           toolsHidden={toolsHidden}
+                          isStreaming={isStreamingTail}
                           onHoverMeta={handleHoverMeta}
                         />
                       );
@@ -1702,19 +1704,11 @@ export function ChatWindow({
                       </>
                     );
                   })()}
-                  {streamState.isStreaming && streamState.streamingMessage && (
-                    <MessageView
-                      message={streamState.streamingMessage as AgentMessage}
-                      isStreaming
-                      modelNames={modelNames}
-                      cwd={messageCwd}
-                      onOpenFile={onOpenFile}
-                      showThinking={showThinking}
-                      expandAllTools={expandAllTools}
-                      toolsHidden={toolsHidden}
-                      onHoverMeta={handleHoverMeta}
-                    />
-                  )}
+                  {/* The streaming assistant message is already the last
+                      entry in \`messages\`; MessageView receives an
+                      \`isStreaming\` hint via the block-level check inside.
+                      Separately rendering \`streamState.streamingMessage\`
+                      here duplicated the live turn on screen. */}
 
                   {agentRunning &&
                     !streamState.streamingMessage &&

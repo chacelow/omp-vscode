@@ -227,8 +227,38 @@ function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMes
     timestamp: Date.now(),
   };
   if (tool.status !== "completed" && tool.status !== "failed") return [call];
-  const result: ToolResultMessage = { role: "toolResult", toolCallId: message.toolCallId, toolName, content: output ? [{ type: "text", text: output }] : [], isError: tool.status === "failed", timestamp: Date.now() };
+  const details = tool.rawOutput !== undefined && typeof tool.rawOutput !== "string" ? tool.rawOutput : undefined;
+  const result: ToolResultMessage = { role: "toolResult", toolCallId: message.toolCallId, toolName, content: output ? [{ type: "text", text: output }] : [], isError: tool.status === "failed", details, timestamp: Date.now() };
   return [call, result];
+}
+
+/**
+ * ACP emits each tool_call as its own tool-only assistant message; that breaks
+ * cross-tool grouping in the UI, which only groups within a single assistant
+ * block list. Merge consecutive tool-only assistant messages (with toolResult
+ * dividers in between) into one assistant message so the message-scoped ToolLine
+ * grouping can fold sibling reads/greps/bashes across the whole tool run.
+ */
+function coalesceToolAssistants(messages: AgentMessage[]): AgentMessage[] {
+  const merged: AgentMessage[] = [];
+  const isToolOnlyAssistant = (message: AgentMessage): message is AssistantMessage =>
+    message.role === "assistant" &&
+    message.content.length > 0 &&
+    message.content.every((block) => block.type === "toolCall");
+
+  for (const message of messages) {
+    if (isToolOnlyAssistant(message)) {
+      let prevIndex = merged.length - 1;
+      while (prevIndex >= 0 && merged[prevIndex].role === "toolResult") prevIndex -= 1;
+      const prev = prevIndex >= 0 ? merged[prevIndex] : null;
+      if (prev && isToolOnlyAssistant(prev)) {
+        merged[prevIndex] = { ...prev, content: [...prev.content, ...message.content] };
+        continue;
+      }
+    }
+    merged.push(message);
+  }
+  return merged;
 }
 
 function toAgentMessages(message: AcpMessage, tools: Record<string, ToolCall>): AgentMessage[] {
@@ -373,7 +403,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (message.role === "user") userMessages += 1;
       if (message.role === "toolResult") toolResults += 1;
       if (message.role !== "assistant") continue;
-      assistantMessages += 1;
       toolCalls += message.content.filter((block) => block.type === "toolCall").length;
       const usage = message.usage;
       if (!usage) continue;
@@ -403,7 +432,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const applySnapshot = useCallback((state: AcpSessionState) => {
     if (state.sessionId !== sessionIdRef.current) return;
     setSnapshot(state);
-    const nextMessages = state.messages.flatMap((message) => toAgentMessages(message, state.toolCalls));
+    const nextMessages = coalesceToolAssistants(state.messages.flatMap((message) => toAgentMessages(message, state.toolCalls)));
     setMessages((current) => {
       // ACP snapshots strip per-message usage/duration/ttft/timestamp because
       // ACP doesn't emit them. Preserve the JSONL-derived stats already on
@@ -511,9 +540,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // in the background — the local snapshot from sessionDetail stays
       // authoritative until the first ACP snapshot arrives.
       const cwd = detail.cwd || newSessionCwd || session?.cwd || "";
+      const alreadyOwned = sessionIdRef.current === sid && lastLoadedSessionIdRef.current === sid;
+      lastLoadedSessionIdRef.current = sid;
+      // If this hook already owns the ACP session (e.g. we just created it
+      // via `session/new`), skip `session/load` entirely — that op is
+      // historical replay and would wipe the live transcript. Just refresh
+      // the subscription. For a genuinely different session-from-disk,
+      // call `session/load` so omp opens the JSONL and replays it.
       void (async () => {
         try {
-          await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd });
+          if (!alreadyOwned) {
+            await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd });
+          }
           await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
         } catch (acpErr) {
           addNotice({
@@ -538,21 +576,32 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const task = (async () => {
       const cwd = newSessionCwd ?? session?.cwd;
       if (!cwd) return null;
+      let sid: string | null = null;
       if (!initialForceNewSessionRef.current) {
         try {
           const listed = await hostCall("sessionsList", {});
           const recent = listed.sessions.filter((candidate) => candidate.cwd === cwd).sort((a, b) => b.modified.localeCompare(a.modified))[0];
           if (recent) {
             const resumed = await acpRequest({ type: "acp/resumeSession", sessionId: recent.id, cwd });
-            const sid = responseSessionId(resumed) ?? recent.id;
-            sessionIdRef.current = sid;
-            return sid;
+            sid = responseSessionId(resumed) ?? recent.id;
           }
         } catch { /* resume is best effort */ }
       }
-      const created = await acpRequest({ type: "acp/newSession", cwd });
-      const sid = responseSessionId(created);
+      if (!sid) {
+        const created = await acpRequest({ type: "acp/newSession", cwd });
+        sid = responseSessionId(created);
+      }
+      if (!sid) return null;
       sessionIdRef.current = sid;
+      // ACP `session/new` returns a fully-live session. Mark it as loaded
+      // so the later `selectedSession` promotion (parent hydration) does
+      // NOT trigger `loadSession(sid, true)`, which would invoke the
+      // historical-replay `session/load` op and wipe our transcript.
+      // Just subscribe — no `acp/loadSession` needed.
+      lastLoadedSessionIdRef.current = sid;
+      try {
+        await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
+      } catch { /* subscription is best-effort */ }
       return sid;
     })();
     ensuringNewSessionRef.current = task;

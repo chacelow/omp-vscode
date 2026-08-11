@@ -63,9 +63,27 @@ export function isBashTool(block: ToolCallContent): boolean {
   return name === "bash" || name === "run" || name === "shell";
 }
 
+/** True when the block modifies files (edit / write / delete / move / create). */
+export function isChangeTool(block: ToolCallContent): boolean {
+  if (block.toolKind === "edit" || block.toolKind === "delete" || block.toolKind === "move") return true;
+  const name = (block.toolName || "").toLowerCase();
+  return (
+    name === "edit" ||
+    name.endsWith("_edit") ||
+    name.endsWith(".edit") ||
+    name.startsWith("edit_") ||
+    name.includes("str_replace") ||
+    name === "write" ||
+    name === "create" ||
+    name === "delete" ||
+    name === "move" ||
+    name === "rename"
+  );
+}
+
 /** True when the block should use the new inline renderer at all. */
 export function isLineStyleTool(block: ToolCallContent): boolean {
-  return isExploringTool(block) || isBashTool(block);
+  return isExploringTool(block) || isBashTool(block) || isChangeTool(block);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -148,6 +166,45 @@ function parseGrepMatches(result: ToolResultMessage | undefined): Array<{
     out.push({ path: raw, preview: "" });
   }
   return out;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Aggregate grep results from a tool's structured `details` payload when the
+ * agent supplies one. Recognises the shape produced by omp's grep tool:
+ *
+ *   details.fileMatches = [{ path, count }]
+ *   details.files       = ["path", ...]         (fallback when no per-file count)
+ */
+function fileGroupsFromDetails(result: ToolResultMessage | undefined): FileMatchGroup[] | null {
+  if (!result || !isRecord(result.details)) return null;
+  const details = result.details;
+  const fileMatches = details.fileMatches;
+  if (Array.isArray(fileMatches)) {
+    const out: FileMatchGroup[] = [];
+    for (const entry of fileMatches) {
+      if (!isRecord(entry) || typeof entry.path !== "string") continue;
+      out.push({
+        path: entry.path,
+        matches: typeof entry.count === "number" ? entry.count : 1,
+        firstLine: typeof entry.line === "number" ? entry.line : undefined,
+      });
+    }
+    return out;
+  }
+  const files = details.files;
+  if (Array.isArray(files)) {
+    const out: FileMatchGroup[] = [];
+    for (const entry of files) {
+      if (typeof entry !== "string") continue;
+      out.push({ path: entry, matches: 1 });
+    }
+    return out;
+  }
+  return null;
 }
 
 /** Split a POSIX path into `{ dir, base }`. Missing dir → empty string. */
@@ -442,20 +499,22 @@ function GrepLine({ block, result, duration, onOpenFile }: {
   const scope = readGrepPath(block);
   const isError = result?.isError === true;
   const isPending = !result;
-  const matches = useMemo(() => (result ? parseGrepMatches(result) : []), [result]);
-  const uniqueFiles = useMemo(() => {
-    const set = new Set<string>();
-    for (const match of matches) set.add(match.path);
-    return set.size;
-  }, [matches]);
+  const fileGroups = useMemo(() => {
+    if (!result) return [] as FileMatchGroup[];
+    const structured = fileGroupsFromDetails(result);
+    if (structured && structured.length > 0) return structured;
+    return groupMatchesByFile(parseGrepMatches(result));
+  }, [result]);
+  const totalMatches = useMemo(
+    () => fileGroups.reduce((sum, group) => sum + group.matches, 0),
+    [fileGroups],
+  );
 
-  const hint = matches.length > 0
-    ? `${uniqueFiles} ${uniqueFiles === 1 ? "file" : "files"} · ${matches.length} ${matches.length === 1 ? "match" : "matches"}`
+  const hint = fileGroups.length > 0
+    ? `${fileGroups.length} ${fileGroups.length === 1 ? "file" : "files"} · ${totalMatches} ${totalMatches === 1 ? "match" : "matches"}`
     : scope
       ? `in ${scope}`
       : "no matches";
-
-  const fileGroups = useMemo(() => groupMatchesByFile(matches), [matches]);
 
   const hover = fileGroups.length > 0 ? (
     <div className="p-3">
@@ -762,6 +821,84 @@ function BashLine({ block, result, duration }: {
   );
 }
 
+
+/** Verb chosen from tool kind/name. Falls back to a generic "Changed". */
+function changeVerb(block: ToolCallContent): string {
+  if (block.toolKind === "delete") return "Deleted";
+  if (block.toolKind === "move") return "Moved";
+  const name = (block.toolName || "").toLowerCase();
+  if (name === "delete") return "Deleted";
+  if (name === "move" || name === "rename") return "Moved";
+  if (name === "write" || name === "create") return "Wrote";
+  return "Edited";
+}
+
+function readMovePaths(block: ToolCallContent): { from: string; to: string } | null {
+  const from = readStringField(block.input, "from") || readStringField(block.input, "source") || readStringField(block.input, "src");
+  const to = readStringField(block.input, "to") || readStringField(block.input, "destination") || readStringField(block.input, "dest");
+  if (!from || !to) return null;
+  return { from, to };
+}
+
+function ChangeLine({ block, result, duration, onOpenFile }: {
+  block: ToolCallContent;
+  result?: ToolResultMessage;
+  duration?: number;
+  onOpenFile?: (path: string) => void;
+}) {
+  const isError = result?.isError === true;
+  const isPending = !result;
+  const verb = changeVerb(block);
+
+  // Move/rename: show `from → to` inline.
+  if (verb === "Moved") {
+    const paths = readMovePaths(block);
+    const primary = paths ? `${basename(paths.from)} → ${basename(paths.to)}` : readInputPath(block);
+    const hover = paths ? (
+      <div className="p-3 font-mono text-[10px] text-[var(--text-muted)]">
+        <div className="mb-1 text-[var(--text-dim)]">From</div>
+        <div className="mb-2 break-all">{paths.from}</div>
+        <div className="mb-1 text-[var(--text-dim)]">To</div>
+        <div className="break-all">{paths.to}</div>
+      </div>
+    ) : null;
+    return (
+      <ToolLineBase
+        verb="Moved"
+        icon={<FileText size={11} className="shrink-0 text-[var(--text-dim)]" />}
+        primary={primary || "(path)"}
+        primaryTitle={paths ? `${paths.from} → ${paths.to}` : primary}
+        onPrimaryClick={paths ? () => onOpenFile?.(paths.to) : undefined}
+        duration={duration}
+        isError={isError}
+        isPending={isPending}
+        hover={hover}
+      />
+    );
+  }
+
+  const path = readInputPath(block);
+  const base = path ? basename(path) : "(path)";
+  const hover = path ? (
+    <div className="p-3">
+      <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">Full path</div>
+      <div className="break-all font-mono text-[11px] text-[var(--text-muted)]">{path}</div>
+    </div>
+  ) : null;
+  return (
+    <ToolLineBase
+      verb={verb}
+      icon={<FileText size={11} className="shrink-0 text-[var(--text-dim)]" />}
+      primary={base}
+      primaryTitle={path}
+      onPrimaryClick={path ? () => onOpenFile?.(path) : undefined}
+      duration={duration}
+      isError={isError}
+      isPending={isPending}
+      hover={hover}
+    />
+  );
+}
 /* -------------------------------------------------------------------------- */
 /* Public entry point                                                         */
 /* -------------------------------------------------------------------------- */
@@ -796,6 +933,9 @@ export function ToolLine({
   if (isBashTool(block)) {
     return <BashLine block={block} result={result} duration={duration} />;
   }
+  if (isChangeTool(block)) {
+    return <ChangeLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+  }
   // Search kind without a known name: reuse grep line as a reasonable default.
   if (block.toolKind === "search") {
     return <GrepLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
@@ -826,7 +966,7 @@ export function ExploringGroup({
   toolResults?: Map<string, ToolResultMessage>;
   toolCallDurations?: Map<string, number>;
   onOpenFile?: (path: string) => void;
-  variant?: "exploring" | "bash";
+  variant?: "exploring" | "bash" | "changes";
 }) {
   const live = blocks.some((block) => !toolResults?.get(block.toolCallId));
   const failed = blocks.reduce((count, block) => {
@@ -843,6 +983,19 @@ export function ExploringGroup({
   if (variant === "bash") {
     label = live ? "Running" : "Ran";
     summaryParts.push(`${blocks.length} ${blocks.length === 1 ? "command" : "commands"}`);
+  } else if (variant === "changes") {
+    const edits = blocks.filter((block) => changeVerb(block) === "Edited" || changeVerb(block) === "Wrote").length;
+    const deletes = blocks.filter((block) => changeVerb(block) === "Deleted").length;
+    const moves = blocks.filter((block) => changeVerb(block) === "Moved").length;
+    // Choose the dominant verb for the header label; "Changed" acts as the
+    // umbrella when several kinds are mixed.
+    if (deletes > 0 && edits === 0 && moves === 0) label = live ? "Deleting" : "Deleted";
+    else if (moves > 0 && edits === 0 && deletes === 0) label = live ? "Moving" : "Moved";
+    else if (edits > 0 && deletes === 0 && moves === 0) label = live ? "Editing" : "Edited";
+    else label = live ? "Changing" : "Changed";
+    if (edits > 0) summaryParts.push(`${edits} ${edits === 1 ? "file" : "files"}`);
+    if (deletes > 0) summaryParts.push(`${deletes} ${deletes === 1 ? "deleted" : "deletions"}`);
+    if (moves > 0) summaryParts.push(`${moves} ${moves === 1 ? "move" : "moves"}`);
   } else {
     label = live ? "Exploring" : "Explored";
     const searches = blocks.filter((block) => {
