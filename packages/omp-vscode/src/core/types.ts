@@ -56,6 +56,8 @@ export interface AssistantMessage {
   stopReason?: string;
   errorMessage?: string;
   timestamp?: number;
+  duration?: number;
+  ttft?: number;
   usage?: {
     input: number;
     output: number;

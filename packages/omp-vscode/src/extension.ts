@@ -1,24 +1,42 @@
 import * as vscode from "vscode";
-import { ApiHandler } from "./core/api";
+import { AcpService } from "./core/acp/acp-service";
 import { ChatProvider } from "./providers/chat-provider";
+import { HostService } from "./core/host/host-service";
 
-// OMP Chat — VS Code extension (single project, zero ports).
+// OMP Chat — VS Code extension (ACP-only edition).
 //
-// The entire omp-web UI (AppShell + components, copied into src/ui/omp/) runs
-// inside one sidebar WebviewView. Every fetch/EventSource call from the React
-// app is bridged to this host, which answers them from the embedded OMP RPC
-// session manager (ApiHandler): it spawns `omp --mode rpc` subprocesses on
-// demand and reads session files directly. No omp-web service, no HTTP
-// server, no port — multiple VS Code windows never conflict.
+// Two typed channels flow through the webview bridge (src/ui/bridge.ts):
+//   1. `acp/*` — agent conversation over a single `omp acp` stdio connection,
+//      owned by AcpService.
+//   2. `host/*` — non-agent extension host services (models config, git
+//      branch, file index, session-file JSONL operations, …), dispatched by
+//      HostService to handlers in core/host/handlers/*.
 //
-//   webview (omp-web UI) ──postMessage──► host (ApiHandler) ──spawn stdio──► omp --mode rpc
+// No RPC subprocess, no HTTP server, no port.
 
-let api: ApiHandler;
+let acp: AcpService;
+let host: HostService;
 let chat: ChatProvider;
 let statusBar: vscode.StatusBarItem;
+let acpLog: vscode.OutputChannel | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  api = new ApiHandler();
+  const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+
+  acp = new AcpService({
+    cwd,
+    clientName: "omp-vscode",
+    clientVersion: "0.1.0",
+    output: (line) => {
+      if (!acpLog) acpLog = vscode.window.createOutputChannel("OMP ACP");
+      acpLog.appendLine(line);
+    },
+  });
+
+  host = new HostService({
+    log: (acpLog ??= vscode.window.createOutputChannel("OMP ACP")),
+    cwd,
+  });
 
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.text = "$(hubot) OMP";
@@ -26,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   statusBar.tooltip = "OMP Chat — open";
   statusBar.show();
 
-  chat = ChatProvider.get(api);
+  chat = ChatProvider.get(acp, host);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("omp.chat", chat, {
@@ -35,9 +53,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("omp.openChat", () => {
       void chat.createOrShow();
     }),
+    vscode.commands.registerCommand("omp.openWorkbench", () => {
+      chat.openWorkbench();
+    }),
+    statusBar,
   );
+
+  void acp.start().catch((err) => {
+    console.error("[OMP] Failed to start ACP:", err);
+  });
 }
 
 export async function deactivate(): Promise<void> {
+  void acp?.shutdown().catch(() => { /* ignore */ });
   chat?.disposeAll();
 }

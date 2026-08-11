@@ -17,6 +17,7 @@ ompPost({ type: "log", level: "info", message: "[webview] bridge installed, rend
 import React, { Component, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { AppShell } from "./omp/components/AppShell";
+import { WorkbenchShell } from "./omp/components/WorkbenchShell";
 import { I18nProvider } from "./omp/hooks/useI18n";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -58,11 +59,14 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 const container = document.getElementById("app");
 if (!container) throw new Error("missing #app root");
 
+const panelKind = container.getAttribute("data-panel") === "workbench" ? "workbench" : "chat";
+const RootView = panelKind === "workbench" ? WorkbenchShell : AppShell;
+
 createRoot(container).render(
   <ErrorBoundary>
     <I18nProvider>
       <TooltipProvider>
-        <AppShell />
+        <RootView />
       </TooltipProvider>
     </I18nProvider>
   </ErrorBoundary>,

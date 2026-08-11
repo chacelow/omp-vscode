@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { randomUUID } from "crypto";
 import { homedir } from "os";
 import { join } from "path";
@@ -180,9 +180,11 @@ export interface SessionTreeNode {
  * so they are traversed as structure but FOLDED (not shown): their message
  * children re-parent onto the nearest message ancestor / the root, keeping
  * the visible tree single-rooted per conversation. */
-export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; byId: Map<string, SessionTreeNode> } {
-  const byId = new Map<string, SessionTreeNode>();
+export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; byId: Map<string, SessionTreeNode>; labels: Map<string, string> } {
+  const labels = new Map<string, string>();
   const raw = new Map<string, { id: string; parentId: string | null; message?: AgentMessage }>();
+  const byId = new Map<string, SessionTreeNode>();
+  const roots: SessionTreeNode[] = [];
   try {
     const text = readFileSync(filePath, "utf8");
     for (const line of text.split("\n")) {
@@ -195,6 +197,10 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
       }
       if (typeof entry.id !== "string") continue;
       const parentId = typeof entry.parentId === "string" ? entry.parentId : null;
+      if (entry.type === "entry_label" && typeof entry.entryId === "string" && typeof entry.label === "string") {
+        labels.set(entry.entryId, entry.label);
+        continue;
+      }
       if (entry.type === "message") {
         const msg = entry.message as AgentMessage | undefined;
         if (!msg || typeof msg !== "object") continue;
@@ -265,7 +271,6 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
     }
   };
 
-  const roots: SessionTreeNode[] = [];
   // Start from entries with no parent in the file (file roots: header chain).
   const hasParent = new Set<string>();
   for (const n of raw.values()) if (n.parentId) hasParent.add(n.parentId);
@@ -281,7 +286,7 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
       roots.push(byId.get(id)!);
     }
   }
-  return { roots, byId };
+  return { roots, byId, labels };
 }
 
 export interface SessionContext {
@@ -540,4 +545,83 @@ export function invalidateSessionListCache(): void {
   // no-op: listAllSessions() always rescans
 }
 
-export { ROOT };
+// ---------------------------------------------------------------------------
+// Mutations used by the host bridge (rename / delete / thinking read)
+// ---------------------------------------------------------------------------
+
+/** Append a `session_info` entry with the new name; the loader picks the last one. */
+export function renameSession(filePath: string, name: string): boolean {
+  try {
+    const entry = {
+      id: randomUUID(),
+      parentId: null,
+      timestamp: new Date().toISOString(),
+      type: "session_info",
+      name,
+    };
+    appendFileSync(filePath, `${JSON.stringify(entry)}\n`);
+    invalidateSessionListCache();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Append an immutable label for a tree entry; the newest label wins. */
+export function renameSessionEntry(filePath: string, entryId: string, label: string): boolean {
+  try {
+    appendFileSync(filePath, `${JSON.stringify({ id: randomUUID(), type: "entry_label", entryId, label, timestamp: new Date().toISOString() })}\n`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Persist a branch summary as an append-only JSONL entry. */
+export function appendSessionSummary(filePath: string, entryId: string, summary: string): boolean {
+  try {
+    appendFileSync(filePath, `${JSON.stringify({ id: randomUUID(), type: "branch_summary", entryId, summary, timestamp: new Date().toISOString() })}\n`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Delete the session JSONL file. */
+export function deleteSession(filePath: string): boolean {
+  try {
+    unlinkSync(filePath);
+    invalidateSessionListCache();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Return the `thinking` field of the Nth content block of `entryId`, or null. */
+export function readEntryThinking(
+  filePath: string,
+  entryId: string,
+  blockIndex: number,
+): string | null {
+  try {
+    const text = readFileSync(filePath, "utf8");
+    for (const line of text.split("\n")) {
+      if (!line.trim()) continue;
+      let entry: Record<string, unknown>;
+      try { entry = JSON.parse(line) as Record<string, unknown>; } catch { continue; }
+      if (entry.id !== entryId || entry.type !== "message") continue;
+      const message: unknown = entry.message;
+      if (!message || typeof message !== "object") return null;
+      if (!("content" in message) || !Array.isArray(message.content)) return null;
+      const block: unknown = message.content[blockIndex];
+      if (!block || typeof block !== "object") return null;
+      if (!("type" in block) || block.type !== "thinking") return null;
+      if (!("thinking" in block) || typeof block.thinking !== "string") return null;
+      return block.thinking;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
