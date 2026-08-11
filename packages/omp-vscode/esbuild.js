@@ -34,6 +34,16 @@ async function main() {
     outfile: path.join(__dirname, "dist/extension.js"),
     format: "cjs",
     platform: "node",
+    // ESM deps (e.g. @earendil-works/pi-coding-agent) reference
+    // `import.meta.url`; esbuild stubs it as `{}` in CJS output, so a top-
+    // level `fileURLToPath(import.meta.url)` throws at activate time. Inject
+    // a CJS-safe shim via the banner and route `import.meta.url` to it.
+    banner: {
+      js: "var __ompImportMetaUrl=require('url').pathToFileURL(__filename).href;",
+    },
+    define: {
+      "import.meta.url": "__ompImportMetaUrl",
+    },
     // better-sqlite3 is a native addon — it cannot be bundled; it must be
     // resolved from node_modules at runtime.
     external: ["vscode", "better-sqlite3"],

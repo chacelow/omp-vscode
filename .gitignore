@@ -16,3 +16,9 @@ out/
 
 # logs
 *.log
+
+# Upstream reference sources vendored for offline reading (not shipped).
+/reference/
+
+# Ad-hoc session/agent scratch dirs.
+/.agents/
