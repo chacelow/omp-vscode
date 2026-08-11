@@ -218,24 +218,26 @@ export const MessageView = memo(
     }
     if (message.role === "assistant") {
       return (
-        <AssistantMessageView
-          message={message as AssistantMessage}
-          isStreaming={isStreaming}
-          toolResults={toolResults}
-          modelNames={modelNames}
-          cwd={cwd}
-          onOpenFile={onOpenFile}
-          showTimestamp={showTimestamp}
-          prevTimestamp={prevTimestamp}
-          sessionId={sessionId}
-          entryId={entryId}
-          hideFork={hideFork}
-          onFork={onFork}
-          forking={forking}
-          showThinking={showThinking}
-          expandAllTools={expandAllTools}
-          toolsHidden={toolsHidden}
-        />
+        <div className="px-4">
+          <AssistantMessageView
+            message={message as AssistantMessage}
+            isStreaming={isStreaming}
+            toolResults={toolResults}
+            modelNames={modelNames}
+            cwd={cwd}
+            onOpenFile={onOpenFile}
+            showTimestamp={showTimestamp}
+            prevTimestamp={prevTimestamp}
+            sessionId={sessionId}
+            entryId={entryId}
+            hideFork={hideFork}
+            onFork={onFork}
+            forking={forking}
+            showThinking={showThinking}
+            expandAllTools={expandAllTools}
+            toolsHidden={toolsHidden}
+          />
+        </div>
       );
     }
     if (message.role === "toolResult") {
@@ -243,22 +245,26 @@ export const MessageView = memo(
       return null;
     }
     if (message.role === "custom") {
-      return (message as CustomMessage).customType === "compaction" ? (
-        <CompactionMessageView message={message as CustomMessage} />
-      ) : (
-        <CustomMessageView
-          message={message as CustomMessage}
-          cwd={cwd}
-          onOpenFile={onOpenFile}
-        />
-      );
+      const customView =
+        (message as CustomMessage).customType === "compaction" ? (
+          <CompactionMessageView message={message as CustomMessage} />
+        ) : (
+          <CustomMessageView
+            message={message as CustomMessage}
+            cwd={cwd}
+            onOpenFile={onOpenFile}
+          />
+        );
+      return <div className="px-4">{customView}</div>;
     }
     if (message.role === "bashExecution") {
       return (
-        <BashExecutionView
-          message={message as BashExecutionMessage}
-          sessionId={sessionId}
-        />
+        <div className="px-4">
+          <BashExecutionView
+            message={message as BashExecutionMessage}
+            sessionId={sessionId}
+          />
+        </div>
       );
     }
     return null;

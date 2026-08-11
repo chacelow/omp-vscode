@@ -98,6 +98,38 @@ function optionsFor(
   return "options" in def ? def.options : [];
 }
 
+// ---- i18n helpers ------------------------------------------------------
+// Keys are auto-generated from settings-registry into `settings.<path>.label`
+// / `.description` / `.option.<value>.<label|description>`. When a key is
+// missing (community locales, runtime option lists), `t()` returns the key
+// itself — we detect that and fall back to the registry's hardcoded English.
+
+function safeOptionKey(value: string): string {
+  return value.replace(/[^A-Za-z0-9._-]/g, "_");
+}
+
+function translateOr(t: (key: string) => string, key: string, fallback: string): string {
+  const value = t(key);
+  return value === key ? fallback : value;
+}
+
+function translatedLabel(def: SettingDef, t: (key: string) => string): string {
+  return translateOr(t, `settings.${def.path}.label`, def.label);
+}
+
+function translatedDescription(def: SettingDef, t: (key: string) => string): string {
+  return translateOr(t, `settings.${def.path}.description`, def.description);
+}
+
+function translatedOption(def: SettingDef, option: SelectOption, t: (key: string) => string): SelectOption {
+  const base = `settings.${def.path}.option.${safeOptionKey(option.value)}`;
+  return {
+    value: option.value,
+    label: translateOr(t, `${base}.label`, option.label),
+    description: option.description !== undefined ? translateOr(t, `${base}.description`, option.description) : undefined,
+  };
+}
+
 // ---- VS Code-styled setting row ----------------------------------------
 // Each row: id/label (bold), path (dim), description, then the control. All
 // controls render inline — no click-to-expand.
@@ -121,9 +153,9 @@ function SettingCard({
   compact: boolean;
   t: (key: string) => string;
 }): JSX.Element {
-  const label = def.label;
+  const label = translatedLabel(def, t);
   const path = def.path;
-  const description = def.description;
+  const description = translatedDescription(def, t);
 
   const control = renderControl(
     def,
@@ -297,7 +329,7 @@ function renderControl(
                     )
                   }
                 />
-                <span>{option.label}</span>
+                <span>{translateOr(t, `settings.${def.path}.option.${safeOptionKey(option.value)}.label`, option.label)}</span>
               </label>
               {def.ordered && index >= 0 ? (
                 <>
@@ -351,7 +383,8 @@ function renderControl(
     );
   }
   const currentValue = value == null ? "" : String(value);
-  const selectedOption = options.find((opt) => opt.value === currentValue);
+  const translatedOptions = options.map((option) => translatedOption(def, option, t));
+  const selectedOption = translatedOptions.find((opt) => opt.value === currentValue);
   return (
     <div>
       <select
@@ -367,7 +400,7 @@ function renderControl(
         style={selectStyle}
       >
         {options.length === 0 ? <option value="">(none)</option> : null}
-        {options.map((option) => (
+        {translatedOptions.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

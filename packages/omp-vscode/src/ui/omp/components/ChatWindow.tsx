@@ -1265,7 +1265,6 @@ export function ChatWindow({
                     minWidth: 0,
                     maxWidth: 820,
                     margin: "0 auto",
-                    paddingInline: CHAT_COLUMN_PADDING,
                   }}
                 >
                   <ExtensionWidgets widgets={aboveEditorWidgets} />
