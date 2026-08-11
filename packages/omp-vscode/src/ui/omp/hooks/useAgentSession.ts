@@ -431,6 +431,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const applySnapshot = useCallback((state: AcpSessionState) => {
     if (state.sessionId !== sessionIdRef.current) return;
+    // Defensive: never overwrite the visible transcript with an incoming
+    // "replaying + no messages yet" snapshot. omp's session/load emits a
+    // clearing state before the historical chunks arrive; on a huge
+    // session that gap is multi-seconds of blank chat.
+    if (state.replaying && (state.messages?.length ?? 0) === 0) {
+      setSnapshot(state);
+      return;
+    }
     setSnapshot(state);
     const nextMessages = coalesceToolAssistants(state.messages.flatMap((message) => toAgentMessages(message, state.toolCalls)));
     setMessages((current) => {
@@ -834,7 +842,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       try {
         const sid = await ensureNewSession();
         if (!sid || cancelled) return;
-        await loadSession(sid, !initialForceNewSessionRef.current);
+        // ensureNewSession has already: (a) created/resumed the ACP
+        // session, (b) subscribed to it, and (c) marked it loaded via
+        // lastLoadedSessionIdRef. We must NOT call loadSession here —
+        // for a fresh session it would hit `session/load` (historical
+        // replay), wiping our empty transcript and flashing LoadingState.
         if (!cancelled) {
           void loadModels();
           if (!initialForceNewSessionRef.current) promoteNewSession(1, "");
@@ -842,13 +854,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
-        // A failed or empty new-session creation must never leave the composer
-        // beneath the initial session-loading banner.
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [ensureNewSession, isNew, loadModels, loadSession, newSessionCwd, promoteNewSession, session]);
+  }, [ensureNewSession, isNew, loadModels, newSessionCwd, promoteNewSession, session]);
   useEffect(() => { onSystemPromptChange?.(systemPrompt); }, [onSystemPromptChange, systemPrompt]);
   useEffect(() => { if (onBranchDataChange) onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange); }, [activeLeafId, data?.tree, handleLeafChange, onBranchDataChange]);
   useEffect(() => { window.addEventListener("keydown", markUserScrollIntent); window.addEventListener("pointerdown", markUserScrollIntent, { passive: true }); return () => { window.removeEventListener("keydown", markUserScrollIntent); window.removeEventListener("pointerdown", markUserScrollIntent); }; }, [markUserScrollIntent]);

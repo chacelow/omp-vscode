@@ -251,8 +251,28 @@ export class AcpService {
 
   async loadSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
     const ctx = this.requireConnection();
-    this.sessions.set(sessionId, { ...emptySession(sessionId, cwd), replaying: true, revision: 0 });
-    this.publishSession(sessionId);
+    // Preserve any existing messages/toolCalls in the clearing snapshot.
+    // omp's `session/load` replays historical events; before those arrive
+    // the SDK stashes an intermediate state. If we overwrite our local
+    // \`messages\` with [] here and publish, the webview flashes to a
+    // blank transcript for the duration of the replay (multi-seconds for
+    // long sessions). Kept fields survive because \`registerSession\`
+    // reuses existing state when it merges the final response.
+    const existing = this.sessions.get(sessionId);
+    this.sessions.set(sessionId, {
+      ...emptySession(sessionId, cwd),
+      messages: existing?.messages ?? [],
+      toolCalls: existing?.toolCalls ?? {},
+      availableCommands: existing?.availableCommands ?? [],
+      plan: existing?.plan ?? [],
+      usage: existing?.usage,
+      turnUsage: existing?.turnUsage,
+      replaying: true,
+      revision: (existing?.revision ?? 0) + 1,
+    });
+    // Skip publishing this transient clearing snapshot. registerSession
+    // publishes once at the end with the merged final state; replay-time
+    // chunks are already suppressed in updateSession while replaying=true.
     const response = await ctx.agent.request(methods.agent.session.load, { sessionId, cwd, mcpServers: [] } as never) as {
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
       configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
