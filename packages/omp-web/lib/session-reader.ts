@@ -5,10 +5,27 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "fs";
 import { dirname } from "path";
-import { closeSync, existsSync, openSync, readdirSync, readSync, statSync, writeFileSync } from "fs";
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readdirSync,
+  readSync,
+  statSync,
+  writeFileSync,
+} from "fs";
 import { join, normalize as normalizePath } from "path";
-import type { AgentMessage, SessionEntry, SessionHeader, SessionInfo, SessionContext } from "./types";
-import type { SessionEntry as PiSessionEntry, SessionInfo as PiSessionInfo } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentMessage,
+  SessionEntry,
+  SessionHeader,
+  SessionInfo,
+  SessionContext,
+} from "./types";
+import type {
+  SessionEntry as PiSessionEntry,
+  SessionInfo as PiSessionInfo,
+} from "@earendil-works/pi-coding-agent";
 import { normalizeToolCalls } from "./normalize";
 import { sessionPathKey } from "./session-path";
 import { resolveProject, type ProjectInfo } from "./worktree";
@@ -32,13 +49,17 @@ function readFirstUserMessageText(filePath: string): string {
           const m = entry.message as Record<string, unknown> | undefined;
           if (m?.role !== "user") continue;
           const content = m.content;
-          if (typeof content === "string" && content.trim()) return content.trim().slice(0, 120);
+          if (typeof content === "string" && content.trim())
+            return content.trim().slice(0, 120);
           if (Array.isArray(content)) {
             const text = content
-              .filter((b): b is { type: "text"; text: string } =>
-                typeof b === "object" && b !== null
-                && (b as { type?: string }).type === "text"
-                && typeof (b as { text?: unknown }).text === "string")
+              .filter(
+                (b): b is { type: "text"; text: string } =>
+                  typeof b === "object" &&
+                  b !== null &&
+                  (b as { type?: string }).type === "text" &&
+                  typeof (b as { text?: unknown }).text === "string"
+              )
               .map((b) => b.text)
               .join(" ")
               .trim();
@@ -84,15 +105,19 @@ async function loadAllSessions(): Promise<SessionInfo[]> {
           const header = readSessionHeader(filePath);
           if (header && header.id) {
             const stat = statSync(filePath);
-            const headerName = (header as unknown as Record<string, unknown>).name as string;
-            const headerTitle = (header as unknown as Record<string, unknown>).title as string;
+            const headerName = (header as unknown as Record<string, unknown>)
+              .name as string;
+            const headerTitle = (header as unknown as Record<string, unknown>)
+              .title as string;
             const fallback = readFirstUserMessageText(filePath);
             piSessions.push({
               path: filePath,
               id: header.id,
               cwd: header.cwd || "",
               name: headerName || headerTitle || fallback,
-              created: header.timestamp ? new Date(header.timestamp) : stat.birthtime,
+              created: header.timestamp
+                ? new Date(header.timestamp)
+                : stat.birthtime,
               modified: stat.mtime,
               messageCount: 1,
               firstMessage: headerTitle || fallback || "(session)",
@@ -112,9 +137,11 @@ async function loadAllSessions(): Promise<SessionInfo[]> {
   // worktrees). resolveProject caches per-cwd, so this is cheap after warmup.
   const uniqueCwds = [...new Set(piSessions.map((s) => s.cwd).filter(Boolean))];
   const projectByCwd = new Map<string, ProjectInfo>();
-  await Promise.all(uniqueCwds.map(async (cwd) => {
-    projectByCwd.set(cwd, await resolveProject(cwd));
-  }));
+  await Promise.all(
+    uniqueCwds.map(async (cwd) => {
+      projectByCwd.set(cwd, await resolveProject(cwd));
+    })
+  );
 
   return piSessions.map((s) => {
     cacheSessionPath(s.id, s.path);
@@ -124,13 +151,21 @@ async function loadAllSessions(): Promise<SessionInfo[]> {
       id: s.id,
       cwd: s.cwd,
       name: s.name,
-      created: s.created instanceof Date ? s.created.toISOString() : String(s.created),
-      modified: s.modified instanceof Date ? s.modified.toISOString() : String(s.modified),
+      created:
+        s.created instanceof Date ? s.created.toISOString() : String(s.created),
+      modified:
+        s.modified instanceof Date
+          ? s.modified.toISOString()
+          : String(s.modified),
       messageCount: s.messageCount,
       firstMessage: s.firstMessage || "(no messages)",
-      parentSessionId: s.parentSessionPath ? pathToId.get(sessionPathKey(s.parentSessionPath)) : undefined,
+      parentSessionId: s.parentSessionPath
+        ? pathToId.get(sessionPathKey(s.parentSessionPath))
+        : undefined,
       projectRoot: project?.projectRoot ?? s.cwd,
-      ...(project?.isWorktree && project.branch ? { worktreeBranch: project.branch } : {}),
+      ...(project?.isWorktree && project.branch
+        ? { worktreeBranch: project.branch }
+        : {}),
     };
   });
 }
@@ -140,13 +175,19 @@ export async function listAllSessions(): Promise<SessionInfo[]> {
 
   // Return cached result if still fresh (avoids re-scanning session files
   // and re-spawning git processes on every page load).
-  if (globalThis.__piSessionListCache && Date.now() - globalThis.__piSessionListCache.ts < SESSION_LIST_CACHE_TTL_MS) {
+  if (
+    globalThis.__piSessionListCache &&
+    Date.now() - globalThis.__piSessionListCache.ts < SESSION_LIST_CACHE_TTL_MS
+  ) {
     return globalThis.__piSessionListCache.data;
   }
 
   // Coalescing dedup: concurrent callers share the same in-flight promise
   // only while it belongs to the current cache generation.
-  if (globalThis.__piSessionListPromise && globalThis.__piSessionListPromiseGeneration === generation) {
+  if (
+    globalThis.__piSessionListPromise &&
+    globalThis.__piSessionListPromiseGeneration === generation
+  ) {
     return globalThis.__piSessionListPromise;
   }
 
@@ -185,21 +226,26 @@ declare global {
 const SESSION_LIST_CACHE_TTL_MS = 30_000;
 
 export function invalidateSessionListCache(): void {
-  globalThis.__piSessionListGeneration = (globalThis.__piSessionListGeneration ?? 0) + 1;
+  globalThis.__piSessionListGeneration =
+    (globalThis.__piSessionListGeneration ?? 0) + 1;
   globalThis.__piSessionListCache = undefined;
 }
 
 function getPathCache(): Map<string, string> {
-  if (!globalThis.__piSessionPathCache) globalThis.__piSessionPathCache = new Map();
+  if (!globalThis.__piSessionPathCache)
+    globalThis.__piSessionPathCache = new Map();
   return globalThis.__piSessionPathCache;
 }
 
 function getPathToIdCache(): Map<string, string> {
-  if (!globalThis.__piPathToSessionIdCache) globalThis.__piPathToSessionIdCache = new Map();
+  if (!globalThis.__piPathToSessionIdCache)
+    globalThis.__piPathToSessionIdCache = new Map();
   return globalThis.__piPathToSessionIdCache;
 }
 
-export async function resolveSessionPath(sessionId: string): Promise<string | null> {
+export async function resolveSessionPath(
+  sessionId: string
+): Promise<string | null> {
   const cached = getPathCache().get(sessionId);
   if (cached) return cached;
 
@@ -208,7 +254,9 @@ export async function resolveSessionPath(sessionId: string): Promise<string | nu
   return getPathCache().get(sessionId) ?? null;
 }
 
-export async function resolveSessionIdByPath(filePath: string): Promise<string | undefined> {
+export async function resolveSessionIdByPath(
+  filePath: string
+): Promise<string | undefined> {
   const pathKey = sessionPathKey(filePath);
   const cached = getPathToIdCache().get(pathKey);
   if (cached) return cached;
@@ -223,10 +271,18 @@ export function cacheSessionPath(sessionId: string, filePath: string): void {
   const pathCache = getPathCache();
   const reverseCache = getPathToIdCache();
   const previousPath = pathCache.get(sessionId);
-  const previousPathKey = previousPath ? sessionPathKey(previousPath) : undefined;
+  const previousPathKey = previousPath
+    ? sessionPathKey(previousPath)
+    : undefined;
   const previousSessionId = reverseCache.get(pathKey);
-  const previousOwnerPath = previousSessionId ? pathCache.get(previousSessionId) : undefined;
-  if (previousPathKey && previousPathKey !== pathKey && reverseCache.get(previousPathKey) === sessionId) {
+  const previousOwnerPath = previousSessionId
+    ? pathCache.get(previousSessionId)
+    : undefined;
+  if (
+    previousPathKey &&
+    previousPathKey !== pathKey &&
+    reverseCache.get(previousPathKey) === sessionId
+  ) {
     reverseCache.delete(previousPathKey);
   }
   if (
@@ -265,14 +321,20 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
     if (bytesRead === 0) return null;
     const text = buffer.subarray(0, bytesRead).toString("utf8");
     const lines = text.split("\n");
-    let sessionHeader: (SessionHeader & { name?: string; title?: string }) | null = null;
+    let sessionHeader:
+      (SessionHeader & { name?: string; title?: string }) | null = null;
     for (const line of lines) {
       if (!line.trim()) continue;
       try {
         const entry = JSON.parse(line.trim()) as Record<string, unknown>;
         if (entry && entry.type === "session" && !sessionHeader) {
           sessionHeader = entry as unknown as SessionHeader;
-        } else if (entry && entry.type === "session_info" && typeof entry.name === "string" && entry.name.trim()) {
+        } else if (
+          entry &&
+          entry.type === "session_info" &&
+          typeof entry.name === "string" &&
+          entry.name.trim()
+        ) {
           if (sessionHeader) {
             sessionHeader.name = entry.name.trim();
             sessionHeader.title = entry.name.trim();
@@ -301,7 +363,11 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
 }
 
 function hasSessionType(entry: unknown): boolean {
-  return Boolean(entry && typeof entry === "object" && (entry as { type?: unknown }).type === "session");
+  return Boolean(
+    entry &&
+    typeof entry === "object" &&
+    (entry as { type?: unknown }).type === "session"
+  );
 }
 
 export function loadOmpSessionEntries(filePath: string): SessionEntry[] {
@@ -323,7 +389,8 @@ export function loadOmpSessionEntries(filePath: string): SessionEntry[] {
       const [sessionHeader] = entries.splice(sessionIdx, 1);
       entries.unshift(sessionHeader);
       try {
-        const fixedContent = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
+        const fixedContent =
+          entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
         writeFileSync(filePath, fixedContent, "utf8");
       } catch {
         // ignore write error
@@ -344,9 +411,14 @@ type SessionManagerConstructor = new (
   fileEntries: unknown[]
 ) => SessionManager;
 
-export function openSessionManager(filePath: string, sessionDir?: string, cwdOverride?: string): SessionManager {
+export function openSessionManager(
+  filePath: string,
+  sessionDir?: string,
+  cwdOverride?: string
+): SessionManager {
   const entries = loadOmpSessionEntries(filePath);
-  const header = entries.find((e) => hasSessionType(e)) as (SessionEntry & { cwd?: string }) | undefined;
+  const header = entries.find((e) => hasSessionType(e)) as
+    (SessionEntry & { cwd?: string }) | undefined;
   const cwd = cwdOverride ?? header?.cwd ?? process.cwd();
   const dir = sessionDir ? normalizePath(sessionDir) : dirname(filePath);
   const Ctor = SessionManager as unknown as SessionManagerConstructor;
@@ -360,18 +432,22 @@ export function getSessionEntries(filePath: string): SessionEntry[] {
 export function buildSessionContext(
   entries: SessionEntry[],
   leafId?: string | null,
-  options: { deferThinking?: boolean; deferToolResultImages?: boolean } = {},
+  options: { deferThinking?: boolean; deferToolResultImages?: boolean } = {}
 ): SessionContext {
   const byId = new Map<string, SessionEntry>();
   for (const e of entries) byId.set(e.id, e);
 
   const piEntries = entries as unknown as PiSessionEntry[];
-  const piCtx = piBuildSessionContext(piEntries, leafId, byId as unknown as Map<string, PiSessionEntry>);
+  const piCtx = piBuildSessionContext(
+    piEntries,
+    leafId,
+    byId as unknown as Map<string, PiSessionEntry>
+  );
 
   const contextEntries = piBuildContextEntries(
     piEntries,
     leafId,
-    byId as unknown as Map<string, PiSessionEntry>,
+    byId as unknown as Map<string, PiSessionEntry>
   );
 
   // Convert the SDK-selected context entries and their IDs together. This keeps
@@ -404,7 +480,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function base64ImageInfo(block: unknown): { bytes: number; mime?: string } | null {
+function base64ImageInfo(
+  block: unknown
+): { bytes: number; mime?: string } | null {
   if (!isRecord(block) || block.type !== "image") return null;
 
   let data: string | undefined;
@@ -412,14 +490,24 @@ function base64ImageInfo(block: unknown): { bytes: number; mime?: string } | nul
   if (typeof block.data === "string") {
     data = block.data;
     mime = typeof block.mimeType === "string" ? block.mimeType : undefined;
-  } else if (isRecord(block.source) && block.source.type === "base64" && typeof block.source.data === "string") {
+  } else if (
+    isRecord(block.source) &&
+    block.source.type === "base64" &&
+    typeof block.source.data === "string"
+  ) {
     data = block.source.data;
-    mime = typeof block.source.media_type === "string" ? block.source.media_type : undefined;
+    mime =
+      typeof block.source.media_type === "string"
+        ? block.source.media_type
+        : undefined;
   }
   if (!data) return null;
 
   const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
-  return { bytes: Math.max(0, Math.floor(data.length * 3 / 4) - padding), mime };
+  return {
+    bytes: Math.max(0, Math.floor((data.length * 3) / 4) - padding),
+    mime,
+  };
 }
 
 function omitToolResultBase64Images(message: AgentMessage): AgentMessage {
@@ -450,7 +538,7 @@ function omitToolResultBase64Images(message: AgentMessage): AgentMessage {
 // Returns null for entries that do not map to chat history (metadata, non-message types).
 function entryToUiMessage(
   entry: SessionEntry,
-  options: { deferThinking?: boolean; deferToolResultImages?: boolean },
+  options: { deferThinking?: boolean; deferToolResultImages?: boolean }
 ): AgentMessage | null {
   // Supported message roles: user, assistant, toolResult, bashExecution.
   // bashExecution messages enter the case "message" branch (entry.type === "message").
@@ -462,14 +550,15 @@ function entryToUiMessage(
       const message = options.deferToolResultImages
         ? omitToolResultBase64Images(normalizeToolCalls(entry.message))
         : normalizeToolCalls(entry.message);
-      if (!options.deferThinking || message.role !== "assistant") return message;
+      if (!options.deferThinking || message.role !== "assistant")
+        return message;
       return {
         ...message,
-        content: message.content.map((block) => (
+        content: message.content.map((block) =>
           block.type === "thinking" && block.thinking.trim() !== ""
             ? { ...block, thinking: "", deferred: true }
             : block
-        )),
+        ),
       };
     }
     case "compaction":

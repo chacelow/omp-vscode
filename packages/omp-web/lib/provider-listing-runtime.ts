@@ -1,12 +1,15 @@
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
-import type { ProviderCredentialType, ProviderListingInput } from "@/lib/provider-listing";
+import type {
+  ProviderCredentialType,
+  ProviderListingInput,
+} from "@/lib/provider-listing";
 
 /**
  * Adapter between `ModelRuntime` and the pure listing helpers in
  * `lib/provider-listing.ts`.
  */
 export async function collectProviderListingInputs(
-  modelRuntime: ModelRuntime,
+  modelRuntime: ModelRuntime
 ): Promise<ProviderListingInput[]> {
   const models = modelRuntime.getModels();
 
@@ -27,7 +30,9 @@ export async function collectProviderListingInputs(
     name: provider.name,
     hasApiKeyLogin: Boolean(provider.auth.apiKey?.login),
     hasOAuth: Boolean(provider.auth.oauth),
-    ...(provider.auth.oauth?.name ? { oauthName: provider.auth.oauth.name } : {}),
+    ...(provider.auth.oauth?.name
+      ? { oauthName: provider.auth.oauth.name }
+      : {}),
     status: modelRuntime.getProviderAuthStatus(provider.id),
     ...(credentialTypes.has(provider.id)
       ? { credentialType: credentialTypes.get(provider.id) }

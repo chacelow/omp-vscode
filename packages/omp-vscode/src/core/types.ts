@@ -63,7 +63,8 @@ export interface ToolCallContent {
   locations?: ToolCallLocation[];
 }
 
-export type AssistantContentBlock = TextContent | ImageContent | ThinkingContent | ToolCallContent;
+export type AssistantContentBlock =
+  TextContent | ImageContent | ThinkingContent | ToolCallContent;
 
 export interface UserMessage {
   role: "user";
@@ -136,7 +137,12 @@ export interface BashExecutionMessage {
   timestamp?: number;
 }
 
-export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage | CustomMessage | BashExecutionMessage;
+export type AgentMessage =
+  | UserMessage
+  | AssistantMessage
+  | ToolResultMessage
+  | CustomMessage
+  | BashExecutionMessage;
 
 export type ExtensionUiRequest =
   | {
@@ -322,12 +328,11 @@ export interface AgentStateResponse {
   model?: { id: string; provider: string };
   messageCount?: number;
   pendingMessageCount?: number;
-  queuedMessages?: { steering?: string[]; followUp?: string[] } | null;
-  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
-  systemPrompt?: string;
-  thinkingLevel?: string;
-  extensionStatuses?: Array<{ key: string; text: string }>;
-  extensionWidgets?: Array<{ key: string; lines: string[]; placement: "aboveEditor" | "belowEditor" }>;
+  contextUsage?: {
+    percent: number | null;
+    contextWindow: number;
+    tokens: number | null;
+  } | null;
 }
 
 export interface GetStateResponse {

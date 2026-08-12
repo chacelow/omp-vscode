@@ -1,4 +1,12 @@
-import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
+import {
+  appendFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "fs";
 import { randomUUID } from "crypto";
 import { homedir } from "os";
 import { join } from "path";
@@ -20,9 +28,11 @@ import type { AgentMessage, SessionInfo } from "./types";
 const SESSION_LIST_CACHE_TTL_MS = 30_000;
 
 export function getOmpAgentDir(): string {
-  return process.env.OMP_CODING_AGENT_DIR
-    || process.env.PI_CODING_AGENT_DIR
-    || join(homedir(), ".omp", "agent");
+  return (
+    process.env.OMP_CODING_AGENT_DIR ||
+    process.env.PI_CODING_AGENT_DIR ||
+    join(homedir(), ".omp", "agent")
+  );
 }
 
 export function getSessionsDir(): string {
@@ -55,7 +65,12 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
         const entry = JSON.parse(line) as Record<string, unknown>;
         if (entry.type === "session" && !header) {
           header = entry as unknown as SessionHeader;
-        } else if (entry.type === "session_info" && typeof entry.name === "string" && entry.name.trim() && header) {
+        } else if (
+          entry.type === "session_info" &&
+          typeof entry.name === "string" &&
+          entry.name.trim() &&
+          header
+        ) {
           header.name = entry.name.trim();
           header.title = entry.name.trim();
         } else if (entry.type === "title" && header && !header.title) {
@@ -76,7 +91,8 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
 }
 
 /** First user message text (fallback when the async title is not written). */
-function readFirstUserMessageText(filePath: string): string {  try {
+function readFirstUserMessageText(filePath: string): string {
+  try {
     const text = readFileSync(filePath, "utf8").slice(0, 256 * 1024);
     for (const line of text.split("\n")) {
       if (!line.trim()) continue;
@@ -86,13 +102,17 @@ function readFirstUserMessageText(filePath: string): string {  try {
         const m = entry.message as Record<string, unknown> | undefined;
         if (m?.role !== "user") continue;
         const content = m.content;
-        if (typeof content === "string" && content.trim()) return content.trim().slice(0, 120);
+        if (typeof content === "string" && content.trim())
+          return content.trim().slice(0, 120);
         if (Array.isArray(content)) {
           const textPart = content
-            .filter((b): b is { type: "text"; text: string } =>
-              typeof b === "object" && b !== null
-              && (b as { type?: string }).type === "text"
-              && typeof (b as { text?: unknown }).text === "string")
+            .filter(
+              (b): b is { type: "text"; text: string } =>
+                typeof b === "object" &&
+                b !== null &&
+                (b as { type?: string }).type === "text" &&
+                typeof (b as { text?: unknown }).text === "string"
+            )
             .map((b) => b.text)
             .join(" ")
             .trim();
@@ -115,7 +135,11 @@ function countMessageEntries(filePath: string): number {
     const text = readFileSync(filePath, "utf8");
     let count = 0;
     for (const line of text.split("\n")) {
-      if (line.includes('"type":"message"') || line.includes('"type": "message"')) count += 1;
+      if (
+        line.includes('"type":"message"') ||
+        line.includes('"type": "message"')
+      )
+        count += 1;
     }
     return count;
   } catch {
@@ -144,7 +168,9 @@ export function listAllSessions(): SessionInfo[] {
           id: header.id,
           cwd: header.cwd || "",
           name: header.name || header.title || fallback || undefined,
-          created: header.timestamp ? new Date(header.timestamp).toISOString() : stat.birthtime.toISOString(),
+          created: header.timestamp
+            ? new Date(header.timestamp).toISOString()
+            : stat.birthtime.toISOString(),
           modified: stat.mtime.toISOString(),
           messageCount: countMessageEntries(filePath),
           firstMessage: header.title || fallback || "(session)",
@@ -180,9 +206,16 @@ export interface SessionTreeNode {
  * so they are traversed as structure but FOLDED (not shown): their message
  * children re-parent onto the nearest message ancestor / the root, keeping
  * the visible tree single-rooted per conversation. */
-export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; byId: Map<string, SessionTreeNode>; labels: Map<string, string> } {
+export function loadSessionTree(filePath: string): {
+  roots: SessionTreeNode[];
+  byId: Map<string, SessionTreeNode>;
+  labels: Map<string, string>;
+} {
   const labels = new Map<string, string>();
-  const raw = new Map<string, { id: string; parentId: string | null; message?: AgentMessage }>();
+  const raw = new Map<
+    string,
+    { id: string; parentId: string | null; message?: AgentMessage }
+  >();
   const byId = new Map<string, SessionTreeNode>();
   const roots: SessionTreeNode[] = [];
   try {
@@ -196,8 +229,13 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
         continue;
       }
       if (typeof entry.id !== "string") continue;
-      const parentId = typeof entry.parentId === "string" ? entry.parentId : null;
-      if (entry.type === "entry_label" && typeof entry.entryId === "string" && typeof entry.label === "string") {
+      const parentId =
+        typeof entry.parentId === "string" ? entry.parentId : null;
+      if (
+        entry.type === "entry_label" &&
+        typeof entry.entryId === "string" &&
+        typeof entry.label === "string"
+      ) {
         labels.set(entry.entryId, entry.label);
         continue;
       }
@@ -206,7 +244,8 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
         if (!msg || typeof msg !== "object") continue;
         let summary = "";
         let hasImages = false;
-        const blocks = "content" in msg && Array.isArray(msg.content) ? msg.content : [];
+        const blocks =
+          "content" in msg && Array.isArray(msg.content) ? msg.content : [];
         for (const block of blocks) {
           if (block.type === "text" && block.text) {
             if (!summary) summary = block.text.replace(/\s+/g, " ").trim();
@@ -214,7 +253,10 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
           } else if (block.type === "image") {
             hasImages = true;
           }
-          if (summary.length >= 120) { summary = summary.slice(0, 120) + "…"; break; }
+          if (summary.length >= 120) {
+            summary = summary.slice(0, 120) + "…";
+            break;
+          }
         }
         raw.set(entry.id, { id: entry.id, parentId, message: msg });
         byId.set(entry.id, {
@@ -224,10 +266,15 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
           role: msg.role,
           summary,
           hasImages,
-          timestamp: typeof entry.timestamp === "string" ? entry.timestamp : undefined,
+          timestamp:
+            typeof entry.timestamp === "string" ? entry.timestamp : undefined,
           children: [],
         });
-      } else if (entry.type === "model_change" || entry.type === "thinking_level_change" || entry.type === "custom") {
+      } else if (
+        entry.type === "model_change" ||
+        entry.type === "thinking_level_change" ||
+        entry.type === "custom"
+      ) {
         // Structure-only node (folded, not shown).
         raw.set(entry.id, { id: entry.id, parentId });
       }
@@ -242,7 +289,7 @@ export function loadSessionTree(filePath: string): { roots: SessionTreeNode[]; b
   const attachMessage = (
     nodeId: string,
     parentMessageNode: SessionTreeNode | null,
-    seen: Set<string>,
+    seen: Set<string>
   ) => {
     if (seen.has(nodeId)) return; // cycle guard
     seen.add(nodeId);
@@ -299,10 +346,17 @@ export interface SessionContext {
 
 const ROOT = "/"; // placeholder root for parentId when absent
 
-function messageEntryToUiMessage(entry: Record<string, unknown>): AgentMessage | null {
+function messageEntryToUiMessage(
+  entry: Record<string, unknown>
+): AgentMessage | null {
   const msg = entry.message as AgentMessage | undefined;
   if (!msg || typeof msg !== "object") return null;
-  if (!["user", "assistant", "toolResult", "custom", "bashExecution"].includes(msg.role as string)) return null;
+  if (
+    !["user", "assistant", "toolResult", "custom", "bashExecution"].includes(
+      msg.role as string
+    )
+  )
+    return null;
   return msg;
 }
 
@@ -314,7 +368,10 @@ function messageEntryToUiMessage(entry: Record<string, unknown>): AgentMessage |
 export function loadSessionContext(filePath: string): SessionContext {
   const messages: AgentMessage[] = [];
   const entryIds: string[] = [];
-  const byId = new Map<string, { parentId: string | null; message?: AgentMessage }>();
+  const byId = new Map<
+    string,
+    { parentId: string | null; message?: AgentMessage }
+  >();
   let leafId: string | null = null;
   let thinkingLevel: string | undefined;
   let model: { provider: string; modelId: string } | null = null;
@@ -329,13 +386,17 @@ export function loadSessionContext(filePath: string): SessionContext {
         continue;
       }
       const id = typeof entry.id === "string" ? entry.id : "";
-      const parentId = typeof entry.parentId === "string" ? entry.parentId : null;
+      const parentId =
+        typeof entry.parentId === "string" ? entry.parentId : null;
       if (id) {
         // Track EVERY entry id for chain traversal (thinking_level_change /
         // model_change anchors are tree nodes); only messages carry content.
         byId.set(id, {
           parentId,
-          message: entry.type === "message" ? (messageEntryToUiMessage(entry) ?? undefined) : undefined,
+          message:
+            entry.type === "message"
+              ? (messageEntryToUiMessage(entry) ?? undefined)
+              : undefined,
         });
         // Last entry in file order = the runtime leaf (omp's
         // SessionEntryIndex.insert sets leaf = entry.id).
@@ -347,11 +408,17 @@ export function loadSessionContext(filePath: string): SessionContext {
           if (typeof entry.model === "string") {
             const slash = entry.model.indexOf("/");
             if (slash > 0) {
-              model = { provider: entry.model.slice(0, slash), modelId: entry.model.slice(slash + 1) };
+              model = {
+                provider: entry.model.slice(0, slash),
+                modelId: entry.model.slice(slash + 1),
+              };
             } else if (entry.model) {
               model = { provider: "unknown", modelId: entry.model };
             }
-          } else if (typeof entry.provider === "string" && typeof entry.modelId === "string") {
+          } else if (
+            typeof entry.provider === "string" &&
+            typeof entry.modelId === "string"
+          ) {
             model = { provider: entry.provider, modelId: entry.modelId };
           }
           break;
@@ -370,7 +437,8 @@ export function loadSessionContext(filePath: string): SessionContext {
       let cur: string | null = leafId;
       while (cur && byId.has(cur) && !seen.has(cur)) {
         seen.add(cur);
-        const node: { parentId: string | null; message?: AgentMessage } = byId.get(cur)!;
+        const node: { parentId: string | null; message?: AgentMessage } =
+          byId.get(cur)!;
         if (node.message) chain.push({ id: cur, message: node.message });
         cur = node.parentId;
       }
@@ -388,7 +456,8 @@ export function loadSessionContext(filePath: string): SessionContext {
 
 /** True if the entry carries conversation context (messages). */
 export function hasSessionContent(filePath: string): boolean {
-  try {    const text = readFileSync(filePath, "utf8").slice(0, 512 * 1024);
+  try {
+    const text = readFileSync(filePath, "utf8").slice(0, 512 * 1024);
     for (const line of text.split("\n")) {
       if (!line.trim()) continue;
       try {
@@ -418,7 +487,9 @@ export function hasSessionContent(filePath: string): boolean {
 export function anchorSessionAt(filePath: string, entryId: string): boolean {
   let lines: string[];
   try {
-    lines = readFileSync(filePath, "utf8").split("\n").filter((l) => l.trim().length > 0);
+    lines = readFileSync(filePath, "utf8")
+      .split("\n")
+      .filter((l) => l.trim().length > 0);
   } catch {
     return false;
   }
@@ -445,7 +516,10 @@ export function anchorSessionAt(filePath: string, entryId: string): boolean {
   let id = "";
   for (let i = 0; i < 100; i++) {
     const candidate = crypto.randomUUID().slice(-8);
-    if (!ids.has(candidate)) { id = candidate; break; }
+    if (!ids.has(candidate)) {
+      id = candidate;
+      break;
+    }
   }
   if (!id) return false;
   const anchor = {
@@ -456,7 +530,14 @@ export function anchorSessionAt(filePath: string, entryId: string): boolean {
     thinkingLevel: "off",
   };
   try {
-    writeFileSync(filePath, readFileSync(filePath, "utf8").trimEnd() + "\n" + JSON.stringify(anchor) + "\n", "utf8");
+    writeFileSync(
+      filePath,
+      readFileSync(filePath, "utf8").trimEnd() +
+        "\n" +
+        JSON.stringify(anchor) +
+        "\n",
+      "utf8"
+    );
   } catch {
     return false;
   }
@@ -471,7 +552,9 @@ export function anchorSessionAt(filePath: string, entryId: string): boolean {
 export function resumeSessionAt(filePath: string, entryId: string): boolean {
   let lines: string[];
   try {
-    lines = readFileSync(filePath, "utf8").split("\n").filter((line) => line.trim().length > 0);
+    lines = readFileSync(filePath, "utf8")
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
   } catch {
     return false;
   }
@@ -490,7 +573,10 @@ export function resumeSessionAt(filePath: string, entryId: string): boolean {
   let id = "";
   for (let index = 0; index < 100; index += 1) {
     const candidate = crypto.randomUUID().slice(-8);
-    if (!ids.has(candidate)) { id = candidate; break; }
+    if (!ids.has(candidate)) {
+      id = candidate;
+      break;
+    }
   }
   if (!id) return false;
   const anchor = {
@@ -501,7 +587,11 @@ export function resumeSessionAt(filePath: string, entryId: string): boolean {
     thinkingLevel: "off",
   };
   try {
-    writeFileSync(filePath, `${readFileSync(filePath, "utf8").trimEnd()}\n${JSON.stringify(anchor)}\n`, "utf8");
+    writeFileSync(
+      filePath,
+      `${readFileSync(filePath, "utf8").trimEnd()}\n${JSON.stringify(anchor)}\n`,
+      "utf8"
+    );
     return true;
   } catch {
     return false;
@@ -568,9 +658,16 @@ export function renameSession(filePath: string, name: string): boolean {
 }
 
 /** Append an immutable label for a tree entry; the newest label wins. */
-export function renameSessionEntry(filePath: string, entryId: string, label: string): boolean {
+export function renameSessionEntry(
+  filePath: string,
+  entryId: string,
+  label: string
+): boolean {
   try {
-    appendFileSync(filePath, `${JSON.stringify({ id: randomUUID(), type: "entry_label", entryId, label, timestamp: new Date().toISOString() })}\n`);
+    appendFileSync(
+      filePath,
+      `${JSON.stringify({ id: randomUUID(), type: "entry_label", entryId, label, timestamp: new Date().toISOString() })}\n`
+    );
     return true;
   } catch {
     return false;
@@ -578,9 +675,16 @@ export function renameSessionEntry(filePath: string, entryId: string, label: str
 }
 
 /** Persist a branch summary as an append-only JSONL entry. */
-export function appendSessionSummary(filePath: string, entryId: string, summary: string): boolean {
+export function appendSessionSummary(
+  filePath: string,
+  entryId: string,
+  summary: string
+): boolean {
   try {
-    appendFileSync(filePath, `${JSON.stringify({ id: randomUUID(), type: "branch_summary", entryId, summary, timestamp: new Date().toISOString() })}\n`);
+    appendFileSync(
+      filePath,
+      `${JSON.stringify({ id: randomUUID(), type: "branch_summary", entryId, summary, timestamp: new Date().toISOString() })}\n`
+    );
     return true;
   } catch {
     return false;
@@ -602,22 +706,28 @@ export function deleteSession(filePath: string): boolean {
 export function readEntryThinking(
   filePath: string,
   entryId: string,
-  blockIndex: number,
+  blockIndex: number
 ): string | null {
   try {
     const text = readFileSync(filePath, "utf8");
     for (const line of text.split("\n")) {
       if (!line.trim()) continue;
       let entry: Record<string, unknown>;
-      try { entry = JSON.parse(line) as Record<string, unknown>; } catch { continue; }
+      try {
+        entry = JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
       if (entry.id !== entryId || entry.type !== "message") continue;
       const message: unknown = entry.message;
       if (!message || typeof message !== "object") return null;
-      if (!("content" in message) || !Array.isArray(message.content)) return null;
+      if (!("content" in message) || !Array.isArray(message.content))
+        return null;
       const block: unknown = message.content[blockIndex];
       if (!block || typeof block !== "object") return null;
       if (!("type" in block) || block.type !== "thinking") return null;
-      if (!("thinking" in block) || typeof block.thinking !== "string") return null;
+      if (!("thinking" in block) || typeof block.thinking !== "string")
+        return null;
       return block.thinking;
     }
     return null;

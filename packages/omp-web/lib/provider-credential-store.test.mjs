@@ -6,8 +6,8 @@ import test from "node:test";
 import { createJiti } from "jiti";
 import lockfile from "proper-lockfile";
 
-const { removeStoredCredentialIfType, storeProviderCredential } = await createJiti(import.meta.url)
-  .import("./provider-credential-store.ts");
+const { removeStoredCredentialIfType, storeProviderCredential } =
+  await createJiti(import.meta.url).import("./provider-credential-store.ts");
 
 async function withAuthFile(data, run) {
   const dir = await mkdtemp(join(tmpdir(), "pi-web-provider-auth-"));
@@ -25,63 +25,91 @@ async function readAuthFile(authPath) {
 }
 
 test("removes only the expected credential type and preserves other providers", async () => {
-  await withAuthFile({
-    anthropic: { type: "api_key", key: "secret" },
-    openai: { type: "api_key", key: "other" },
-  }, async (authPath) => {
-    assert.deepEqual(
-      await removeStoredCredentialIfType("anthropic", "api_key", authPath),
-      { status: "removed" },
-    );
-    assert.deepEqual(await readAuthFile(authPath), {
+  await withAuthFile(
+    {
+      anthropic: { type: "api_key", key: "secret" },
       openai: { type: "api_key", key: "other" },
-    });
-  });
+    },
+    async (authPath) => {
+      assert.deepEqual(
+        await removeStoredCredentialIfType("anthropic", "api_key", authPath),
+        { status: "removed" }
+      );
+      assert.deepEqual(await readAuthFile(authPath), {
+        openai: { type: "api_key", key: "other" },
+      });
+    }
+  );
 });
 
 test("stores a provider credential while preserving other providers", async () => {
-  await withAuthFile({
-    anthropic: { type: "oauth", access: "old-token" },
-    openai: { type: "api_key", key: "other" },
-  }, async (authPath) => {
-    await storeProviderCredential(
-      "anthropic",
-      { type: "api_key", key: "replacement" },
-      authPath,
-    );
-
-    assert.deepEqual(await readAuthFile(authPath), {
-      anthropic: { type: "api_key", key: "replacement" },
+  await withAuthFile(
+    {
+      anthropic: { type: "oauth", access: "old-token" },
       openai: { type: "api_key", key: "other" },
-    });
-  });
+    },
+    async (authPath) => {
+      await storeProviderCredential(
+        "anthropic",
+        { type: "api_key", key: "replacement" },
+        authPath
+      );
+
+      assert.deepEqual(await readAuthFile(authPath), {
+        anthropic: { type: "api_key", key: "replacement" },
+        openai: { type: "api_key", key: "other" },
+      });
+    }
+  );
 });
 
 test("a stale API-key delete cannot remove a newly stored OAuth credential", async () => {
-  await withAuthFile({
-    anthropic: { type: "api_key", key: "old" },
-  }, async (authPath) => {
-    const release = await lockfile.lock(authPath, { stale: 30_000 });
-    const removal = removeStoredCredentialIfType("anthropic", "api_key", authPath);
+  await withAuthFile(
+    {
+      anthropic: { type: "api_key", key: "old" },
+    },
+    async (authPath) => {
+      const release = await lockfile.lock(authPath, { stale: 30_000 });
+      const removal = removeStoredCredentialIfType(
+        "anthropic",
+        "api_key",
+        authPath
+      );
 
-    await writeFile(authPath, JSON.stringify({
-      anthropic: { type: "oauth", access: "new-token", expires: Date.now() + 60_000 },
-    }, null, 2), { mode: 0o600 });
-    await release();
+      await writeFile(
+        authPath,
+        JSON.stringify(
+          {
+            anthropic: {
+              type: "oauth",
+              access: "new-token",
+              expires: Date.now() + 60_000,
+            },
+          },
+          null,
+          2
+        ),
+        { mode: 0o600 }
+      );
+      await release();
 
-    assert.deepEqual(await removal, {
-      status: "type_mismatch",
-      storedType: "oauth",
-    });
-    assert.equal((await readAuthFile(authPath)).anthropic.access, "new-token");
-  });
+      assert.deepEqual(await removal, {
+        status: "type_mismatch",
+        storedType: "oauth",
+      });
+      assert.equal(
+        (await readAuthFile(authPath)).anthropic.access,
+        "new-token"
+      );
+    }
+  );
 });
 
 test("missing credentials are a successful no-op", async () => {
   await withAuthFile({}, async (authPath) => {
     assert.deepEqual(
       await removeStoredCredentialIfType("anthropic", "oauth", authPath),
-      { status: "not_found" },
+      { status: "not_found" }
     );
     assert.deepEqual(await readAuthFile(authPath), {});
   });

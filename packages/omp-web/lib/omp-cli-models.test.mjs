@@ -8,7 +8,11 @@ import { syncOmpCliModelsYaml } from "./omp-cli-models.ts";
 
 test("replaces CLI providers so deleted web providers disappear", async () => {
   const agentDir = await mkdtemp(join(tmpdir(), "omp-cli-models-"));
-  await writeFile(join(agentDir, "models.yml"), "providers:\n  siliconflow:\n    api: openai-completions\n  keep:\n    api: openai-completions\n", "utf8");
+  await writeFile(
+    join(agentDir, "models.yml"),
+    "providers:\n  siliconflow:\n    api: openai-completions\n  keep:\n    api: openai-completions\n",
+    "utf8"
+  );
 
   syncOmpCliModelsYaml(agentDir, {
     keep: { api: "openai-completions", models: [{ id: "keep-model" }] },
@@ -21,7 +25,11 @@ test("replaces CLI providers so deleted web providers disappear", async () => {
 
 test("writes configured providers even when no cached catalog row exists", async () => {
   const agentDir = await mkdtemp(join(tmpdir(), "omp-cli-models-configured-"));
-  await writeFile(join(agentDir, "models.yml"), "providers:\n  keep:\n    api: openai-completions\n", "utf8");
+  await writeFile(
+    join(agentDir, "models.yml"),
+    "providers:\n  keep:\n    api: openai-completions\n",
+    "utf8"
+  );
 
   syncOmpCliModelsYaml(agentDir, {
     siliconflow: {
@@ -39,11 +47,17 @@ test("writes configured providers even when no cached catalog row exists", async
 
 test("reads and writes provider models through models.yml", async () => {
   const agentDir = await mkdtemp(join(tmpdir(), "omp-model-config-"));
-  await writeFile(join(agentDir, "models.yml"), "providers:\n  siliconflow:\n    api: openai-completions\n    models:\n      - id: old-model\n", "utf8");
+  await writeFile(
+    join(agentDir, "models.yml"),
+    "providers:\n  siliconflow:\n    api: openai-completions\n    models:\n      - id: old-model\n",
+    "utf8"
+  );
 
   const { createJiti } = await import("jiti");
   const jiti = createJiti(import.meta.url);
-  const { readOmpModelsConfig, writeOmpModelsConfig } = await jiti.import("./omp-model-config.ts");
+  const { readOmpModelsConfig, writeOmpModelsConfig } = await jiti.import(
+    "./omp-model-config.ts"
+  );
   const config = readOmpModelsConfig(agentDir);
   config.providers.siliconflow.models[0].id = "new-model";
   writeOmpModelsConfig(config, agentDir);

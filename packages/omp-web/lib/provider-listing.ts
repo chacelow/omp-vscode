@@ -15,7 +15,10 @@
 export type ProviderCredentialType = "api_key" | "oauth";
 
 /** Auth status sources that mean "this key comes from models.json". */
-const CUSTOM_PROVIDER_SOURCES = new Set(["models_json_key", "models_json_command"]);
+const CUSTOM_PROVIDER_SOURCES = new Set([
+  "models_json_key",
+  "models_json_command",
+]);
 
 /** Friendlier names for OAuth entries whose provider name is not self-explanatory. */
 const OAUTH_DISPLAY_NAMES: Record<string, string> = {
@@ -59,7 +62,9 @@ export interface OAuthProviderListing {
   supportsApiKey: boolean;
 }
 
-function dedupeById(providers: readonly ProviderListingInput[]): ProviderListingInput[] {
+function dedupeById(
+  providers: readonly ProviderListingInput[]
+): ProviderListingInput[] {
   const seen = new Set<string>();
   const result: ProviderListingInput[] = [];
   for (const provider of providers) {
@@ -79,19 +84,26 @@ function dedupeById(providers: readonly ProviderListingInput[]): ProviderListing
  * once — in the OAuth list — instead of twice.
  */
 export function buildApiKeyProviderList(
-  providers: readonly ProviderListingInput[],
+  providers: readonly ProviderListingInput[]
 ): ApiKeyProviderListing[] {
   const result: ApiKeyProviderListing[] = [];
   for (const provider of dedupeById(providers)) {
     if (!provider.hasApiKeyLogin) continue;
-    if (provider.status.source && CUSTOM_PROVIDER_SOURCES.has(provider.status.source)) continue;
+    if (
+      provider.status.source &&
+      CUSTOM_PROVIDER_SOURCES.has(provider.status.source)
+    )
+      continue;
 
-    const configured = provider.status.configured && provider.credentialType !== "oauth";
+    const configured =
+      provider.status.configured && provider.credentialType !== "oauth";
     result.push({
       id: provider.id,
       displayName: provider.name,
       configured,
-      ...(configured && provider.status.source ? { source: provider.status.source } : {}),
+      ...(configured && provider.status.source
+        ? { source: provider.status.source }
+        : {}),
       modelCount: provider.modelCount,
       supportsOAuth: provider.hasOAuth,
     });
@@ -101,14 +113,15 @@ export function buildApiKeyProviderList(
 
 /** Providers that can be authenticated with OAuth. */
 export function buildOAuthProviderList(
-  providers: readonly ProviderListingInput[],
+  providers: readonly ProviderListingInput[]
 ): OAuthProviderListing[] {
   const result: OAuthProviderListing[] = [];
   for (const provider of dedupeById(providers)) {
     if (!provider.hasOAuth) continue;
     result.push({
       id: provider.id,
-      name: OAUTH_DISPLAY_NAMES[provider.id] ?? provider.oauthName ?? provider.name,
+      name:
+        OAUTH_DISPLAY_NAMES[provider.id] ?? provider.oauthName ?? provider.name,
       usesCallbackServer: false,
       loggedIn: provider.credentialType === "oauth",
       supportsApiKey: provider.hasApiKeyLogin,

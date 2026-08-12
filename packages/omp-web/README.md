@@ -96,7 +96,7 @@ npx omp-web@latest
 omp-web 直接 Fork 自 [pi-web](https://github.com/agegr/pi-web)，下表列出了针对 Oh My Pi (omp) 生态与用户体验所做的主要增强与改动：
 
 | 改动点 | 说明 |
-|---|---|
+| --- | --- |
 | 包名与二进制 | 改为 `omp-web`，原为 `pi-web` |
 | 代码语法主题选择器 | **新增** 独立代码块主题选择器，支持 **One Dark Pro** 等主流主题切换 |
 | OMP 数据库与角色适配 | **新增** 对 `~/.omp/agent/` 下 `models.db`、`config.yml` 角色模型及 SQLite API Key 的读取与映射 |

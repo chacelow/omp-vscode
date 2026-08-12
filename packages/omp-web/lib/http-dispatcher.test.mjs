@@ -16,7 +16,9 @@ const PROXY_ENV_KEYS = [
 ];
 
 test("configures HTTP_PROXY, HTTPS_PROXY, and NO_PROXY for global fetch", async (t) => {
-  const originalEnv = new Map(PROXY_ENV_KEYS.map((key) => [key, process.env[key]]));
+  const originalEnv = new Map(
+    PROXY_ENV_KEYS.map((key) => [key, process.env[key]])
+  );
   for (const key of PROXY_ENV_KEYS) delete process.env[key];
 
   const connectTargets = [];
@@ -31,7 +33,9 @@ test("configures HTTP_PROXY, HTTPS_PROXY, and NO_PROXY for global fetch", async 
       socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
       socket.once("data", (chunk) => {
         tunneledRequests.push(chunk.toString("utf8").split("\r\n", 1)[0]);
-        socket.end("HTTP/1.1 204 No Content\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+        socket.end(
+          "HTTP/1.1 204 No Content\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+        );
       });
       return;
     }
@@ -46,7 +50,7 @@ test("configures HTTP_PROXY, HTTPS_PROXY, and NO_PROXY for global fetch", async 
       else process.env[key] = value;
     }
     await new Promise((resolve, reject) => {
-      proxy.close((error) => error ? reject(error) : resolve());
+      proxy.close((error) => (error ? reject(error) : resolve()));
     });
   });
 
@@ -66,7 +70,11 @@ test("configures HTTP_PROXY, HTTPS_PROXY, and NO_PROXY for global fetch", async 
 
   const dispatcher = getGlobalDispatcher();
   configureHttpDispatcher(5_000);
-  assert.equal(getGlobalDispatcher(), dispatcher, "configuration should be idempotent");
+  assert.equal(
+    getGlobalDispatcher(),
+    dispatcher,
+    "configuration should be idempotent"
+  );
 
   const httpResponse = await fetch("http://target.invalid/through-http-proxy", {
     signal: AbortSignal.timeout(2_000),
@@ -75,14 +83,18 @@ test("configures HTTP_PROXY, HTTPS_PROXY, and NO_PROXY for global fetch", async 
   assert.deepEqual(connectTargets, ["target.invalid:80"]);
   assert.deepEqual(tunneledRequests, ["GET /through-http-proxy HTTP/1.1"]);
 
-  await assert.rejects(fetch("https://target.invalid/through-https-proxy", {
-    signal: AbortSignal.timeout(2_000),
-  }));
+  await assert.rejects(
+    fetch("https://target.invalid/through-https-proxy", {
+      signal: AbortSignal.timeout(2_000),
+    })
+  );
   assert.deepEqual(connectTargets, ["target.invalid:80", "target.invalid:443"]);
 
   const proxiedRequestCount = connectTargets.length;
-  await assert.rejects(fetch("http://bypass.invalid:9/no-proxy", {
-    signal: AbortSignal.timeout(2_000),
-  }));
+  await assert.rejects(
+    fetch("http://bypass.invalid:9/no-proxy", {
+      signal: AbortSignal.timeout(2_000),
+    })
+  );
   assert.equal(connectTargets.length, proxiedRequestCount);
 });

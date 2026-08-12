@@ -4,7 +4,15 @@ export interface RoleModelCandidate {
   contextWindow?: number;
 }
 
-const THINKING_SUFFIXES: Record<string, true> = { off: true, minimal: true, low: true, medium: true, high: true, xhigh: true, max: true };
+const THINKING_SUFFIXES: Record<string, true> = {
+  off: true,
+  minimal: true,
+  low: true,
+  medium: true,
+  high: true,
+  xhigh: true,
+  max: true,
+};
 
 function stripThinkingSuffix(modelRef: string): string {
   const trimmed = modelRef.trim();
@@ -17,7 +25,7 @@ function stripThinkingSuffix(modelRef: string): string {
 export function buildVisibleRoleModels(
   roles: Record<string, unknown>,
   available: readonly RoleModelCandidate[],
-  configuredProviders: ReadonlySet<string>,
+  configuredProviders: ReadonlySet<string>
 ): Array<RoleModelCandidate & { name: string }> {
   const entries: Array<RoleModelCandidate & { name: string }> = [];
   for (const [role, ref] of Object.entries(roles)) {
@@ -33,9 +41,11 @@ export function buildVisibleRoleModels(
 
     const pureModelId = stripThinkingSuffix(modelId);
     if (!configuredProviders.has(provider)) continue;
-    const model = available.find((candidate) => (
-      candidate.provider === provider && (candidate.id === pureModelId || pureModelId.includes(candidate.id))
-    ));
+    const model = available.find(
+      (candidate) =>
+        candidate.provider === provider &&
+        (candidate.id === pureModelId || pureModelId.includes(candidate.id))
+    );
     if (!model) continue;
 
     entries.push({

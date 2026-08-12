@@ -1,7 +1,8 @@
 // In-memory roots that should be browsable in addition to roots derived from
 // persisted sessions. Stored on globalThis so Next.js hot-reload keeps them.
 declare global {
-  var __ompAllowedRootsCache: { roots: Set<string>; expiresAt: number } | undefined;
+  var __ompAllowedRootsCache:
+    { roots: Set<string>; expiresAt: number } | undefined;
   var __ompAdditionalAllowedRoots: Set<string> | undefined;
 }
 

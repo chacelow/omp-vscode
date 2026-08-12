@@ -18,7 +18,12 @@ interface SendButtonProps {
   stopLabel?: string;
 }
 
-export const SendButton = memo(function SendButton({ isStreaming, canSend, onSend, onAbort }: SendButtonProps) {
+export const SendButton = memo(function SendButton({
+  isStreaming,
+  canSend,
+  onSend,
+  onAbort,
+}: SendButtonProps) {
   if (isStreaming) {
     return (
       <Button
@@ -26,7 +31,7 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
         variant="destructive"
         size="sm"
         title="Stop"
-        className="h-6 w-6 shrink-0 cursor-pointer rounded-full border border-destructive/45 bg-destructive/15 p-0 text-destructive hover:bg-destructive/25"
+        className="border-destructive/45 bg-destructive/15 text-destructive hover:bg-destructive/25 h-6 w-6 shrink-0 cursor-pointer rounded-full border p-0"
       >
         <Spinner size={13} className="text-destructive" />
       </Button>
@@ -39,7 +44,10 @@ export const SendButton = memo(function SendButton({ isStreaming, canSend, onSen
       variant={canSend ? "highlight" : "ghost"}
       size="sm"
       title="Send"
-      className={cn("h-6 w-6 shrink-0 rounded-full p-0", !canSend && "cursor-not-allowed")}
+      className={cn(
+        "h-6 w-6 shrink-0 rounded-full p-0",
+        !canSend && "cursor-not-allowed"
+      )}
     >
       <ArrowUp size={14} strokeWidth={2.5} />
     </Button>

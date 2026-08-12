@@ -10,7 +10,7 @@ import {
   type InitializeResponse,
   type SessionMode,
   type ToolCall,
-  type ToolCallUpdate
+  type ToolCallUpdate,
 } from "@agentclientprotocol/sdk";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { resolveOmpBinary } from "../omp-binary";
@@ -26,7 +26,6 @@ import type {
 
 const GRACEFUL_SHUTDOWN_MS = 2_000;
 
-
 export class AcpUnavailableError extends Error {
   constructor(message: string) {
     super(message);
@@ -41,30 +40,49 @@ type RunningListener = (sessionIds: string[]) => void;
 type PermissionListener = (request: AcpPermissionRequest) => void;
 type ElicitationListener = (request: AcpElicitationRequest) => void;
 type NoticeLevel = "info" | "success" | "warning" | "error";
-type NoticeListener = (sessionId: string, level: NoticeLevel, message: string) => void;
+type NoticeListener = (
+  sessionId: string,
+  level: NoticeLevel,
+  message: string
+) => void;
 
-function readSessionNotice(update: unknown): { level: NoticeLevel; message: string } | null {
+function readSessionNotice(
+  update: unknown
+): { level: NoticeLevel; message: string } | null {
   if (typeof update !== "object" || update === null) return null;
-  const message = "text" in update && typeof update.text === "string"
-    ? update.text
-    : "message" in update && typeof update.message === "string"
-      ? update.message
-      : null;
+  const message =
+    "text" in update && typeof update.text === "string"
+      ? update.text
+      : "message" in update && typeof update.message === "string"
+        ? update.message
+        : null;
   if (!message) return null;
   const level = "level" in update ? update.level : undefined;
   return {
-    level: level === "success" || level === "warning" || level === "error" ? level : "info",
+    level:
+      level === "success" || level === "warning" || level === "error"
+        ? level
+        : "info",
     message,
   };
 }
 
 function isSessionNotice(update: unknown): boolean {
-  return typeof update === "object" && update !== null && "sessionUpdate" in update && (update.sessionUpdate === "notification" || update.sessionUpdate === "notice");
+  return (
+    typeof update === "object" &&
+    update !== null &&
+    "sessionUpdate" in update &&
+    (update.sessionUpdate === "notification" ||
+      update.sessionUpdate === "notice")
+  );
 }
 
 interface PendingPermission {
   sessionId: string;
-  resolve: (response: { outcome: { outcome: "selected"; optionId: string } | { outcome: "cancelled" } }) => void;
+  resolve: (response: {
+    outcome:
+      { outcome: "selected"; optionId: string } | { outcome: "cancelled" };
+  }) => void;
 }
 
 interface PendingElicitation {
@@ -115,10 +133,16 @@ function toToolCallEntry(tc: ToolCall): ToolCall {
  * strings are concatenated so a paragraph doesn't render as N separate lines.
  * Non-text blocks (images, tool calls) are appended as-is.
  */
-function mergeContentBlocks(prev: readonly ContentBlock[], next: ContentBlock): ContentBlock[] {
+function mergeContentBlocks(
+  prev: readonly ContentBlock[],
+  next: ContentBlock
+): ContentBlock[] {
   const tail = prev[prev.length - 1];
   if (next.type === "text" && tail?.type === "text") {
-    const merged: ContentBlock = { ...tail, text: (tail.text ?? "") + (next.text ?? "") };
+    const merged: ContentBlock = {
+      ...tail,
+      text: (tail.text ?? "") + (next.text ?? ""),
+    };
     return [...prev.slice(0, -1), merged];
   }
   return [...prev, next];
@@ -169,7 +193,8 @@ export class AcpService {
   }
 
   subscribeSession(sessionId: string, listener: SessionListener): Unsubscribe {
-    const set = this.sessionListeners.get(sessionId) ?? new Set<SessionListener>();
+    const set =
+      this.sessionListeners.get(sessionId) ?? new Set<SessionListener>();
     set.add(listener);
     this.sessionListeners.set(sessionId, set);
     const snapshot = this.sessions.get(sessionId);
@@ -205,18 +230,23 @@ export class AcpService {
   async start(): Promise<void> {
     if (this.state === "ready") return;
     if (this.startup) return this.startup;
-    if (this.state === "shutting_down") throw new AcpUnavailableError("OMP ACP is shutting down");
+    if (this.state === "shutting_down")
+      throw new AcpUnavailableError("OMP ACP is shutting down");
     if (this.unavailableError) throw this.unavailableError;
 
     this.state = "starting";
     this.publishConnection();
-    this.startup = this.openConnection().catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-      this.markUnavailable(`OMP ACP unavailable (${this.executable}): ${message}`);
-      throw this.unavailableError;
-    }).finally(() => {
-      this.startup = null;
-    });
+    this.startup = this.openConnection()
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.markUnavailable(
+          `OMP ACP unavailable (${this.executable}): ${message}`
+        );
+        throw this.unavailableError;
+      })
+      .finally(() => {
+        this.startup = null;
+      });
     return this.startup;
   }
 
@@ -230,7 +260,16 @@ export class AcpService {
   async listSessions(cwd = this.options.cwd): Promise<AcpSessionInfo[]> {
     this.requireCapability((c) => c.sessions.list, "session/list");
     const ctx = await this.ensureReady();
-    const result = await ctx.agent.request(methods.agent.session.list, { cwd }) as { sessions: Array<{ sessionId: string; cwd: string; title?: string | null; updatedAt?: string | null }> };
+    const result = (await ctx.agent.request(methods.agent.session.list, {
+      cwd,
+    })) as {
+      sessions: Array<{
+        sessionId: string;
+        cwd: string;
+        title?: string | null;
+        updatedAt?: string | null;
+      }>;
+    };
     return (result.sessions ?? []).map((s) => ({
       sessionId: s.sessionId,
       cwd: s.cwd,
@@ -246,7 +285,8 @@ export class AcpService {
     const response = activeSession.newSessionResponse as {
       sessionId: string;
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
-      configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
+      configOptions?:
+        import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
     };
     return this.registerSession(response.sessionId, cwd, {
       modes: response.modes?.availableModes ?? [],
@@ -279,9 +319,14 @@ export class AcpService {
     // Skip publishing this transient clearing snapshot. registerSession
     // publishes once at the end with the merged final state; replay-time
     // chunks are already suppressed in updateSession while replaying=true.
-    const response = await ctx.agent.request(methods.agent.session.load, { sessionId, cwd, mcpServers: [] } as never) as {
+    const response = (await ctx.agent.request(methods.agent.session.load, {
+      sessionId,
+      cwd,
+      mcpServers: [],
+    } as never)) as {
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
-      configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
+      configOptions?:
+        import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
     };
     return this.registerSession(sessionId, cwd, {
       modes: response.modes?.availableModes ?? [],
@@ -290,12 +335,20 @@ export class AcpService {
     });
   }
 
-  async resumeSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
+  async resumeSession(
+    sessionId: string,
+    cwd: string
+  ): Promise<AcpSessionState> {
     this.requireCapability((c) => c.sessions.resume, "session/resume");
     const ctx = await this.ensureReady();
-    const response = await ctx.agent.request(methods.agent.session.resume, { sessionId, cwd, mcpServers: [] } as never) as {
+    const response = (await ctx.agent.request(methods.agent.session.resume, {
+      sessionId,
+      cwd,
+      mcpServers: [],
+    } as never)) as {
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
-      configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
+      configOptions?:
+        import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
     };
     return this.registerSession(sessionId, cwd, {
       modes: response.modes?.availableModes ?? [],
@@ -307,7 +360,10 @@ export class AcpService {
   async forkSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
     this.requireCapability((c) => c.sessions.fork, "session/fork");
     const ctx = await this.ensureReady();
-    const response = await ctx.agent.request(methods.agent.session.fork, { sessionId, cwd }) as {
+    const response = (await ctx.agent.request(methods.agent.session.fork, {
+      sessionId,
+      cwd,
+    })) as {
       sessionId: string;
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
     };
@@ -321,19 +377,33 @@ export class AcpService {
     await ctx.agent.request(methods.agent.session.close, { sessionId });
     this.sessions.delete(sessionId);
     this.sessionListeners.delete(sessionId);
+    this.messageIndex.delete(sessionId);
     this.publishRunning();
   }
 
   async prompt(sessionId: string, prompt: ContentBlock[]): Promise<void> {
     const ctx = await this.ensureReady();
     if (prompt.some((block) => block.type === "image")) {
-      this.requireCapability((c) => c.prompts.image, "image prompts (promptCapabilities.image)");
+      this.requireCapability(
+        (c) => c.prompts.image,
+        "image prompts (promptCapabilities.image)"
+      );
     }
     if (prompt.some((block) => block.type === "audio")) {
-      this.requireCapability((c) => c.prompts.audio, "audio prompts (promptCapabilities.audio)");
+      this.requireCapability(
+        (c) => c.prompts.audio,
+        "audio prompts (promptCapabilities.audio)"
+      );
     }
-    if (prompt.some((block) => block.type === "resource" || block.type === "resource_link")) {
-      this.requireCapability((c) => c.prompts.embeddedContext, "embedded context (promptCapabilities.embeddedContext)");
+    if (
+      prompt.some(
+        (block) => block.type === "resource" || block.type === "resource_link"
+      )
+    ) {
+      this.requireCapability(
+        (c) => c.prompts.embeddedContext,
+        "embedded context (promptCapabilities.embeddedContext)"
+      );
     }
     // Self-heal: if this session isn't registered (the background attach
     // failed — e.g. it raced the connection startup — or the omp process
@@ -350,12 +420,21 @@ export class AcpService {
     // OMP echoes queued user messages. Avoid a duplicate local row while
     // an existing prompt is still in flight.
     if (!session.promptPending) {
-      patch.messages = [...session.messages, { id: crypto.randomUUID(), role: "user", content: prompt }];
+      patch.messages = [
+        ...session.messages,
+        { id: crypto.randomUUID(), role: "user", content: prompt },
+      ];
     }
     this.updateSession(sessionId, patch);
     try {
-      const promptResponse = await ctx.agent.request(methods.agent.session.prompt, { sessionId, prompt }) as { stopReason?: string };
-      this.updateSession(sessionId, { promptPending: false, stopReason: promptResponse.stopReason });
+      const promptResponse = (await ctx.agent.request(
+        methods.agent.session.prompt,
+        { sessionId, prompt }
+      )) as { stopReason?: string };
+      this.updateSession(sessionId, {
+        promptPending: false,
+        stopReason: promptResponse.stopReason,
+      });
     } catch (error) {
       this.updateSession(sessionId, {
         promptPending: false,
@@ -383,19 +462,37 @@ export class AcpService {
 
   async setMode(sessionId: string, modeId: string): Promise<void> {
     const ctx = await this.ensureReady();
-    await ctx.agent.request(methods.agent.session.setMode, { sessionId, modeId });
+    await ctx.agent.request(methods.agent.session.setMode, {
+      sessionId,
+      modeId,
+    });
   }
 
-  async setConfigOption(sessionId: string, configId: string, value: string | boolean): Promise<void> {
+  async setConfigOption(
+    sessionId: string,
+    configId: string,
+    value: string | boolean
+  ): Promise<void> {
     const ctx = await this.ensureReady();
-    const request = typeof value === "boolean"
-      ? { sessionId, configId, type: "boolean" as const, value }
-      : { sessionId, configId, value };
-    const response = await ctx.agent.request(methods.agent.session.setConfigOption, request as never) as { configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[] };
-    this.updateSession(sessionId, { configOptions: response.configOptions ?? [] });
+    const request =
+      typeof value === "boolean"
+        ? { sessionId, configId, type: "boolean" as const, value }
+        : { sessionId, configId, value };
+    const response = (await ctx.agent.request(
+      methods.agent.session.setConfigOption,
+      request as never
+    )) as {
+      configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[];
+    };
+    this.updateSession(sessionId, {
+      configOptions: response.configOptions ?? [],
+    });
   }
 
-  async extMethod<T>(method: string, params: Record<string, unknown>): Promise<T> {
+  async extMethod<T>(
+    method: string,
+    params: Record<string, unknown>
+  ): Promise<T> {
     const ctx = await this.ensureReady();
     // Ext methods live outside the typed `methods.agent.*` set — omp exposes `_omp/*` and
     // similar names. The SDK routes them via `agent.request(method, params)`; extMethod is
@@ -406,14 +503,27 @@ export class AcpService {
 
   respondPermission(resolverId: string, optionId?: string): void {
     const pending = this.pendingPermissions.get(resolverId);
-    if (!pending) throw new AcpUnavailableError(`Permission request ${resolverId} has expired`);
+    if (!pending)
+      throw new AcpUnavailableError(
+        `Permission request ${resolverId} has expired`
+      );
     this.pendingPermissions.delete(resolverId);
-    pending.resolve({ outcome: optionId ? { outcome: "selected", optionId } : { outcome: "cancelled" } });
+    pending.resolve({
+      outcome: optionId
+        ? { outcome: "selected", optionId }
+        : { outcome: "cancelled" },
+    });
   }
 
-  respondElicitation(resolverId: string, response: CreateElicitationResponse): void {
+  respondElicitation(
+    resolverId: string,
+    response: CreateElicitationResponse
+  ): void {
     const pending = this.pendingElicitations.get(resolverId);
-    if (!pending) throw new AcpUnavailableError(`Elicitation request ${resolverId} has expired`);
+    if (!pending)
+      throw new AcpUnavailableError(
+        `Elicitation request ${resolverId} has expired`
+      );
     this.pendingElicitations.delete(resolverId);
     pending.resolve(response);
   }
@@ -427,8 +537,12 @@ export class AcpService {
     const child = this.child;
     if (conn) {
       await Promise.allSettled(
-        [...this.sessions.keys()].map((sid) => conn.agent.request(methods.agent.session.close, { sessionId: sid })),
-      ).catch(() => { /* ignore close errors during shutdown */ });
+        [...this.sessions.keys()].map((sid) =>
+          conn.agent.request(methods.agent.session.close, { sessionId: sid })
+        )
+      ).catch(() => {
+        /* ignore close errors during shutdown */
+      });
     }
     this.connection = null;
     this.clientApp = null;
@@ -472,7 +586,8 @@ export class AcpService {
 
   private requireSession(sessionId: string): AcpSessionState {
     const session = this.sessions.get(sessionId);
-    if (!session) throw new AcpUnavailableError(`Session ${sessionId} not found`);
+    if (!session)
+      throw new AcpUnavailableError(`Session ${sessionId} not found`);
     return session;
   }
 
@@ -497,7 +612,9 @@ export class AcpService {
     // Create streams from Node.js streams
     const readable = new ReadableStream({
       start: (controller) => {
-        stdout.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
+        stdout.on("data", (chunk: Buffer) =>
+          controller.enqueue(new Uint8Array(chunk))
+        );
         stdout.on("end", () => controller.close());
         stdout.on("error", (err: Error) => controller.error(err));
       },
@@ -515,36 +632,43 @@ export class AcpService {
     this.clientApp = app;
 
     // Register client-side handlers for permission and elicitation
-    app.onRequest(methods.client.session.requestPermission, async ({ params }) => {
-      if (!params) throw new Error("Permission request missing params");
-      const resolverId = crypto.randomUUID();
-      const pending: PendingPermission = {
-        sessionId: params.sessionId,
-        resolve: () => {}, // Will be called externally
-      };
-      this.pendingPermissions.set(resolverId, pending);
-      const permissionRequest: AcpPermissionRequest = {
-        resolverId,
-        sessionId: params.sessionId,
-        toolCall: {
-          toolCallId: params.toolCall?.toolCallId ?? "",
-          title: params.toolCall?.title ?? undefined,
-          kind: params.toolCall?.kind ?? undefined,
-          status: params.toolCall?.status ?? undefined,
-        },
-        options: (params.options ?? []).map((o) => ({
-          optionId: o.optionId,
-          name: o.name,
-          kind: o.kind,
-        })),
-      };
-      for (const l of this.permissionListeners) {
-        try { l(permissionRequest); } catch { /* ignore */ }
+    app.onRequest(
+      methods.client.session.requestPermission,
+      async ({ params }) => {
+        if (!params) throw new Error("Permission request missing params");
+        const resolverId = crypto.randomUUID();
+        const pending: PendingPermission = {
+          sessionId: params.sessionId,
+          resolve: () => {}, // Will be called externally
+        };
+        this.pendingPermissions.set(resolverId, pending);
+        const permissionRequest: AcpPermissionRequest = {
+          resolverId,
+          sessionId: params.sessionId,
+          toolCall: {
+            toolCallId: params.toolCall?.toolCallId ?? "",
+            title: params.toolCall?.title ?? undefined,
+            kind: params.toolCall?.kind ?? undefined,
+            status: params.toolCall?.status ?? undefined,
+          },
+          options: (params.options ?? []).map((o) => ({
+            optionId: o.optionId,
+            name: o.name,
+            kind: o.kind,
+          })),
+        };
+        for (const l of this.permissionListeners) {
+          try {
+            l(permissionRequest);
+          } catch {
+            /* ignore */
+          }
+        }
+        return new Promise((resolve) => {
+          pending.resolve = resolve;
+        });
       }
-      return new Promise((resolve) => {
-        pending.resolve = resolve;
-      });
-    });
+    );
 
     app.onRequest(methods.client.elicitation.create, async ({ params }) => {
       if (!params) throw new Error("Elicitation request missing params");
@@ -560,7 +684,11 @@ export class AcpService {
         request: params,
       };
       for (const l of this.elicitationListeners) {
-        try { l(elicitationRequest); } catch { /* ignore */ }
+        try {
+          l(elicitationRequest);
+        } catch {
+          /* ignore */
+        }
       }
       return new Promise((resolve) => {
         pending.resolve = resolve;
@@ -590,19 +718,30 @@ export class AcpService {
     this.cliVersion = this.capabilities.agentInfo?.version;
     this.state = "ready";
     this.publishConnection();
-    this.log(`ACP ready (protocol v${this.capabilities.protocolVersion}, agent ${this.capabilities.agentInfo?.name ?? "unknown"}@${this.capabilities.agentInfo?.version ?? "?"})`);
+    this.log(
+      `ACP ready (protocol v${this.capabilities.protocolVersion}, agent ${this.capabilities.agentInfo?.name ?? "unknown"}@${this.capabilities.agentInfo?.version ?? "?"})`
+    );
   }
 
-  private buildCapabilitySnapshot(res: InitializeResponse): AcpCapabilitySnapshot {
+  private buildCapabilitySnapshot(
+    res: InitializeResponse
+  ): AcpCapabilitySnapshot {
     const agentCapabilities = res.agentCapabilities;
     const promptCapabilities = agentCapabilities?.promptCapabilities;
     const sessionCapabilities = agentCapabilities?.sessionCapabilities;
     const mcpCapabilities = agentCapabilities?.mcpCapabilities;
-    if (!agentCapabilities) this.log("ACP initialize response omitted agent capabilities; defaulting optional features to false");
+    if (!agentCapabilities)
+      this.log(
+        "ACP initialize response omitted agent capabilities; defaulting optional features to false"
+      );
     return {
       protocolVersion: res.protocolVersion,
       agentInfo: res.agentInfo
-        ? { name: res.agentInfo.name, title: res.agentInfo.title ?? undefined, version: res.agentInfo.version }
+        ? {
+            name: res.agentInfo.name,
+            title: res.agentInfo.title ?? undefined,
+            version: res.agentInfo.version,
+          }
         : null,
       authMethods: res.authMethods ?? [],
       loadSession: agentCapabilities?.loadSession === true,
@@ -617,39 +756,78 @@ export class AcpService {
         fork: sessionCapabilities?.fork != null,
         resume: sessionCapabilities?.resume != null,
         close: sessionCapabilities?.close != null,
-        additionalDirectories: sessionCapabilities?.additionalDirectories != null,
+        additionalDirectories:
+          sessionCapabilities?.additionalDirectories != null,
       },
-      mcp: { http: mcpCapabilities?.http === true, sse: mcpCapabilities?.sse === true },
+      mcp: {
+        http: mcpCapabilities?.http === true,
+        sse: mcpCapabilities?.sse === true,
+      },
       elicitation: { form: true, url: false },
     };
   }
 
-  private requireCapability(check: (c: AcpCapabilitySnapshot) => boolean, name: string): AcpCapabilitySnapshot {
+  private requireCapability(
+    check: (c: AcpCapabilitySnapshot) => boolean,
+    name: string
+  ): AcpCapabilitySnapshot {
     const capabilities = this.capabilities;
     if (!capabilities) throw new AcpUnavailableError("ACP not initialized");
-    if (!check(capabilities)) throw new AcpUnavailableError(`Agent does not advertise ${name}`);
+    if (!check(capabilities))
+      throw new AcpUnavailableError(`Agent does not advertise ${name}`);
     return capabilities;
   }
 
-  private updateSession(sessionId: string, patch: Partial<AcpSessionState>): AcpSessionState {
+  private updateSession(
+    sessionId: string,
+    patch: Partial<AcpSessionState>
+  ): AcpSessionState {
     const existing = this.sessions.get(sessionId);
     if (!existing) return existing!;
-    const next: AcpSessionState = { ...existing, ...patch, revision: existing.revision + 1 };
+    const next: AcpSessionState = {
+      ...existing,
+      ...patch,
+      revision: existing.revision + 1,
+    };
     this.sessions.set(sessionId, next);
     if (existing.promptPending !== next.promptPending) this.publishRunning();
     if (!next.replaying) this.publishSession(sessionId);
     return next;
   }
 
-  private registerSession(sessionId: string, cwd: string, init: { modes?: SessionMode[]; configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[]; currentModeId?: string }): AcpSessionState {
+  private registerSession(
+    sessionId: string,
+    cwd: string,
+    init: {
+      modes?: SessionMode[];
+      configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[];
+      currentModeId?: string;
+    }
+  ): AcpSessionState {
     const existing = this.sessions.get(sessionId);
     const state: AcpSessionState = {
-      sessionId, cwd, messages: existing?.messages ?? [], toolCalls: existing?.toolCalls ?? {},
+      sessionId,
+      cwd,
+      messages: existing?.messages ?? [],
+      toolCalls: existing?.toolCalls ?? {},
       availableCommands: existing?.availableCommands ?? [],
-      availableModes: init.modes?.map((mode) => ({ id: mode.id, name: mode.name, description: mode.description })) ?? existing?.availableModes ?? [],
-      configOptions: init.configOptions ?? existing?.configOptions ?? [], plan: existing?.plan ?? [],
-      revision: (existing?.revision ?? 0) + 1, usage: existing?.usage, stopReason: existing?.stopReason,
-      loaded: true, replaying: false, promptPending: false, currentMode: init.currentModeId ?? existing?.currentMode,
+      availableModes:
+        init.modes?.map((mode) => ({
+          id: mode.id,
+          name: mode.name,
+          description: mode.description,
+        })) ??
+        existing?.availableModes ??
+        [],
+      configOptions: init.configOptions ?? existing?.configOptions ?? [],
+      plan: existing?.plan ?? [],
+      revision: (existing?.revision ?? 0) + 1,
+      usage: existing?.usage,
+      stopReason: existing?.stopReason,
+      loaded: true,
+      replaying: false,
+      promptPending: false,
+      currentMode: init.currentModeId ?? existing?.currentMode,
     };
     this.sessions.set(sessionId, state);
     this.messageIndex.delete(sessionId);
@@ -658,7 +836,10 @@ export class AcpService {
     return state;
   }
 
-  private handleSessionUpdate(sessionId: string, update: import("@agentclientprotocol/sdk").SessionUpdate): void {
+  private handleSessionUpdate(
+    sessionId: string,
+    update: import("@agentclientprotocol/sdk").SessionUpdate
+  ): void {
     const patch: Partial<AcpSessionState> = {};
     if (isSessionNotice(update)) {
       const notice = readSessionNotice(update);
@@ -671,21 +852,38 @@ export class AcpService {
       case "agent_thought_chunk": {
         const existing = this.sessions.get(sessionId);
         if (!existing) break;
-        const role = update.sessionUpdate === "user_message_chunk" ? "user" : update.sessionUpdate === "agent_thought_chunk" ? "thought" : "assistant";
-        const indexByMessageId = this.messageIndex.get(sessionId) ?? new Map<string, number>();
+        const role =
+          update.sessionUpdate === "user_message_chunk"
+            ? "user"
+            : update.sessionUpdate === "agent_thought_chunk"
+              ? "thought"
+              : "assistant";
+        const indexByMessageId =
+          this.messageIndex.get(sessionId) ?? new Map<string, number>();
         this.messageIndex.set(sessionId, indexByMessageId);
         const messages = existing.messages.slice();
-        let index = update.messageId ? indexByMessageId.get(update.messageId) ?? -1 : -1;
-        if (!update.messageId) for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === role) { index = i; break; }
+        let index = update.messageId
+          ? (indexByMessageId.get(update.messageId) ?? -1)
+          : -1;
+        if (!update.messageId)
+          for (let i = messages.length - 1; i >= 0; i--)
+            if (messages[i].role === role) {
+              index = i;
+              break;
+            }
         if (index >= 0) {
           const previous = messages[index];
           if (previous.role !== "toolCall") {
-            messages[index] = { ...previous, content: mergeContentBlocks(previous.content, update.content) };
+            messages[index] = {
+              ...previous,
+              content: mergeContentBlocks(previous.content, update.content),
+            };
           }
         } else {
           const id = update.messageId ?? crypto.randomUUID();
           messages.push({ id, role, content: [update.content] });
-          if (update.messageId) indexByMessageId.set(update.messageId, messages.length - 1);
+          if (update.messageId)
+            indexByMessageId.set(update.messageId, messages.length - 1);
         }
         patch.messages = messages;
         break;
@@ -694,79 +892,208 @@ export class AcpService {
         const toolCall = update as ToolCall & { sessionUpdate: "tool_call" };
         const existing = this.sessions.get(sessionId);
         const toolCalls = existing?.toolCalls ?? {};
-        patch.toolCalls = { ...toolCalls, [toolCall.toolCallId]: toToolCallEntry(toolCall) };
-        if (existing && !existing.messages.some((message) => message.role === "toolCall" && message.toolCallId === toolCall.toolCallId)) patch.messages = [...existing.messages, { id: `tool-${toolCall.toolCallId}`, role: "toolCall", toolCallId: toolCall.toolCallId, content: [] }];
+        patch.toolCalls = {
+          ...toolCalls,
+          [toolCall.toolCallId]: toToolCallEntry(toolCall),
+        };
+        if (
+          existing &&
+          !existing.messages.some(
+            (message) =>
+              message.role === "toolCall" &&
+              message.toolCallId === toolCall.toolCallId
+          )
+        )
+          patch.messages = [
+            ...existing.messages,
+            {
+              id: `tool-${toolCall.toolCallId}`,
+              role: "toolCall",
+              toolCallId: toolCall.toolCallId,
+              content: [],
+            },
+          ];
         break;
       }
       case "tool_call_update": {
-        const delta = update as ToolCallUpdate & { sessionUpdate: "tool_call_update" };
+        const delta = update as ToolCallUpdate & {
+          sessionUpdate: "tool_call_update";
+        };
         const toolCalls = this.sessions.get(sessionId)?.toolCalls ?? {};
         const current = toolCalls[delta.toolCallId];
-        if (current) patch.toolCalls = { ...toolCalls, [delta.toolCallId]: toToolCallEntry({ ...current, title: delta.title ?? current.title, kind: delta.kind ?? current.kind, status: delta.status ?? current.status, name: delta.name ?? current.name, content: delta.content ?? current.content, locations: delta.locations ?? undefined, rawInput: delta.rawInput ?? current.rawInput, rawOutput: delta.rawOutput ?? current.rawOutput }) };
+        if (current)
+          patch.toolCalls = {
+            ...toolCalls,
+            [delta.toolCallId]: toToolCallEntry({
+              ...current,
+              title: delta.title ?? current.title,
+              kind: delta.kind ?? current.kind,
+              status: delta.status ?? current.status,
+              name: delta.name ?? current.name,
+              content: delta.content ?? current.content,
+              locations: delta.locations ?? undefined,
+              rawInput: delta.rawInput ?? current.rawInput,
+              rawOutput: delta.rawOutput ?? current.rawOutput,
+            }),
+          };
         break;
       }
-      case "plan": patch.plan = (update as import("@agentclientprotocol/sdk").Plan).entries ?? []; break;
-      case "plan_update": { const plan = (update as import("@agentclientprotocol/sdk").PlanUpdate).plan; if ("entries" in (plan as object)) patch.plan = (plan as { entries?: import("@agentclientprotocol/sdk").PlanEntry[] }).entries ?? []; break; }
-      case "plan_removed": patch.plan = []; break;
-      case "available_commands_update": patch.availableCommands = (update as import("@agentclientprotocol/sdk").AvailableCommandsUpdate).availableCommands ?? []; break;
-      case "current_mode_update": patch.currentMode = (update as import("@agentclientprotocol/sdk").CurrentModeUpdate).currentModeId; break;
-      case "config_option_update": patch.configOptions = (update as import("@agentclientprotocol/sdk").ConfigOptionUpdate).configOptions ?? []; break;
-      case "session_info_update": { const info = update as import("@agentclientprotocol/sdk").SessionInfoUpdate; if ("title" in info) patch.title = info.title ?? undefined; if ("updatedAt" in info) patch.updatedAt = info.updatedAt ?? undefined; break; }
-      case "usage_update": { const usage = update as import("@agentclientprotocol/sdk").UsageUpdate; patch.usage = { used: usage.used, contextWindow: usage.size }; break; }
+      case "plan":
+        patch.plan =
+          (update as import("@agentclientprotocol/sdk").Plan).entries ?? [];
+        break;
+      case "plan_update": {
+        const plan = (update as import("@agentclientprotocol/sdk").PlanUpdate)
+          .plan;
+        if ("entries" in (plan as object))
+          patch.plan =
+            (
+              plan as {
+                entries?: import("@agentclientprotocol/sdk").PlanEntry[];
+              }
+            ).entries ?? [];
+        break;
+      }
+      case "plan_removed":
+        patch.plan = [];
+        break;
+      case "available_commands_update":
+        patch.availableCommands =
+          (update as import("@agentclientprotocol/sdk").AvailableCommandsUpdate)
+            .availableCommands ?? [];
+        break;
+      case "current_mode_update":
+        patch.currentMode = (
+          update as import("@agentclientprotocol/sdk").CurrentModeUpdate
+        ).currentModeId;
+        break;
+      case "config_option_update":
+        patch.configOptions =
+          (update as import("@agentclientprotocol/sdk").ConfigOptionUpdate)
+            .configOptions ?? [];
+        break;
+      case "session_info_update": {
+        const info =
+          update as import("@agentclientprotocol/sdk").SessionInfoUpdate;
+        if ("title" in info) patch.title = info.title ?? undefined;
+        if ("updatedAt" in info) patch.updatedAt = info.updatedAt ?? undefined;
+        break;
+      }
+      case "usage_update": {
+        const usage = update as import("@agentclientprotocol/sdk").UsageUpdate;
+        patch.usage = { used: usage.used, contextWindow: usage.size };
+        break;
+      }
     }
-    if (patch.messages && update.sessionUpdate !== "user_message_chunk" && update.sessionUpdate !== "agent_message_chunk" && update.sessionUpdate !== "agent_thought_chunk") this.messageIndex.delete(sessionId);
+    if (
+      patch.messages &&
+      update.sessionUpdate !== "user_message_chunk" &&
+      update.sessionUpdate !== "agent_message_chunk" &&
+      update.sessionUpdate !== "agent_thought_chunk"
+    )
+      this.messageIndex.delete(sessionId);
     this.updateSession(sessionId, patch);
   }
 
-  private handleSessionInfoUpdate(info: { sessionId: string; cwd: string; title?: string; updatedAt?: string }): void {
+  private handleSessionInfoUpdate(info: {
+    sessionId: string;
+    cwd: string;
+    title?: string;
+    updatedAt?: string;
+  }): void {
     if (!this.sessions.has(info.sessionId)) return;
-    this.updateSession(info.sessionId, { cwd: info.cwd, title: info.title, updatedAt: info.updatedAt });
+    this.updateSession(info.sessionId, {
+      cwd: info.cwd,
+      title: info.title,
+      updatedAt: info.updatedAt,
+    });
   }
 
   private cancelInteractionsForSession(sessionId: string): void {
-    for (const [resolverId, pending] of this.pendingPermissions) if (pending.sessionId === sessionId) { this.pendingPermissions.delete(resolverId); pending.resolve({ outcome: { outcome: "cancelled" } }); }
-    for (const [resolverId, pending] of this.pendingElicitations) if (pending.sessionId === sessionId) { this.pendingElicitations.delete(resolverId); pending.resolve({ action: "cancel" } as CreateElicitationResponse); }
+    for (const [resolverId, pending] of this.pendingPermissions)
+      if (pending.sessionId === sessionId) {
+        this.pendingPermissions.delete(resolverId);
+        pending.resolve({ outcome: { outcome: "cancelled" } });
+      }
+    for (const [resolverId, pending] of this.pendingElicitations)
+      if (pending.sessionId === sessionId) {
+        this.pendingElicitations.delete(resolverId);
+        pending.resolve({ action: "cancel" } as CreateElicitationResponse);
+      }
   }
 
   private cancelAllInteractions(): void {
-    for (const [resolverId, pending] of this.pendingPermissions) { this.pendingPermissions.delete(resolverId); pending.resolve({ outcome: { outcome: "cancelled" } }); }
-    for (const [resolverId, pending] of this.pendingElicitations) { this.pendingElicitations.delete(resolverId); pending.resolve({ action: "cancel" } as CreateElicitationResponse); }
+    for (const [resolverId, pending] of this.pendingPermissions) {
+      this.pendingPermissions.delete(resolverId);
+      pending.resolve({ outcome: { outcome: "cancelled" } });
+    }
+    for (const [resolverId, pending] of this.pendingElicitations) {
+      this.pendingElicitations.delete(resolverId);
+      pending.resolve({ action: "cancel" } as CreateElicitationResponse);
+    }
   }
 
   private markUnavailable(message: string): void {
     this.unavailableError = new AcpUnavailableError(message);
     this.state = "unavailable";
-    for (const [sessionId, session] of this.sessions) { this.sessions.set(sessionId, { ...session, promptPending: false }); this.messageIndex.delete(sessionId); }
+    for (const [sessionId, session] of this.sessions) {
+      this.sessions.set(sessionId, { ...session, promptPending: false });
+      this.messageIndex.delete(sessionId);
+    }
     this.publishConnection();
-    for (const sessionId of this.sessions.keys()) this.publishSession(sessionId);
+    for (const sessionId of this.sessions.keys())
+      this.publishSession(sessionId);
     this.publishRunning();
   }
 
   private publishConnection(): void {
     const snapshot = this.getSnapshot();
-    for (const listener of this.connectionListeners) try { listener(snapshot); } catch { /* ignore */ }
+    for (const listener of this.connectionListeners)
+      try {
+        listener(snapshot);
+      } catch {
+        /* ignore */
+      }
   }
 
   private publishSession(sessionId: string): void {
     const state = this.sessions.get(sessionId);
     if (!state) return;
-    for (const listener of this.sessionListeners.get(sessionId) ?? []) try { listener(state); } catch { /* ignore */ }
+    for (const listener of this.sessionListeners.get(sessionId) ?? [])
+      try {
+        listener(state);
+      } catch {
+        /* ignore */
+      }
   }
 
   private runningSessionIds(): string[] {
     const out: string[] = [];
-    for (const [id, session] of this.sessions) if (session.promptPending) out.push(id);
+    for (const [id, session] of this.sessions)
+      if (session.promptPending) out.push(id);
     return out;
   }
 
   private publishRunning(): void {
     const ids = this.runningSessionIds();
-    for (const listener of this.runningListeners) try { listener(ids); } catch { /* ignore */ }
+    for (const listener of this.runningListeners)
+      try {
+        listener(ids);
+      } catch {
+        /* ignore */
+      }
   }
 
-  private emitSessionNotice(sessionId: string, notice: { level: NoticeLevel; message: string }): void {
+  private emitSessionNotice(
+    sessionId: string,
+    notice: { level: NoticeLevel; message: string }
+  ): void {
     for (const listener of this.noticeListeners) {
-      try { listener(sessionId, notice.level, notice.message); } catch { /* ignore */ }
+      try {
+        listener(sessionId, notice.level, notice.message);
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -774,13 +1101,18 @@ export class AcpService {
     this.options.output(line);
   }
 
-  private waitForExit(child: ChildProcessWithoutNullStreams, ms: number): Promise<void> {
+  private waitForExit(
+    child: ChildProcessWithoutNullStreams,
+    ms: number
+  ): Promise<void> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => resolve(), ms);
-      const onExit = () => { clearTimeout(timer); resolve(); };
+      const onExit = () => {
+        clearTimeout(timer);
+        resolve();
+      };
       child.once("exit", onExit);
       child.once("error", onExit);
     });
   }
 }
-

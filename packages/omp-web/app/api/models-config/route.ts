@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getOmpAgentDir } from "@/lib/file-paths";
 import { invalidateModelsCache } from "@/lib/models-cache";
-import { readOmpModelsConfig, writeOmpModelsConfig } from "@/lib/omp-model-config";
+import {
+  readOmpModelsConfig,
+  writeOmpModelsConfig,
+} from "@/lib/omp-model-config";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +18,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const body = await req.json() as Record<string, unknown>;
+    const body = (await req.json()) as Record<string, unknown>;
     writeOmpModelsConfig(body, getOmpAgentDir());
     invalidateModelsCache();
     return NextResponse.json({ success: true });

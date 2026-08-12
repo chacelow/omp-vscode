@@ -29,14 +29,17 @@ export function useAudio() {
   });
 
   const enabledRef = useRef(enabled);
-  useEffect(() => { enabledRef.current = enabled; }, [enabled]);
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
 
   // Reuse a single AudioContext so it can be resumed if the browser
   // autoplay policy suspends it (contexts created outside user gestures
   // start in "suspended" state and produce no sound).
   const ctxRef = useRef<AudioContext | null>(null);
   const getCtx = useCallback((): AudioContext | null => {
-    if (ctxRef.current && ctxRef.current.state !== "closed") return ctxRef.current;
+    if (ctxRef.current && ctxRef.current.state !== "closed")
+      return ctxRef.current;
     try {
       ctxRef.current = new AudioContext();
     } catch {
@@ -45,12 +48,15 @@ export function useAudio() {
     return ctxRef.current;
   }, []);
 
-  const unlockAudio = useCallback((force = false) => {
-    if (!force && !enabledRef.current) return;
-    const ctx = getCtx();
-    if (!ctx || ctx.state !== "suspended") return;
-    ctx.resume().catch(() => {});
-  }, [getCtx]);
+  const unlockAudio = useCallback(
+    (force = false) => {
+      if (!force && !enabledRef.current) return;
+      const ctx = getCtx();
+      if (!ctx || ctx.state !== "suspended") return;
+      ctx.resume().catch(() => {});
+    },
+    [getCtx]
+  );
 
   const toggle = useCallback(() => {
     const next = !enabledRef.current;
@@ -72,11 +78,20 @@ export function useAudio() {
       }
     };
     if (ctx.state === "suspended") {
-      ctx.resume().then(play).catch(() => {});
+      ctx
+        .resume()
+        .then(play)
+        .catch(() => {});
       return;
     }
     play();
   }, [getCtx]);
 
-  return { soundEnabled: enabled, onSoundToggle: toggle, playDoneSound: playDone, unlockAudio, soundEnabledRef: enabledRef };
+  return {
+    soundEnabled: enabled,
+    onSoundToggle: toggle,
+    playDoneSound: playDone,
+    unlockAudio,
+    soundEnabledRef: enabledRef,
+  };
 }

@@ -16,7 +16,15 @@ import { cn } from "@/lib/utils";
 // The effort label next to the model name opens the thinking-level picker.
 
 const MODEL_FILTER_THRESHOLD = 8;
-const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+const THINKING_LEVELS = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
 
 interface ModelOption {
   provider: string;
@@ -34,18 +42,24 @@ function formatProviderName(provider: string): string {
 }
 
 function compareModelOptions(a: ModelOption, b: ModelOption): number {
-  return (a.name || a.modelId).localeCompare(b.name || b.modelId)
-    || a.provider.localeCompare(b.provider)
-    || a.modelId.localeCompare(b.modelId);
+  return (
+    (a.name || a.modelId).localeCompare(b.name || b.modelId) ||
+    a.provider.localeCompare(b.provider) ||
+    a.modelId.localeCompare(b.modelId)
+  );
 }
 
-function filterModelOptions(options: ModelOption[], query: string): ModelOption[] {
+function filterModelOptions(
+  options: ModelOption[],
+  query: string
+): ModelOption[] {
   const q = query.trim().toLowerCase();
   if (!q) return options;
-  return options.filter((o) =>
-    o.modelId.toLowerCase().includes(q)
-    || o.name.toLowerCase().includes(q)
-    || o.provider.toLowerCase().includes(q),
+  return options.filter(
+    (o) =>
+      o.modelId.toLowerCase().includes(q) ||
+      o.name.toLowerCase().includes(q) ||
+      o.provider.toLowerCase().includes(q)
   );
 }
 
@@ -59,26 +73,42 @@ export interface ModelSelectorProps {
   isStreaming: boolean;
   onModelChange?: (provider: string, modelId: string) => void;
   onModelOpen?: () => void;
-  onThinkingLevelChange?: (level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") => void;
+  onThinkingLevelChange?: (
+    level:
+      "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+  ) => void;
   t: (key: string) => string;
 }
 
 export const ModelSelector = memo(function ModelSelector({
-  model, modelList, modelNames, modelError, thinkingLevel, isStreaming,
-  onModelChange, onModelOpen, onThinkingLevelChange, modelThinkingLevelMaps, t,
+  model,
+  modelList,
+  modelNames,
+  modelError,
+  thinkingLevel,
+  isStreaming,
+  onModelChange,
+  onModelOpen,
+  onThinkingLevelChange,
+  modelThinkingLevelMaps,
+  t,
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
   const modelOptions = useMemo<ModelOption[]>(() => {
     if (modelList && modelList.length > 0) {
-      return modelList.map((m) => ({ provider: m.provider, modelId: m.id, name: m.name })).sort(compareModelOptions);
+      return modelList
+        .map((m) => ({ provider: m.provider, modelId: m.id, name: m.name }))
+        .sort(compareModelOptions);
     }
-    return Object.entries(modelNames ?? {}).map(([modelId, name]) => ({
-      provider: model?.provider ?? "unknown",
-      modelId,
-      name,
-    })).sort(compareModelOptions);
+    return Object.entries(modelNames ?? {})
+      .map(([modelId, name]) => ({
+        provider: model?.provider ?? "unknown",
+        modelId,
+        name,
+      }))
+      .sort(compareModelOptions);
   }, [modelList, modelNames, model]);
 
   const filtered = filterModelOptions(modelOptions, filter);
@@ -92,7 +122,9 @@ export const ModelSelector = memo(function ModelSelector({
   }
 
   const currentName = model
-    ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)?.name ?? model.modelId)
+    ? (modelOptions.find(
+        (o) => o.modelId === model.modelId && o.provider === model.provider
+      )?.name ?? model.modelId)
     : null;
 
   return (
@@ -111,12 +143,19 @@ export const ModelSelector = memo(function ModelSelector({
             variant="ghost"
             size="sm"
             disabled={isStreaming}
-            title={modelOptions.length > 0 ? "Change model" : "No available models"}
+            title={
+              modelOptions.length > 0 ? "Change model" : "No available models"
+            }
             className="h-6 max-w-[180px] gap-1.5 overflow-hidden rounded-[9px] px-2 text-[13px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] data-[state=open]:bg-[var(--bg-hover)] data-[state=open]:text-[var(--text)]"
           >
             <Bot size={11} className="shrink-0" />
             <span className="min-w-0 flex-1 truncate">
-              {currentName ?? (modelOptions.length > 0 ? "Select model" : (modelError ? "No models" : "Loading…"))}
+              {currentName ??
+                (modelOptions.length > 0
+                  ? "Select model"
+                  : modelError
+                    ? "No models"
+                    : "Loading…")}
             </span>
             <Popover>
               <PopoverTrigger asChild>
@@ -129,13 +168,17 @@ export const ModelSelector = memo(function ModelSelector({
                     setOpen(false);
                   }}
                   className={cn(
-                    "ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80",
+                    "ml-0.5 shrink-0 cursor-pointer font-mono text-[10px] text-[var(--text-dim)] opacity-80"
                   )}
                 >
                   {thinkingLevel || "auto"}▾
                 </span>
               </PopoverTrigger>
-              <PopoverContent side="top" align="end" className="w-fit min-w-0 p-1">
+              <PopoverContent
+                side="top"
+                align="end"
+                className="w-fit min-w-0 p-1"
+              >
                 {THINKING_LEVELS.map((level) => {
                   const active = thinkingLevel === level;
                   return (
@@ -151,14 +194,26 @@ export const ModelSelector = memo(function ModelSelector({
                         "w-full justify-start gap-2 rounded-[7px] px-2.5 py-[5px] font-mono text-xs",
                         active
                           ? "bg-[var(--bg-selected)] text-[var(--text)] hover:bg-[var(--bg-selected)]"
-                          : "text-[var(--text-muted)]",
+                          : "text-[var(--text-muted)]"
                       )}
                     >
                       <span className="flex-1">{level}</span>
-                      {model && (() => {
-                        const values = Object.values(modelThinkingLevelMaps?.[`${model.provider}:${model.modelId}`] ?? {}).filter((value): value is string => typeof value === "string" && value.length > 0);
-                        return values.length > 0 ? <span className="rounded bg-[var(--bg-hover)] px-1 font-mono text-[10px] text-[var(--text-muted)]">{values.join("–")}</span> : null;
-                      })()}
+                      {model &&
+                        (() => {
+                          const values = Object.values(
+                            modelThinkingLevelMaps?.[
+                              `${model.provider}:${model.modelId}`
+                            ] ?? {}
+                          ).filter(
+                            (value): value is string =>
+                              typeof value === "string" && value.length > 0
+                          );
+                          return values.length > 0 ? (
+                            <span className="rounded bg-[var(--bg-hover)] px-1 font-mono text-[10px] text-[var(--text-muted)]">
+                              {values.join("–")}
+                            </span>
+                          ) : null;
+                        })()}
                     </Button>
                   );
                 })}
@@ -167,7 +222,11 @@ export const ModelSelector = memo(function ModelSelector({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent side="top" align="start" className="max-w-[min(60vw,420px)] p-1">
+        <DropdownMenuContent
+          side="top"
+          align="start"
+          className="max-w-[min(60vw,420px)] p-1"
+        >
           {showFilter && (
             <div className="px-1 pb-1.5">
               <Input
@@ -186,40 +245,53 @@ export const ModelSelector = memo(function ModelSelector({
               <div className="px-3 py-2 text-xs whitespace-nowrap text-[var(--text-dim)]">
                 {filter.trim() ? "No matching models" : "No available models"}
               </div>
-            ) : modelsByProvider.map((group, gi) => (
-              <div key={group.provider}>
-                {modelsByProvider.length > 1 && (
-                  <DropdownMenuLabel className={cn(
-                    "px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-dim)]",
-                    gi > 0 && "border-t border-[var(--border)]",
-                  )}>
-                    {formatProviderName(group.provider)}
-                  </DropdownMenuLabel>
-                )}
-                {group.options.map((opt) => {
-                  const isActive = opt.modelId === model?.modelId && opt.provider === model?.provider;
-                  return (
-                    <DropdownMenuItem
-                      key={`${opt.provider}:${opt.modelId}`}
-                      onSelect={() => {
-                        if (!isActive) onModelChange?.(opt.provider, opt.modelId);
-                      }}
+            ) : (
+              modelsByProvider.map((group, gi) => (
+                <div key={group.provider}>
+                  {modelsByProvider.length > 1 && (
+                    <DropdownMenuLabel
                       className={cn(
-                        "gap-2 whitespace-nowrap px-3 py-[7px] text-xs",
-                        isActive
-                          ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] focus:bg-[var(--bg-selected)]"
-                          : "text-[var(--text-muted)]",
+                        "px-3 pt-1.5 pb-1 text-[10px] font-semibold tracking-[0.07em] text-[var(--text-dim)] uppercase",
+                        gi > 0 && "border-t border-[var(--border)]"
                       )}
                     >
-                      {isActive
-                        ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
-                        : <span className="w-2.5 shrink-0" />}
-                      {opt.name}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </div>
-            ))}
+                      {formatProviderName(group.provider)}
+                    </DropdownMenuLabel>
+                  )}
+                  {group.options.map((opt) => {
+                    const isActive =
+                      opt.modelId === model?.modelId &&
+                      opt.provider === model?.provider;
+                    return (
+                      <DropdownMenuItem
+                        key={`${opt.provider}:${opt.modelId}`}
+                        onSelect={() => {
+                          if (!isActive)
+                            onModelChange?.(opt.provider, opt.modelId);
+                        }}
+                        className={cn(
+                          "gap-2 px-3 py-[7px] text-xs whitespace-nowrap",
+                          isActive
+                            ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] focus:bg-[var(--bg-selected)]"
+                            : "text-[var(--text-muted)]"
+                        )}
+                      >
+                        {isActive ? (
+                          <Check
+                            size={10}
+                            strokeWidth={2}
+                            className="shrink-0 text-[var(--accent)]"
+                          />
+                        ) : (
+                          <span className="w-2.5 shrink-0" />
+                        )}
+                        {opt.name}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </div>
+              ))
+            )}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

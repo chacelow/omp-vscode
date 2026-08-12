@@ -51,7 +51,9 @@ export function useTheme() {
     const idx = THEME_ORDER.indexOf(current);
     const next: Theme = THEME_ORDER[(idx + 1) % THEME_ORDER.length];
 
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     const supportsVT = typeof document.startViewTransition === "function";
 
     if (!supportsVT || reduceMotion) {
@@ -63,7 +65,7 @@ export function useTheme() {
     const y = origin?.y ?? window.innerHeight / 2;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y),
+      Math.max(y, window.innerHeight - y)
     );
 
     const transition = document.startViewTransition(() => applyTheme(next));
@@ -80,7 +82,7 @@ export function useTheme() {
             duration: 450,
             easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
             pseudoElement: "::view-transition-new(root)",
-          },
+          }
         );
       })
       .catch(() => {
@@ -93,7 +95,9 @@ export function useTheme() {
     const current = getSnapshot();
     const next: Theme = current === "dark" ? "light" : "dark";
 
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     const supportsVT = typeof document.startViewTransition === "function";
 
     if (!supportsVT || reduceMotion) {
@@ -105,7 +109,7 @@ export function useTheme() {
     const y = origin?.y ?? window.innerHeight / 2;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y),
+      Math.max(y, window.innerHeight - y)
     );
 
     const transition = document.startViewTransition(() => applyTheme(next));
@@ -122,7 +126,7 @@ export function useTheme() {
             duration: 450,
             easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
             pseudoElement: "::view-transition-new(root)",
-          },
+          }
         );
       })
       .catch(() => {});
@@ -130,19 +134,38 @@ export function useTheme() {
 
   const setTheme = useCallback((next: Theme, origin?: ToggleOrigin) => {
     if (next === getSnapshot()) return;
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     const supportsVT = typeof document.startViewTransition === "function";
-    if (!supportsVT || reduceMotion) { applyTheme(next); return; }
+    if (!supportsVT || reduceMotion) {
+      applyTheme(next);
+      return;
+    }
     const x = origin?.x ?? window.innerWidth / 2;
     const y = origin?.y ?? window.innerHeight / 2;
-    const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
     const transition = document.startViewTransition(() => applyTheme(next));
-    transition.ready.then(() => {
-      document.documentElement.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
-        { duration: 450, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)", pseudoElement: "::view-transition-new(root)" },
-      );
-    }).catch(() => {});
+    transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${endRadius}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 450,
+            easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+            pseudoElement: "::view-transition-new(root)",
+          }
+        );
+      })
+      .catch(() => {});
   }, []);
 
   return {

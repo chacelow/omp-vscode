@@ -28,20 +28,32 @@ function parseHttpIdleTimeoutMs(value: unknown): number | undefined {
 // Undici can emit an internal Client error while terminating a response body.
 // The body stream still rejects; this prevents the EventEmitter error from
 // terminating the Next.js process first.
-function withUndiciErrorListener<T extends undici.Dispatcher>(dispatcher: T): T {
+function withUndiciErrorListener<T extends undici.Dispatcher>(
+  dispatcher: T
+): T {
   if (dispatcher instanceof EventEmitter) {
-    EventEmitter.prototype.on.call(dispatcher, "error", ignoreUndiciDispatcherError);
+    EventEmitter.prototype.on.call(
+      dispatcher,
+      "error",
+      ignoreUndiciDispatcherError
+    );
   }
   return dispatcher;
 }
 
-function createUndiciClient(origin: string | URL, options: object): undici.Dispatcher {
+function createUndiciClient(
+  origin: string | URL,
+  options: object
+): undici.Dispatcher {
   return withUndiciErrorListener(
-    new undici.Client(origin, options as undici.Client.Options),
+    new undici.Client(origin, options as undici.Client.Options)
   );
 }
 
-function createUndiciOriginDispatcher(origin: string | URL, options: object): undici.Dispatcher {
+function createUndiciOriginDispatcher(
+  origin: string | URL,
+  options: object
+): undici.Dispatcher {
   const dispatcherOptions = options as undici.Pool.Options;
   if (dispatcherOptions.connections === 1) {
     return createUndiciClient(origin, dispatcherOptions);
@@ -51,12 +63,12 @@ function createUndiciOriginDispatcher(origin: string | URL, options: object): un
     new undici.Pool(origin, {
       ...dispatcherOptions,
       factory: createUndiciClient,
-    }),
+    })
   );
 }
 
 export function configureHttpDispatcher(
-  timeoutMs: number = DEFAULT_HTTP_IDLE_TIMEOUT_MS,
+  timeoutMs: number = DEFAULT_HTTP_IDLE_TIMEOUT_MS
 ): void {
   if (dispatcherGlobal.__piWebHttpDispatcherConfigured) return;
 
@@ -72,7 +84,7 @@ export function configureHttpDispatcher(
       headersTimeout: normalizedTimeoutMs,
       clientFactory: createUndiciClient,
       factory: createUndiciOriginDispatcher,
-    }),
+    })
   );
   undici.setGlobalDispatcher(dispatcher);
 

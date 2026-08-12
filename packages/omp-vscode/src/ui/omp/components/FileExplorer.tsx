@@ -9,8 +9,9 @@ export interface FileExplorerHandle {
   openUploadPicker: () => void;
 }
 
-export const FileExplorer = forwardRef<FileExplorerHandle, Record<string, unknown>>(
-  function FileExplorer(_props, _ref) {
-    return null;
-  },
-);
+export const FileExplorer = forwardRef<
+  FileExplorerHandle,
+  Record<string, unknown>
+>(function FileExplorer(_props, _ref) {
+  return null;
+});

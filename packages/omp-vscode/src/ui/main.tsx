@@ -8,7 +8,11 @@ import { ompPost } from "./boot";
 import "./bridge";
 import { TooltipProvider } from "./omp/components/ui/tooltip";
 
-ompPost({ type: "log", level: "info", message: "[webview] bridge installed, rendering…" });
+ompPost({
+  type: "log",
+  level: "info",
+  message: "[webview] bridge installed, rendering…",
+});
 
 // ---------------------------------------------------------------------------
 // React bootstrap with error boundary
@@ -20,7 +24,10 @@ import { AppShell } from "./omp/components/AppShell";
 import { WorkbenchShell } from "./omp/components/WorkbenchShell";
 import { I18nProvider } from "./omp/hooks/useI18n";
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
   state = { error: null as Error | null };
 
   static getDerivedStateFromError(error: Error) {
@@ -41,12 +48,21 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
       return (
         <div style={{ padding: 16, fontFamily: "monospace", fontSize: 12 }}>
           <h3 style={{ color: "#f48771" }}>OMP UI crashed</h3>
-          <pre style={{ color: "#d4d4d4", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          <pre
+            style={{
+              color: "#d4d4d4",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
             {this.state.error.message}
             {"\n\n"}
             {this.state.error.stack}
           </pre>
-          <button onClick={() => location.reload()} style={{ marginTop: 12, padding: "4px 12px" }}>
+          <button
+            onClick={() => location.reload()}
+            style={{ marginTop: 12, padding: "4px 12px" }}
+          >
             Reload
           </button>
         </div>
@@ -59,7 +75,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 const container = document.getElementById("app");
 if (!container) throw new Error("missing #app root");
 
-const panelKind = container.getAttribute("data-panel") === "workbench" ? "workbench" : "chat";
+const panelKind =
+  container.getAttribute("data-panel") === "workbench" ? "workbench" : "chat";
 const RootView = panelKind === "workbench" ? WorkbenchShell : AppShell;
 
 createRoot(container).render(
@@ -69,7 +86,7 @@ createRoot(container).render(
         <RootView />
       </TooltipProvider>
     </I18nProvider>
-  </ErrorBoundary>,
+  </ErrorBoundary>
 );
 
 ompPost({ type: "log", level: "info", message: "[webview] render() called" });

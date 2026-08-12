@@ -1,8 +1,25 @@
 "use client";
 
-import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
-import type { BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
-import { clearDraft, getDraft, setDraft, type ChatDraftImage } from "@/lib/draft-store";
+import React, {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  forwardRef,
+  KeyboardEvent,
+} from "react";
+import type {
+  BuiltinSlashCommandResult,
+  CompactResultInfo,
+  SlashCommandInfo,
+} from "@/hooks/useAgentSession";
+import {
+  clearDraft,
+  getDraft,
+  setDraft,
+  type ChatDraftImage,
+} from "@/lib/draft-store";
 import {
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGES,
@@ -14,17 +31,28 @@ import { useCompleter, type CompleterRange } from "@/lib/useCompleter";
 /** Textarea free-resize ceiling: 15 lines × 20.8px line height. */
 const TEXTAREA_MAX_HEIGHT = Math.round(15 * 20.8);
 import {
-  buildEntriesFromFiles, buildAtInsertText, extractAtQuery, filterFileEntries,
-  type AtQueryMatch, type FileIndexEntry,
+  buildEntriesFromFiles,
+  buildAtInsertText,
+  extractAtQuery,
+  filterFileEntries,
+  type AtQueryMatch,
+  type FileIndexEntry,
 } from "@/lib/file-fuzzy";
 import { FolderIcon, getFileIcon } from "./FileIcons";
 import { ToolbarRow } from "./chat/ToolbarRow";
 import { HistoryMenu } from "./chat/HistoryMenu";
 import ExternalEditorModal from "./ExternalEditorModal";
-import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescription, SLASH_SOURCE_ORDER, type SlashCommandPaletteItem } from "./chat/SlashPalette";
+import {
+  SlashPalette,
+  buildSlashCommandLayout,
+  slashMatchRank,
+  getSlashDescription,
+  SLASH_SOURCE_ORDER,
+  type SlashCommandPaletteItem,
+} from "./chat/SlashPalette";
 import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
-import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
+import { Check, RefreshCw, TriangleAlert, X } from "lucide-react";
 import type { ChatFooterStats } from "./chat/ChatFooterBar";
 import { useI18n } from "@/hooks/useI18n";
 import { ompExtensions } from "@/lib/ext-methods";
@@ -32,17 +60,25 @@ import { cn } from "@/lib/utils";
 import { hostCall, openImageInVSCode } from "../../bridge";
 
 export interface AttachedImage {
-  data: string;   // base64, no prefix
+  data: string; // base64, no prefix
   mimeType: string;
   previewUrl: string; // object URL for display
 }
 
 export interface ChatInputProps {
-  onSend: (message: string, images?: AttachedImage[], flags?: { bashExcluded?: boolean }) => void;
+  onSend: (
+    message: string,
+    images?: AttachedImage[],
+    flags?: { bashExcluded?: boolean }
+  ) => void;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
   onFollowUp?: (message: string, images?: AttachedImage[]) => void;
-  onPromptWithStreamingBehavior?: (message: string, behavior: "steer" | "followUp", images?: AttachedImage[]) => void;
+  onPromptWithStreamingBehavior?: (
+    message: string,
+    behavior: "steer" | "followUp",
+    images?: AttachedImage[]
+  ) => void;
   isStreaming: boolean;
   model?: { provider: string; modelId: string } | null;
   isAutoModelSelection?: boolean;
@@ -55,7 +91,10 @@ export interface ChatInputProps {
   /** Called when the model selector opens — re-query the live model list. */
   onModelOpen?: () => void;
   /** Configured model roles (default/smol/plan/…) from config.yml modelRoles. */
-  modelRoles?: Record<string, { provider: string; modelId: string; thinkingLevel?: string }>;
+  modelRoles?: Record<
+    string,
+    { provider: string; modelId: string; thinkingLevel?: string }
+  >;
   fastMode?: boolean;
   onRoleChange?: (role: string) => void;
   onCompact?: () => void;
@@ -65,17 +104,28 @@ export interface ChatInputProps {
   compactResult?: CompactResultInfo | null;
   toolPreset?: "none" | "default" | "full";
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
-  thinkingLevel?: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
-  onThinkingLevelChange?: (level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") => void;
+  thinkingLevel?:
+    "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+  onThinkingLevelChange?: (
+    level:
+      "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+  ) => void;
   availableThinkingLevels?: string[] | null;
   thinkingLevelMap?: Record<string, string | null> | null;
-  retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
-  queuedMessages?: QueuedMessages | null;
+  retryInfo?: {
+    attempt: number;
+    maxAttempts: number;
+    errorMessage?: string;
+  } | null;
+  imageSupported?: boolean;
   /** Context usage ring (shown next to the attach button). */
-  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
+  contextUsage?: {
+    percent: number | null;
+    contextWindow: number;
+    tokens: number | null;
+  } | null;
   stats?: ChatFooterStats | null;
   inputHistory?: string[];
-  onRecallQueue?: () => void;
   onToggleThinking?: () => void;
   onOpenHistorySearch?: () => void;
   onOpenModelSelector?: () => void;
@@ -114,10 +164,28 @@ export interface ChatInputHandle {
 
 const COMPOSITION_END_ENTER_GRACE_MS = 100;
 
-const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
-const THINKING_LEVEL_DESC_KEYS: Record<typeof THINKING_LEVELS[number], string> = {
-  auto: "chat.thinkingUseDefault", off: "chat.thinkingOff", minimal: "chat.thinkingMinimal", low: "chat.thinkingLow",
-  medium: "chat.thinkingMedium", high: "chat.thinkingHigh", xhigh: "chat.thinkingXhigh", max: "chat.thinkingMax",
+const THINKING_LEVELS = [
+  "auto",
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+const THINKING_LEVEL_DESC_KEYS: Record<
+  (typeof THINKING_LEVELS)[number],
+  string
+> = {
+  auto: "chat.thinkingUseDefault",
+  off: "chat.thinkingOff",
+  minimal: "chat.thinkingMinimal",
+  low: "chat.thinkingLow",
+  medium: "chat.thinkingMedium",
+  high: "chat.thinkingHigh",
+  xhigh: "chat.thinkingXhigh",
+  max: "chat.thinkingMax",
 };
 
 function formatTokenCount(tokens: number): string {
@@ -130,12 +198,28 @@ function formatTokenCount(tokens: number): string {
 // Every other command is routed to ACP via session/prompt; the palette below is composed with
 // snapshot's availableCommands at render time.
 export const BUILTIN_SLASH_COMMANDS: SlashCommandPaletteItem[] = [
-  { name: "help", description: "Show available slash commands and usage", source: "builtin" },
-  { name: "hotkeys", description: "Show all keyboard shortcuts", source: "builtin" },
-  { name: "copy", description: "Copy last assistant text/code to clipboard", source: "builtin" },
+  {
+    name: "help",
+    description: "Show available slash commands and usage",
+    source: "builtin",
+  },
+  {
+    name: "hotkeys",
+    description: "Show all keyboard shortcuts",
+    source: "builtin",
+  },
+  {
+    name: "copy",
+    description: "Copy last assistant text/code to clipboard",
+    source: "builtin",
+  },
   { name: "new", description: "Start a new session", source: "builtin" },
   { name: "quit", description: "Close the webview panel", source: "builtin" },
-  { name: "settings", description: "Open the settings panel", source: "builtin" },
+  {
+    name: "settings",
+    description: "Open the settings panel",
+    source: "builtin",
+  },
   { name: "models", description: "Open the model selector", source: "builtin" },
 ];
 
@@ -143,20 +227,57 @@ const GITHUB_REFERENCE_RE = /(^|\s)#(?:pr|pull|issue)?(\d+)$/i;
 const PROMPT_ACTION_RE = /(^|\s)#([a-z][a-z0-9-]*)$/i;
 const INTERNAL_URL_RE = /(^|\s)([a-z]+:\/\/)([^\s]*)$/i;
 const EMOJI_RE = /(^|\s):([a-z0-9_+-]{1,})$/i;
-const INTERNAL_URL_SCHEMES: Record<string, true> = { skill: true, rule: true, omp: true, local: true, memory: true, agent: true, artifact: true, mcp: true, history: true, pr: true, issue: true };
-const PROMPT_ACTIONS = ["copy-line", "copy-prompt", "undo", "cursor-message-start", "cursor-message-end", "cursor-line-start", "cursor-line-end"] as const;
+const INTERNAL_URL_SCHEMES: Record<string, true> = {
+  skill: true,
+  rule: true,
+  omp: true,
+  local: true,
+  memory: true,
+  agent: true,
+  artifact: true,
+  mcp: true,
+  history: true,
+  pr: true,
+  issue: true,
+};
+const PROMPT_ACTIONS = [
+  "copy-line",
+  "copy-prompt",
+  "undo",
+  "cursor-message-start",
+  "cursor-message-end",
+  "cursor-line-start",
+  "cursor-line-end",
+] as const;
 type ComposerCompletion = { value: string; label: string };
 
-function fuzzyMatches(values: readonly string[], query: string, limit = 12): string[] {
+function fuzzyMatches(
+  values: readonly string[],
+  query: string,
+  limit = 12
+): string[] {
   const normalized = query.toLowerCase();
-  return values.filter((value) => value.toLowerCase().includes(normalized)).sort((left, right) => {
-    const prefixDelta = Number(!left.toLowerCase().startsWith(normalized)) - Number(!right.toLowerCase().startsWith(normalized));
-    return prefixDelta || left.toLowerCase().indexOf(normalized) - right.toLowerCase().indexOf(normalized) || left.localeCompare(right);
-  }).slice(0, limit);
+  return values
+    .filter((value) => value.toLowerCase().includes(normalized))
+    .sort((left, right) => {
+      const prefixDelta =
+        Number(!left.toLowerCase().startsWith(normalized)) -
+        Number(!right.toLowerCase().startsWith(normalized));
+      return (
+        prefixDelta ||
+        left.toLowerCase().indexOf(normalized) -
+          right.toLowerCase().indexOf(normalized) ||
+        left.localeCompare(right)
+      );
+    })
+    .slice(0, limit);
 }
 
 function expandEmoticons(message: string): string {
-  return EMOJI_EMOTICONS.reduce((expanded, [pattern, emoji]) => expanded.replace(pattern, emoji), message);
+  return EMOJI_EMOTICONS.reduce(
+    (expanded, [pattern, emoji]) => expanded.replace(pattern, emoji),
+    message
+  );
 }
 
 function imageToDraftImage(image: AttachedImage): ChatDraftImage {
@@ -170,7 +291,9 @@ function draftImageToAttachedImage(image: ChatDraftImage): AttachedImage {
   };
 }
 
-function draftImagesToAttachedImages(images: ChatDraftImage[] | undefined): AttachedImage[] {
+function draftImagesToAttachedImages(
+  images: ChatDraftImage[] | undefined
+): AttachedImage[] {
   return (images ?? [])
     .filter(isBase64ImageWithinLimits)
     .slice(0, MAX_ATTACHED_IMAGES)
@@ -183,24 +306,16 @@ function revokeImagePreview(image: AttachedImage): void {
   }
 }
 
-function QueuedMessageRow({ kind, text }: { kind: "steer" | "follow-up"; text: string }) {
-  return (
-    <div title={text} className="flex min-w-0 items-center gap-2 px-2.5 py-[3px] text-xs text-[var(--text-muted)]">
-      <span
-        className="shrink-0 rounded-full px-[7px] py-px font-mono text-[10px]"
-        style={{
-          border: `1px solid ${kind === "steer" ? "color-mix(in srgb, var(--accent) 45%, transparent)" : "var(--border)"}`,
-          color: kind === "steer" ? "var(--accent)" : "var(--text-dim)",
-        }}
-      >
-        {kind}
-      </span>
-      <span className="min-w-0 truncate">{text}</span>
-    </div>
-  );
-}
 
-function ModelNoticeBanner({ tone, title, body }: { tone: "error" | "warning"; title: string; body: string }) {
+function ModelNoticeBanner({
+  tone,
+  title,
+  body,
+}: {
+  tone: "error" | "warning";
+  title: string;
+  body: string;
+}) {
   const color = tone === "error" ? "239,68,68" : "234,179,8";
   return (
     <div
@@ -215,7 +330,7 @@ function ModelNoticeBanner({ tone, title, body }: { tone: "error" | "warning"; t
       <TriangleAlert size={13} className="mt-px shrink-0" aria-hidden />
       <div className="min-w-0">
         <div className="font-semibold">{title}</div>
-        <div className="whitespace-pre-wrap break-words">{body}</div>
+        <div className="break-words whitespace-pre-wrap">{body}</div>
       </div>
     </div>
   );
@@ -232,1304 +347,1744 @@ export function ModelScopeWarningBanner({ warnings }: { warnings?: string[] }) {
   return (
     <ModelNoticeBanner
       tone="warning"
-      title={warnings.length > 1 ? "Model scope warnings" : "Model scope warning"}
+      title={
+        warnings.length > 1 ? "Model scope warnings" : "Model scope warning"
+      }
       body={warnings.join("\n")}
     />
   );
 }
 
-export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({
-  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, onModelOpen, modelRoles, fastMode, onRoleChange,
-  onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
-  thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
-  retryInfo, queuedMessages, contextUsage, stats, inputHistory = [], onRecallQueue,
-  onToggleThinking, onOpenHistorySearch, onOpenModelSelector, onOpenTemporaryModelPicker, onOpenAgentHub, onDisplayReset, onToggleExpandAllTools, onToggleToolsHidden,
-  slashCommands, slashCommandsLoading, onLoadSlashCommands, onBuiltinCommand,
-  soundEnabled, onSoundToggle, onAudioUnlock,
-  onPromptWithStreamingBehavior,
-  draftKey,
-  initialValue,
-  onCancelEdit,
-  collapsed,
-  onActivateEdit,
-  cwd,
-}: ChatInputProps, ref) {
-  const { t } = useI18n();
-  const [value, setValue] = useState(() => (initialValue ?? (draftKey ? getDraft(draftKey)?.value ?? "" : "")));
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
-    draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
-  ));
-  const trimmedValue = value.trimStart();
-  const bashMode = attachedImages.length === 0 && trimmedValue.startsWith("!");
-  const bashExcluded = bashMode && trimmedValue.startsWith("!!");
-  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
-  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
-  const [atQuery, setAtQuery] = useState<AtQueryMatch | null>(null);
-  const [atMenuOpen, setAtMenuOpen] = useState(false);
-  const [atActiveIndex, setAtActiveIndex] = useState(0);
-  const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
-  const [historyActiveIndex, setHistoryActiveIndex] = useState(0);
-  const [fileIndex, setFileIndex] = useState<{ cwd: string; entries: FileIndexEntry[]; truncated: boolean } | null>(null);
-  const [fileIndexLoading, setFileIndexLoading] = useState(false);
-  const [atServerResult, setAtServerResult] = useState<{ cwd: string; query: string; matches: FileIndexEntry[] } | null>(null);
-  const [externalEditorOpen, setExternalEditorOpen] = useState(false);
-  const emojiCompleter = useCompleter<ComposerCompletion>();
-  const githubCompleter = useCompleter<ComposerCompletion>();
-  const actionCompleter = useCompleter<ComposerCompletion>();
-  const urlCompleter = useCompleter<ComposerCompletion>();
-  const [skillDormancyState, setSkillDormancyState] = useState<{
-    cwd: string;
-    values: Record<string, boolean>;
-  } | null>(null);
-  const skillDormancy = cwd && skillDormancyState?.cwd === cwd
-    ? skillDormancyState.values
-    : {};
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const onCancelEditRef = useRef(onCancelEdit);
-  onCancelEditRef.current = onCancelEdit;
-  const collapsedRef = useRef(!!collapsed);
-  collapsedRef.current = !!collapsed;
-  const historyMenuRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const isComposingRef = useRef(false);
-  const lastCompositionEndAtRef = useRef(0);
-  const slashCommandsRequestedRef = useRef(false);
-  const slashItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const atItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const historyItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const fileIndexMetaRef = useRef<{ cwd: string; fetchedAt: number } | null>(null);
-  const fileIndexFetchingRef = useRef<string | null>(null);
-  const draftKeyRef = useRef(draftKey);
-  const valueRef = useRef(value);
-  const dirtyRef = useRef(false);
-  const attachedImagesRef = useRef(attachedImages);
-  const pendingImageCountRef = useRef(0);
-  valueRef.current = value;
-  attachedImagesRef.current = attachedImages;
-
-  // Edit-from-here: entering edit mode focuses the composer with the
-  // caret at the end, so the user can type immediately. Never auto-focus
-  // the bottom composer (no initialValue). The transition runs after the
-  // toolbar collapse animation mounts the expanded layout.
-  useEffect(() => {
-    if (collapsed || initialValue === undefined) return;
-    const ta = textareaRef.current;
-    if (!ta) return;
-    requestAnimationFrame(() => {
-      if (!ta) return;
-      ta.focus();
-      const len = ta.value.length;
-      ta.setSelectionRange(len, len);
-      ta.scrollTop = ta.scrollHeight;
-    });
-  }, [collapsed, initialValue]);
-
-  // Keep the collapsed (read-only) message text in sync when the parent
-  // refreshes content (e.g. after a branch resend) — the instance is reused,
-  // so useState initialization alone would show stale text.
-  // NOTE: deliberately NOT syncing initialValue into value here — cancelling
-  // the edit must keep the user's draft in the composer. After a rewind the
-  // message list is rebuilt with new entry ids, so this instance unmounts and
-  // fresh content initializes cleanly.
-  useEffect(() => {
-    if (initialValue === undefined) return;
-    if (collapsed && value !== initialValue && !dirtyRef.current) {
-      setValue(initialValue);
-    }
-  }, [initialValue]);
-
-  useImperativeHandle(ref, () => ({
-    insertIfEmpty(text: string) {
-      const ta = textareaRef.current;
-      const current = ta ? ta.value : value;
-      if (current.trim()) return;
-      setValue(text);
-      setAtQuery(null);
-      requestAnimationFrame(() => {
-        if (!ta) return;
-        ta.focus();
-        ta.style.height = "auto";
-        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-      });
-    },
-    prependText(text: string) {
-      if (!text.trim()) return;
-      const ta = textareaRef.current;
-      const current = ta ? ta.value : value;
-      // Mirrors the TUI's queue restore: queued text first, then whatever
-      // the user already typed, separated by a blank line.
-      const combined = [text, current].filter((t) => t.trim()).join("\n\n");
-      setValue(combined);
-      setAtQuery(null);
-      requestAnimationFrame(() => {
-        if (!ta) return;
-        ta.focus();
-        ta.setSelectionRange(combined.length, combined.length);
-        ta.style.height = "auto";
-        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-      });
-    },
-    insertText(text: string) {
-      const ta = textareaRef.current;
-      if (!ta) {
-        setValue((v) => v + (v ? " " : "") + text);
-        return;
-      }
-      const start = ta.selectionStart ?? ta.value.length;
-      const end = ta.selectionEnd ?? ta.value.length;
-      const before = ta.value.slice(0, start);
-      const after = ta.value.slice(end);
-      const sep = before.length > 0 && !before.endsWith(" ") ? " " : "";
-      const newVal = before + sep + text + after;
-      setValue(newVal);
-      setAtQuery(null);
-      requestAnimationFrame(() => {
-        if (!ta) return;
-        const pos = start + sep.length + text.length;
-        ta.setSelectionRange(pos, pos);
-        ta.focus();
-        ta.style.height = "auto";
-        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-      });
-    },
-    addImages(files: File[]) {
-      processImageFiles(files);
-    },
-  }));
-
-  const processImageFiles = useCallback(async (files: File[]) => {
-    if (isStreaming) return;
-    const remaining = Math.max(
-      0,
-      MAX_ATTACHED_IMAGES - attachedImagesRef.current.length - pendingImageCountRef.current,
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
+  function ChatInput(
+    {
+      onSend,
+      onAbort,
+      onSteer,
+      onFollowUp,
+      isStreaming,
+      model,
+      isAutoModelSelection,
+      modelNames,
+      modelList,
+      modelError,
+      modelScopeWarnings,
+      onModelChange,
+      onModelOpen,
+      modelRoles,
+      fastMode,
+      onRoleChange,
+      onCompact,
+      onAbortCompaction,
+      isCompacting,
+      compactError,
+      compactResult,
+      toolPreset,
+      onToolPresetChange,
+      thinkingLevel,
+      onThinkingLevelChange,
+      availableThinkingLevels,
+      thinkingLevelMap,
+      retryInfo,
+      contextUsage,
+      stats,
+      inputHistory = [],
+      imageSupported = true,
+      onToggleThinking,
+      onOpenHistorySearch,
+      onOpenModelSelector,
+      onOpenTemporaryModelPicker,
+      onOpenAgentHub,
+      onDisplayReset,
+      onToggleExpandAllTools,
+      onToggleToolsHidden,
+      slashCommands,
+      slashCommandsLoading,
+      onLoadSlashCommands,
+      onBuiltinCommand,
+      soundEnabled,
+      onSoundToggle,
+      onAudioUnlock,
+      onPromptWithStreamingBehavior,
+      draftKey,
+      initialValue,
+      onCancelEdit,
+      collapsed,
+      onActivateEdit,
+      cwd,
+    }: ChatInputProps,
+    ref
+  ) {
+    const { t } = useI18n();
+    const [value, setValue] = useState(
+      () => initialValue ?? (draftKey ? (getDraft(draftKey)?.value ?? "") : "")
     );
-    const imageFiles = files
-      .filter((f) => f.type.startsWith("image/") && f.size <= MAX_ATTACHED_IMAGE_BYTES)
-      .slice(0, remaining);
-    if (!imageFiles.length) return;
-    pendingImageCountRef.current += imageFiles.length;
-    try {
-      const newImages = await Promise.all(
-        imageFiles.map(
-          (file) =>
-            new Promise<AttachedImage>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const result = reader.result as string;
-                // result is "data:<mime>;base64,<data>"
-                const base64 = result.split(",")[1];
-                resolve({ data: base64, mimeType: file.type, previewUrl: URL.createObjectURL(file) });
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            })
-        )
-      );
-      setAttachedImages((prev) => {
-        const accepted = newImages.slice(0, Math.max(0, MAX_ATTACHED_IMAGES - prev.length));
-        newImages.slice(accepted.length).forEach(revokeImagePreview);
-        return [...prev, ...accepted];
+    const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() =>
+      draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
+    );
+    const trimmedValue = value.trimStart();
+    const bashMode =
+      attachedImages.length === 0 && trimmedValue.startsWith("!");
+    const bashExcluded = bashMode && trimmedValue.startsWith("!!");
+    const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+    const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+    const [atQuery, setAtQuery] = useState<AtQueryMatch | null>(null);
+    const [atMenuOpen, setAtMenuOpen] = useState(false);
+    const [atActiveIndex, setAtActiveIndex] = useState(0);
+    const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
+    const [historyActiveIndex, setHistoryActiveIndex] = useState(0);
+    const [fileIndex, setFileIndex] = useState<{
+      cwd: string;
+      entries: FileIndexEntry[];
+      truncated: boolean;
+    } | null>(null);
+    const [fileIndexLoading, setFileIndexLoading] = useState(false);
+    const [atServerResult, setAtServerResult] = useState<{
+      cwd: string;
+      query: string;
+      matches: FileIndexEntry[];
+    } | null>(null);
+    const [externalEditorOpen, setExternalEditorOpen] = useState(false);
+    const emojiCompleter = useCompleter<ComposerCompletion>();
+    const githubCompleter = useCompleter<ComposerCompletion>();
+    const actionCompleter = useCompleter<ComposerCompletion>();
+    const urlCompleter = useCompleter<ComposerCompletion>();
+    const [skillDormancyState, setSkillDormancyState] = useState<{
+      cwd: string;
+      values: Record<string, boolean>;
+    } | null>(null);
+    const skillDormancy =
+      cwd && skillDormancyState?.cwd === cwd ? skillDormancyState.values : {};
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const onCancelEditRef = useRef(onCancelEdit);
+    onCancelEditRef.current = onCancelEdit;
+    const collapsedRef = useRef(!!collapsed);
+    collapsedRef.current = !!collapsed;
+    const historyMenuRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const isComposingRef = useRef(false);
+    const lastCompositionEndAtRef = useRef(0);
+    const slashCommandsRequestedRef = useRef(false);
+    const slashItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const atItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const historyItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const fileIndexMetaRef = useRef<{ cwd: string; fetchedAt: number } | null>(
+      null
+    );
+    const fileIndexFetchingRef = useRef<string | null>(null);
+    const draftKeyRef = useRef(draftKey);
+    const valueRef = useRef(value);
+    const dirtyRef = useRef(false);
+    const attachedImagesRef = useRef(attachedImages);
+    const pendingImageCountRef = useRef(0);
+    valueRef.current = value;
+    attachedImagesRef.current = attachedImages;
+
+    // Edit-from-here: entering edit mode focuses the composer with the
+    // caret at the end, so the user can type immediately. Never auto-focus
+    // the bottom composer (no initialValue). The transition runs after the
+    // toolbar collapse animation mounts the expanded layout.
+    useEffect(() => {
+      if (collapsed || initialValue === undefined) return;
+      const ta = textareaRef.current;
+      if (!ta) return;
+      requestAnimationFrame(() => {
+        if (!ta) return;
+        ta.focus();
+        const len = ta.value.length;
+        ta.setSelectionRange(len, len);
+        ta.scrollTop = ta.scrollHeight;
       });
-    } finally {
-      pendingImageCountRef.current -= imageFiles.length;
-    }
-  }, [isStreaming]);
+    }, [collapsed, initialValue]);
 
-  const removeImage = useCallback((index: number) => {
-    setAttachedImages((prev) => {
-      const next = [...prev];
-      const [removed] = next.splice(index, 1);
-      if (removed) revokeImagePreview(removed);
-      return next;
-    });
-  }, []);
-
-  const clearImages = useCallback(() => {
-    setAttachedImages((prev) => {
-      prev.forEach(revokeImagePreview);
-      return [];
-    });
-  }, []);
-
-  const clearInput = useCallback(() => {
-    setValue("");
-    setAtQuery(null);
-    setHistoryMenuOpen(false);
-    if (draftKey) clearDraft(draftKey);
-    if (draftKeyRef.current && draftKeyRef.current !== draftKey) clearDraft(draftKeyRef.current);
-    clearImages();
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-  }, [clearImages, draftKey]);
-
-  useEffect(() => {
-    if (!draftKey || draftKeyRef.current !== draftKey) return;
-    setDraft(draftKey, {
-      value,
-      images: attachedImages.map(imageToDraftImage),
-    });
-  }, [attachedImages, draftKey, value]);
-
-  useEffect(() => {
-    const previousDraftKey = draftKeyRef.current;
-    if (previousDraftKey === draftKey) return;
-
-    if (previousDraftKey) {
-      setDraft(previousDraftKey, {
-        value: valueRef.current,
-        images: attachedImagesRef.current.map(imageToDraftImage),
-      });
-    }
-
-    const draft = draftKey ? getDraft(draftKey) : null;
-    draftKeyRef.current = draftKey;
-    setValue(draft?.value ?? "");
-    setAtQuery(null);
-    setHistoryMenuOpen(false);
-    setAttachedImages((prev) => {
-      prev.forEach(revokeImagePreview);
-      return draftImagesToAttachedImages(draft?.images);
-    });
-  }, [draftKey]);
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    if (value) ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-  }, [value]);
-
-  useEffect(() => {
-    return () => {
-      attachedImagesRef.current.forEach(revokeImagePreview);
-    };
-  }, []);
-
-  const handleSend = useCallback(async () => {
-    const msg = expandEmoticons(value.trim());
-    if (!msg && !attachedImages.length) return;
-    if (isStreaming) return;
-    onAudioUnlock?.();
-    const queueBody = attachedImages.length === 0 ? parseQueueShorthand(msg) : undefined;
-    if (queueBody !== undefined) {
-      const segments = splitQueuedMessages(queueBody);
-      const isFollowUp = msg.startsWith("->");
-      const first = segments.shift();
-      if (first) {
-        if (isFollowUp && onPromptWithStreamingBehavior) onPromptWithStreamingBehavior(first, "followUp");
-        else onSend(first, undefined, { bashExcluded: first.startsWith("!!") });
-        for (const segment of segments) onFollowUp?.(segment);
-        if (initialValue === undefined) clearInput();
-        return;
+    // Keep the collapsed (read-only) message text in sync when the parent
+    // refreshes content (e.g. after a branch resend) — the instance is reused,
+    // so useState initialization alone would show stale text.
+    // NOTE: deliberately NOT syncing initialValue into value here — cancelling
+    // the edit must keep the user's draft in the composer. After a rewind the
+    // message list is rebuilt with new entry ids, so this instance unmounts and
+    // fresh content initializes cleanly.
+    useEffect(() => {
+      if (initialValue === undefined) return;
+      if (collapsed && value !== initialValue && !dirtyRef.current) {
+        setValue(initialValue);
       }
-    }
-    if (!attachedImages.length && msg.startsWith("/") && onBuiltinCommand) {
-      const result = await onBuiltinCommand(msg);
-      if (result.handled) {
-        if (!result.error) clearInput();
-        return;
-      }
-    }
-    onSend(msg, attachedImages.length ? attachedImages : undefined, { bashExcluded: msg.startsWith("!!") });
-    if (initialValue === undefined) clearInput();
-  }, [value, attachedImages, isStreaming, onBuiltinCommand, onSend, clearInput, onAudioUnlock, initialValue, onFollowUp, onPromptWithStreamingBehavior]);
+    }, [initialValue]);
 
-  const replaceCompletion = useCallback((range: CompleterRange, insert: string) => {
-    const nextValue = `${value.slice(0, range.start)}${insert}${value.slice(range.end)}`;
-    const nextCursor = range.start + insert.length;
-    setValue(nextValue);
-    requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      textarea.focus();
-      textarea.setSelectionRange(nextCursor, nextCursor);
-    });
-  }, [value]);
-
-  const closeCompleters = useCallback(() => {
-    emojiCompleter.close();
-    githubCompleter.close();
-    actionCompleter.close();
-    urlCompleter.close();
-  }, [emojiCompleter, githubCompleter, actionCompleter, urlCompleter]);
-
-  const updateCompleters = useCallback((text: string, cursor: number | null) => {
-    const beforeCursor = text.slice(0, cursor ?? text.length);
-    const emojiMatch = EMOJI_RE.exec(beforeCursor);
-    if (emojiMatch?.[2]) {
-      const query = emojiMatch[2];
-      const start = beforeCursor.length - query.length - 1;
-      emojiCompleter.openAt({ start, end: beforeCursor.length }, query);
-      emojiCompleter.setItems(fuzzyMatches(Object.keys(EMOJI_SHORTCODES), query).map((name) => ({ value: EMOJI_SHORTCODES[name] ?? "", label: `:${name}:` })));
-      githubCompleter.close(); actionCompleter.close(); urlCompleter.close();
-      return;
-    }
-    const githubMatch = GITHUB_REFERENCE_RE.exec(beforeCursor);
-    if (githubMatch?.[2]) {
-      const token = githubMatch[0].trim();
-      const qualifier = /^#(pr|pull|issue)/i.exec(token)?.[1]?.toLowerCase();
-      const number = githubMatch[2];
-      const items = qualifier === "issue" ? [`issue://${number}`] : qualifier === "pr" || qualifier === "pull" ? [`pr://${number}`] : [`pr://${number}`, `issue://${number}`];
-      githubCompleter.openAt({ start: beforeCursor.length - token.length, end: beforeCursor.length }, number);
-      githubCompleter.setItems(items.map((item) => ({ value: item, label: item })));
-      emojiCompleter.close(); actionCompleter.close(); urlCompleter.close();
-      return;
-    }
-    const actionMatch = PROMPT_ACTION_RE.exec(beforeCursor);
-    if (actionMatch?.[2]) {
-      const token = actionMatch[0].trim();
-      actionCompleter.openAt({ start: beforeCursor.length - token.length, end: beforeCursor.length }, actionMatch[2]);
-      actionCompleter.setItems(fuzzyMatches(PROMPT_ACTIONS, actionMatch[2]).map((item) => ({ value: item, label: item })));
-      emojiCompleter.close(); githubCompleter.close(); urlCompleter.close();
-      return;
-    }
-    const urlMatch = INTERNAL_URL_RE.exec(beforeCursor);
-    const scheme = urlMatch?.[2]?.slice(0, -3).toLowerCase();
-    if (urlMatch && scheme && INTERNAL_URL_SCHEMES[scheme]) {
-      const query = urlMatch[3] ?? "";
-      urlCompleter.openAt({ start: beforeCursor.length - `${urlMatch[2]}${query}`.length, end: beforeCursor.length }, query);
-      void hostCall("urlComplete", { scheme, query, cwd }).then((data) => {
-        urlCompleter.setItems(data.items.map((item) => ({ value: item.value, label: item.label ?? item.value })));
-      }).catch(() => urlCompleter.setItems([]));
-      emojiCompleter.close(); githubCompleter.close(); actionCompleter.close();
-      return;
-    }
-    closeCompleters();
-  }, [actionCompleter, closeCompleters, cwd, emojiCompleter, githubCompleter, urlCompleter]);
-
-  const acceptAction = useCallback((completion: ComposerCompletion) => {
-    const range = actionCompleter.insertRange;
-    const textarea = textareaRef.current;
-    if (!range || !textarea) return;
-    replaceCompletion(range, "");
-    const lineStart = value.lastIndexOf("\n", range.start - 1) + 1;
-    const lineEnd = value.indexOf("\n", range.end);
-    if (completion.value === "undo") document.execCommand("undo");
-    if (completion.value === "copy-line") void navigator.clipboard.writeText(value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd));
-    if (completion.value === "copy-prompt") void navigator.clipboard.writeText(value);
-    const cursor = completion.value === "cursor-message-start" ? 0 : completion.value === "cursor-message-end" ? value.length : completion.value === "cursor-line-start" ? lineStart : completion.value === "cursor-line-end" ? (lineEnd === -1 ? value.length : lineEnd) : null;
-    if (cursor !== null) requestAnimationFrame(() => textarea.setSelectionRange(cursor, cursor));
-    actionCompleter.close();
-  }, [actionCompleter, replaceCompletion, value]);
-
-  const slashQuery = value.startsWith("/") && !/\s/.test(value.slice(1))
-    ? value.slice(1).toLowerCase()
-    : null;
-
-  const filteredSlashCommands = (() => {
-    if (slashQuery === null) return [];
-    const parentCommands: SlashCommandPaletteItem[] = slashCommands ?? [];
-    const commands: SlashCommandPaletteItem[] = [
-      ...BUILTIN_SLASH_COMMANDS,
-      ...parentCommands.flatMap((command) => [
-        command,
-        ...(command.aliases ?? []).map((alias) => ({
-          ...command,
-          name: alias,
-          aliases: undefined,
-          aliasOf: command.name,
-        })),
-      ]),
-    ];
-    return commands
-      .filter((command) => {
-        const name = command.name.toLowerCase();
-        const description = getSlashDescription(command, t).toLowerCase();
-        return name.includes(slashQuery) || description.includes(slashQuery);
-      })
-      .sort((a, b) => {
-        const rankDelta = slashMatchRank(a, slashQuery, t) - slashMatchRank(b, slashQuery, t);
-        if (rankDelta !== 0) return rankDelta;
-        return SLASH_SOURCE_ORDER[a.source] - SLASH_SOURCE_ORDER[b.source]
-          || a.name.localeCompare(b.name);
-      });
-  })();
-
-  const {
-    commands: displayedSlashCommands,
-    groups: groupedSlashCommands,
-  } = buildSlashCommandLayout(filteredSlashCommands, skillDormancy);
-
-  const slashCommandCountLabel = filteredSlashCommands.length === 1
-    ? t(slashQuery ? "chat.match" : "chat.command")
-    : t(slashQuery ? "chat.matches" : "chat.commands", { count: filteredSlashCommands.length });
-  const hasInputText = Boolean(value.trim());
-  const canQueueStreamingMessage = hasInputText && attachedImages.length === 0;
-
-  // ── @ file autocomplete ──────────────────────────────────────────────────
-  // Recomputed from the text before the caret on every change/caret move.
-  // Disabled entirely when there is no cwd (new session without a directory).
-  const updateAtQuery = useCallback((text: string, cursor: number | null) => {
-    if (!cwd) {
-      setAtQuery(null);
-      return;
-    }
-    const pos = cursor ?? text.length;
-    setAtQuery(extractAtQuery(text.slice(0, pos)));
-  }, [cwd]);
-
-  const atQueryText = atQuery?.query ?? null;
-  const atLocalMatches: FileIndexEntry[] = React.useMemo(() => (
-    atQueryText !== null && fileIndex && fileIndex.cwd === cwd
-      ? filterFileEntries(fileIndex.entries, atQueryText)
-      : []
-  ), [atQueryText, fileIndex, cwd]);
-
-  // When the client index is truncated (repo larger than the index cap),
-  // local filtering cannot see deep files, so queries are also ranked
-  // server-side against the full listing. Local matches render immediately
-  // and are replaced when the (debounced) server result for the current
-  // query arrives; stale responses are ignored via the query/cwd tag.
-  const needsServerSearch = Boolean(atQueryText && fileIndex?.truncated && fileIndex.cwd === cwd);
-  useEffect(() => {
-    if (!needsServerSearch || !cwd || !atQueryText) return;
-    const fetchCwd = cwd;
-    const query = atQueryText;
-    const timer = setTimeout(() => {
-      hostCall("fileIndex", { cwd: fetchCwd, q: query })
-        .then((data) => setAtServerResult({ cwd: fetchCwd, query, matches: data.matches ?? [] }))
-        .catch(() => {
-          // Keep showing local matches; the next keystroke retries.
+    useImperativeHandle(ref, () => ({
+      insertIfEmpty(text: string) {
+        const ta = textareaRef.current;
+        const current = ta ? ta.value : value;
+        if (current.trim()) return;
+        setValue(text);
+        setAtQuery(null);
+        requestAnimationFrame(() => {
+          if (!ta) return;
+          ta.focus();
+          ta.style.height = "auto";
+          ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
         });
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [needsServerSearch, atQueryText, cwd]);
+      },
+      prependText(text: string) {
+        if (!text.trim()) return;
+        const ta = textareaRef.current;
+        const current = ta ? ta.value : value;
+        // Mirrors the TUI's queue restore: queued text first, then whatever
+        // the user already typed, separated by a blank line.
+        const combined = [text, current].filter((t) => t.trim()).join("\n\n");
+        setValue(combined);
+        setAtQuery(null);
+        requestAnimationFrame(() => {
+          if (!ta) return;
+          ta.focus();
+          ta.setSelectionRange(combined.length, combined.length);
+          ta.style.height = "auto";
+          ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+        });
+      },
+      insertText(text: string) {
+        const ta = textareaRef.current;
+        if (!ta) {
+          setValue((v) => v + (v ? " " : "") + text);
+          return;
+        }
+        const start = ta.selectionStart ?? ta.value.length;
+        const end = ta.selectionEnd ?? ta.value.length;
+        const before = ta.value.slice(0, start);
+        const after = ta.value.slice(end);
+        const sep = before.length > 0 && !before.endsWith(" ") ? " " : "";
+        const newVal = before + sep + text + after;
+        setValue(newVal);
+        setAtQuery(null);
+        requestAnimationFrame(() => {
+          if (!ta) return;
+          const pos = start + sep.length + text.length;
+          ta.setSelectionRange(pos, pos);
+          ta.focus();
+          ta.style.height = "auto";
+          ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+        });
+      },
+      addImages(files: File[]) {
+        processImageFiles(files);
+      },
+    }));
 
-  const serverResultInUse = needsServerSearch
-    && atServerResult !== null
-    && atServerResult.cwd === cwd
-    && atServerResult.query === atQueryText;
-  const atMatches: FileIndexEntry[] = serverResultInUse ? atServerResult.matches : atLocalMatches;
+    const processImageFiles = useCallback(
+      async (files: File[]) => {
+        if (isStreaming || !imageSupported) return;
+        const remaining = Math.max(
+          0,
+          MAX_ATTACHED_IMAGES -
+            attachedImagesRef.current.length -
+            pendingImageCountRef.current
+        );
+        const imageFiles = files
+          .filter(
+            (f) =>
+              f.type.startsWith("image/") && f.size <= MAX_ATTACHED_IMAGE_BYTES
+          )
+          .slice(0, remaining);
+        if (!imageFiles.length) return;
+        pendingImageCountRef.current += imageFiles.length;
+        try {
+          const newImages = await Promise.all(
+            imageFiles.map(
+              (file) =>
+                new Promise<AttachedImage>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const result = reader.result as string;
+                    // result is "data:<mime>;base64,<data>"
+                    const base64 = result.split(",")[1];
+                    resolve({
+                      data: base64,
+                      mimeType: file.type,
+                      previewUrl: URL.createObjectURL(file),
+                    });
+                  };
+                  reader.onerror = reject;
+                  reader.readAsDataURL(file);
+                })
+            )
+          );
+          setAttachedImages((prev) => {
+            const accepted = newImages.slice(
+              0,
+              Math.max(0, MAX_ATTACHED_IMAGES - prev.length)
+            );
+            newImages.slice(accepted.length).forEach(revokeImagePreview);
+            return [...prev, ...accepted];
+          });
+        } finally {
+          pendingImageCountRef.current -= imageFiles.length;
+        }
+      },
+      [imageSupported, isStreaming]
+    );
 
-  // Open/reset the menu whenever the @token appears or changes (mirrors the
-  // slash menu: Escape closes it, the next keystroke re-opens it).
-  const atTokenKey = atQuery === null ? null : `${atQuery.start}:${atQuery.quoted ? 1 : 0}:${atQuery.query}`;
-  useEffect(() => {
-    if (atTokenKey === null) {
-      setAtMenuOpen(false);
-      setAtActiveIndex(0);
-      return;
-    }
-    setAtMenuOpen(true);
-    setAtActiveIndex(0);
-  }, [atTokenKey]);
-
-  // Fetch the file index when the menu opens. The server caches per cwd for
-  // ~10s, so re-opening refreshes cheaply; while typing nothing refetches.
-  const atTokenActive = atQuery !== null;
-  useEffect(() => {
-    if (!atTokenActive || !cwd) return;
-    const meta = fileIndexMetaRef.current;
-    if (meta && meta.cwd === cwd && Date.now() - meta.fetchedAt < 10_000) return;
-    if (fileIndexFetchingRef.current === cwd) return;
-    fileIndexFetchingRef.current = cwd;
-    const fetchCwd = cwd;
-    setFileIndexLoading(true);
-    hostCall("fileIndex", { cwd: fetchCwd })
-      .then((data) => {
-        setFileIndex({ cwd: fetchCwd, entries: buildEntriesFromFiles(data.files ?? []), truncated: !!data.truncated });
-        fileIndexMetaRef.current = { cwd: fetchCwd, fetchedAt: Date.now() };
-      })
-      .catch(() => {
-        // Leave any previous index in place; next open retries.
-        fileIndexMetaRef.current = null;
-      })
-      .finally(() => {
-        fileIndexFetchingRef.current = null;
-        setFileIndexLoading(false);
+    const removeImage = useCallback((index: number) => {
+      setAttachedImages((prev) => {
+        const next = [...prev];
+        const [removed] = next.splice(index, 1);
+        if (removed) revokeImagePreview(removed);
+        return next;
       });
-  }, [atTokenActive, cwd]);
+    }, []);
 
-  const applyAtCompletion = useCallback((entry: FileIndexEntry) => {
-    if (!atQuery) return;
-    const ta = textareaRef.current;
-    const cursor = ta?.selectionStart ?? value.length;
-    const before = value.slice(0, atQuery.start);
-    let after = value.slice(cursor);
-    // Completing inside a quoted token (@"my dir/… with the caret before the
-    // closing quote): the replacement carries its own closing quote, so drop
-    // the old one right after the caret (mirrors the TUI's applyCompletion).
-    if (atQuery.quoted && after.startsWith('"')) {
-      after = after.slice(1);
-    }
-    const insert = buildAtInsertText(entry.path, entry.isDir, atQuery.quoted);
-    const newValue = before + insert.text + after;
-    const newPos = before.length + insert.cursorOffset;
-    setValue(newValue);
-    // setValue alone does not fire onChange — re-derive the token here. Files
-    // end with a space (token closes, menu hides); directories end with "/"
-    // before the caret (token stays open for drill-down into the directory).
-    setAtQuery(extractAtQuery(newValue.slice(0, newPos)));
-    requestAnimationFrame(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(newPos, newPos);
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-    });
-  }, [atQuery, value]);
+    const clearImages = useCallback(() => {
+      setAttachedImages((prev) => {
+        prev.forEach(revokeImagePreview);
+        return [];
+      });
+    }, []);
 
-  useEffect(() => {
-    if (atActiveIndex >= atMatches.length) {
-      setAtActiveIndex(Math.max(0, atMatches.length - 1));
-    }
-  }, [atMatches.length, atActiveIndex]);
+    const clearInput = useCallback(() => {
+      setValue("");
+      setAtQuery(null);
+      setHistoryMenuOpen(false);
+      if (draftKey) clearDraft(draftKey);
+      if (draftKeyRef.current && draftKeyRef.current !== draftKey)
+        clearDraft(draftKeyRef.current);
+      clearImages();
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+    }, [clearImages, draftKey]);
 
-  useEffect(() => {
-    atItemRefs.current.length = atMatches.length;
-  }, [atMatches.length]);
+    useEffect(() => {
+      if (!draftKey || draftKeyRef.current !== draftKey) return;
+      setDraft(draftKey, {
+        value,
+        images: attachedImages.map(imageToDraftImage),
+      });
+    }, [attachedImages, draftKey, value]);
 
-  useEffect(() => {
-    if (!atMenuOpen) return;
-    atItemRefs.current[atActiveIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [atActiveIndex, atMenuOpen]);
+    useEffect(() => {
+      const previousDraftKey = draftKeyRef.current;
+      if (previousDraftKey === draftKey) return;
 
-  useEffect(() => {
-    if (historyActiveIndex >= inputHistory.length) {
-      setHistoryActiveIndex(Math.max(0, inputHistory.length - 1));
-    }
-  }, [inputHistory.length, historyActiveIndex]);
+      if (previousDraftKey) {
+        setDraft(previousDraftKey, {
+          value: valueRef.current,
+          images: attachedImagesRef.current.map(imageToDraftImage),
+        });
+      }
 
-  useEffect(() => {
-    historyItemRefs.current.length = inputHistory.length;
-  }, [inputHistory.length]);
+      const draft = draftKey ? getDraft(draftKey) : null;
+      draftKeyRef.current = draftKey;
+      setValue(draft?.value ?? "");
+      setAtQuery(null);
+      setHistoryMenuOpen(false);
+      setAttachedImages((prev) => {
+        prev.forEach(revokeImagePreview);
+        return draftImagesToAttachedImages(draft?.images);
+      });
+    }, [draftKey]);
 
-  useEffect(() => {
-    if (!historyMenuOpen) return;
-    historyItemRefs.current[historyActiveIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [historyActiveIndex, historyMenuOpen]);
-
-  const applyHistoryInput = useCallback((text: string) => {
-    setValue(text);
-    setHistoryMenuOpen(false);
-    setHistoryActiveIndex(0);
-    setAtQuery(null);
-    requestAnimationFrame(() => {
+    useEffect(() => {
       const ta = textareaRef.current;
       if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(text.length, text.length);
       ta.style.height = "auto";
-      ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-    });
-  }, []);
+      if (value)
+        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+    }, [value]);
 
-  const applySlashCommand = useCallback((command: SlashCommandPaletteItem) => {
-    const nextValue = `/${command.name} `;
-    setValue(nextValue);
-    setSlashMenuOpen(false);
-    setSlashActiveIndex(0);
-    requestAnimationFrame(() => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(nextValue.length, nextValue.length);
-      ta.style.height = "auto";
-      ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-    });
-  }, []);
+    useEffect(() => {
+      return () => {
+        attachedImagesRef.current.forEach(revokeImagePreview);
+      };
+    }, []);
 
-  const sendQueued = useCallback((mode: "steer" | "followup") => {
-    const msg = value.trim();
-    if (!msg && !attachedImages.length) return;
-    if (attachedImages.length) return;
-    onAudioUnlock?.();
-    const streamingBehavior = mode === "steer" ? "steer" : "followUp";
-    if (msg.startsWith("/") && onPromptWithStreamingBehavior) {
-      onPromptWithStreamingBehavior(msg, streamingBehavior, attachedImages.length ? attachedImages : undefined);
-      clearInput();
-      return;
-    }
-    if (mode === "steer" && onSteer) {
-      onSteer(msg, attachedImages.length ? attachedImages : undefined);
-    } else if (mode === "followup" && onFollowUp) {
-      onFollowUp(msg, attachedImages.length ? attachedImages : undefined);
-    }
-    clearInput();
-  }, [value, attachedImages, onPromptWithStreamingBehavior, onSteer, onFollowUp, clearInput, onAudioUnlock]);
-
-  const getNextSlashIndex = useCallback((direction: "up" | "down" | "left" | "right") => {
-    const lastIndex = displayedSlashCommands.length - 1;
-    if (lastIndex < 0) return 0;
-
-    if (direction === "left") return Math.max(0, slashActiveIndex - 1);
-    if (direction === "right") return Math.min(lastIndex, slashActiveIndex + 1);
-
-    const currentNode = slashItemRefs.current[slashActiveIndex];
-    if (!currentNode) {
-      return direction === "down"
-        ? Math.min(lastIndex, slashActiveIndex + 1)
-        : Math.max(0, slashActiveIndex - 1);
-    }
-
-    const currentRect = currentNode.getBoundingClientRect();
-    const currentX = currentRect.left + currentRect.width / 2;
-    const currentY = currentRect.top + currentRect.height / 2;
-    let bestIndex = -1;
-    let bestScore = Number.POSITIVE_INFINITY;
-
-    for (let index = 0; index <= lastIndex; index += 1) {
-      if (index === slashActiveIndex) continue;
-      const node = slashItemRefs.current[index];
-      if (!node) continue;
-      const rect = node.getBoundingClientRect();
-      const candidateY = rect.top + rect.height / 2;
-      const verticalDelta = candidateY - currentY;
-      if (direction === "down" ? verticalDelta <= 4 : verticalDelta >= -4) continue;
-
-      const candidateX = rect.left + rect.width / 2;
-      const score = Math.abs(verticalDelta) * 1000 + Math.abs(candidateX - currentX);
-      if (score < bestScore) {
-        bestIndex = index;
-        bestScore = score;
-      }
-    }
-
-    if (bestIndex >= 0) return bestIndex;
-    return direction === "down"
-      ? Math.min(lastIndex, slashActiveIndex + 1)
-      : Math.max(0, slashActiveIndex - 1);
-  }, [displayedSlashCommands.length, slashActiveIndex]);
-  const insertNewlineAtCaret = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const nextValue = `${value.slice(0, start)}\n${value.slice(end)}`;
-    setValue(nextValue);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + 1, start + 1);
-    });
-  }, [value]);
-
-  const copyCurrentLine = useCallback(() => {
-    const textarea = textareaRef.current;
-    const cursor = textarea?.selectionStart ?? value.length;
-    const lineStart = value.lastIndexOf("\n", cursor - 1) + 1;
-    const lineEnd = value.indexOf("\n", cursor);
-    void navigator.clipboard.writeText(value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd));
-  }, [value]);
-
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      const nativeEvent = e.nativeEvent;
-      const recentlyComposed = Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
-      const isComposing =
-        isComposingRef.current ||
-        nativeEvent.isComposing ||
-        nativeEvent.keyCode === 229;
-
-      if (e.key === "Enter" && !e.shiftKey && (isComposing || recentlyComposed)) {
-        if (recentlyComposed) e.preventDefault();
-        return;
-      }
-      // Ctrl+R opens the local input-history search dialog.
-      if (e.ctrlKey && e.key.toLowerCase() === "r") {
-        e.preventDefault();
-        onOpenHistorySearch?.();
-        return;
-      }
-      if (e.ctrlKey && e.key.toLowerCase() === "t") {
-        e.preventDefault();
-        onToggleThinking?.();
-        return;
-      }
-      if (e.ctrlKey && e.key.toLowerCase() === "g") {
-        e.preventDefault();
-        setExternalEditorOpen(true);
-        return;
-      }
-      if (e.ctrlKey && e.key.toLowerCase() === "j") {
-        e.preventDefault();
-        insertNewlineAtCaret();
-        return;
-      }
-      if (e.ctrlKey && e.key.toLowerCase() === "o") {
-        e.preventDefault();
-        if (e.shiftKey) onToggleToolsHidden?.(); else onToggleExpandAllTools?.();
-        return;
-      }
-      // Ctrl+Q / Ctrl+Enter queues a follow-up, or aborts an empty streaming turn.
-      if (e.ctrlKey && (e.key.toLowerCase() === "q" || e.key === "Enter")) {
-        e.preventDefault();
-        if (!value.trim() && attachedImages.length === 0 && isStreaming) onAbort(); else sendQueued("followup");
-        return;
-      }
-      // Alt+Shift+P uses the shared plan-role path.
-      if (e.altKey && e.shiftKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        onRoleChange?.("plan");
-        return;
-      }
-      if (e.altKey && e.key.toLowerCase() === "m") {
-        e.preventDefault();
-        onOpenModelSelector?.();
-        return;
-      }
-      if (e.altKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        onOpenTemporaryModelPicker?.();
-        return;
-      }
-      if (e.altKey && e.key.toLowerCase() === "a") {
-        e.preventDefault();
-        onOpenAgentHub?.();
-        return;
-      }
-      if (e.altKey && e.key.toLowerCase() === "r") {
-        e.preventDefault();
-        if (!isStreaming) onSend("/retry");
-        return;
-      }
-      if (e.altKey && e.key.toLowerCase() === "l") {
-        e.preventDefault();
-        if (e.shiftKey) copyCurrentLine(); else onDisplayReset?.();
-        return;
-      }
-      if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
-        e.preventDefault();
-        void navigator.clipboard.writeText(value);
-        return;
-      }
-      if ((e.altKey || e.shiftKey) && e.key === "ArrowUp") {
-        e.preventDefault();
-        onRecallQueue?.();
-        return;
-      }
-
-      const activeCompleter = emojiCompleter.open ? emojiCompleter : githubCompleter.open ? githubCompleter : actionCompleter.open ? actionCompleter : urlCompleter.open ? urlCompleter : null;
-      if (activeCompleter && !isComposing) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          activeCompleter.moveActive(1);
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          activeCompleter.moveActive(-1);
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          closeCompleters();
-          return;
-        }
-        if ((e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) && activeCompleter.items[activeCompleter.activeIndex]) {
-          e.preventDefault();
-          const item = activeCompleter.items[activeCompleter.activeIndex];
-          if (item === undefined) return;
-          if (activeCompleter === emojiCompleter && emojiCompleter.insertRange) replaceCompletion(emojiCompleter.insertRange, item.value);
-          if (activeCompleter === githubCompleter && githubCompleter.insertRange) replaceCompletion(githubCompleter.insertRange, `${item.value} `);
-          if (activeCompleter === urlCompleter && urlCompleter.insertRange) replaceCompletion(urlCompleter.insertRange, `${item.value} `);
-          if (activeCompleter === actionCompleter) acceptAction(item);
-          closeCompleters();
+    const handleSend = useCallback(async () => {
+      const msg = expandEmoticons(value.trim());
+      if (!msg && !attachedImages.length) return;
+      if (isStreaming) return;
+      onAudioUnlock?.();
+      const queueBody =
+        attachedImages.length === 0 ? parseQueueShorthand(msg) : undefined;
+      if (queueBody !== undefined) {
+        const segments = splitQueuedMessages(queueBody);
+        const isFollowUp = msg.startsWith("->");
+        const first = segments.shift();
+        if (first) {
+          if (isFollowUp && onPromptWithStreamingBehavior)
+            onPromptWithStreamingBehavior(first, "followUp");
+          else
+            onSend(first, undefined, { bashExcluded: first.startsWith("!!") });
+          for (const segment of segments) onFollowUp?.(segment);
+          if (initialValue === undefined) clearInput();
           return;
         }
       }
-
-
-      if (historyMenuOpen && !isComposing) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setHistoryActiveIndex((i) => Math.min(Math.max(0, inputHistory.length - 1), i + 1));
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setHistoryActiveIndex((i) => Math.max(0, i - 1));
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setHistoryMenuOpen(false);
-          return;
-        }
-        if ((e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) && inputHistory[historyActiveIndex]) {
-          e.preventDefault();
-          applyHistoryInput(inputHistory[historyActiveIndex]);
+      if (!attachedImages.length && msg.startsWith("/") && onBuiltinCommand) {
+        const result = await onBuiltinCommand(msg);
+        if (result.handled) {
+          if (!result.error) clearInput();
           return;
         }
       }
+      onSend(msg, attachedImages.length ? attachedImages : undefined, {
+        bashExcluded: msg.startsWith("!!"),
+      });
+      if (initialValue === undefined) clearInput();
+    }, [
+      value,
+      attachedImages,
+      isStreaming,
+      onBuiltinCommand,
+      onSend,
+      clearInput,
+      onAudioUnlock,
+      initialValue,
+      onFollowUp,
+      onPromptWithStreamingBehavior,
+    ]);
 
-      if (slashMenuOpen && slashQuery !== null) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setSlashActiveIndex(getNextSlashIndex("down"));
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setSlashActiveIndex(getNextSlashIndex("up"));
-          return;
-        }
-        if (e.key === "ArrowRight") {
-          e.preventDefault();
-          setSlashActiveIndex(getNextSlashIndex("right"));
-          return;
-        }
-        if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          setSlashActiveIndex(getNextSlashIndex("left"));
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setSlashMenuOpen(false);
-          return;
-        }
-        if ((e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) && displayedSlashCommands[slashActiveIndex]) {
-          e.preventDefault();
-          applySlashCommand(displayedSlashCommands[slashActiveIndex]);
-          return;
-        }
-      }
+    const replaceCompletion = useCallback(
+      (range: CompleterRange, insert: string) => {
+        const nextValue = `${value.slice(0, range.start)}${insert}${value.slice(range.end)}`;
+        const nextCursor = range.start + insert.length;
+        setValue(nextValue);
+        requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (!textarea) return;
+          textarea.focus();
+          textarea.setSelectionRange(nextCursor, nextCursor);
+        });
+      },
+      [value]
+    );
 
-      // @ file menu — skip while composing so IME candidate navigation
-      // (arrows/Enter/Tab) is never intercepted.
-      if (atMenuOpen && atQuery !== null && !isComposing) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setAtActiveIndex((i) => Math.min(Math.max(0, atMatches.length - 1), i + 1));
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setAtActiveIndex((i) => Math.max(0, i - 1));
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setAtMenuOpen(false);
-          return;
-        }
-        if ((e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) && atMatches[atActiveIndex]) {
-          e.preventDefault();
-          applyAtCompletion(atMatches[atActiveIndex]);
-          return;
-        }
-      }
+    const closeCompleters = useCallback(() => {
+      emojiCompleter.close();
+      githubCompleter.close();
+      actionCompleter.close();
+      urlCompleter.close();
+    }, [emojiCompleter, githubCompleter, actionCompleter, urlCompleter]);
 
-      if (e.key === "ArrowUp" && !e.altKey && !e.shiftKey && !isComposing && !isStreaming && inputHistory.length > 0 && value.trim().length === 0) {
-        e.preventDefault();
-        setSlashMenuOpen(false);
+    const updateCompleters = useCallback(
+      (text: string, cursor: number | null) => {
+        const beforeCursor = text.slice(0, cursor ?? text.length);
+        const emojiMatch = EMOJI_RE.exec(beforeCursor);
+        if (emojiMatch?.[2]) {
+          const query = emojiMatch[2];
+          const start = beforeCursor.length - query.length - 1;
+          emojiCompleter.openAt({ start, end: beforeCursor.length }, query);
+          emojiCompleter.setItems(
+            fuzzyMatches(Object.keys(EMOJI_SHORTCODES), query).map((name) => ({
+              value: EMOJI_SHORTCODES[name] ?? "",
+              label: `:${name}:`,
+            }))
+          );
+          githubCompleter.close();
+          actionCompleter.close();
+          urlCompleter.close();
+          return;
+        }
+        const githubMatch = GITHUB_REFERENCE_RE.exec(beforeCursor);
+        if (githubMatch?.[2]) {
+          const token = githubMatch[0].trim();
+          const qualifier = /^#(pr|pull|issue)/i
+            .exec(token)?.[1]
+            ?.toLowerCase();
+          const number = githubMatch[2];
+          const items =
+            qualifier === "issue"
+              ? [`issue://${number}`]
+              : qualifier === "pr" || qualifier === "pull"
+                ? [`pr://${number}`]
+                : [`pr://${number}`, `issue://${number}`];
+          githubCompleter.openAt(
+            {
+              start: beforeCursor.length - token.length,
+              end: beforeCursor.length,
+            },
+            number
+          );
+          githubCompleter.setItems(
+            items.map((item) => ({ value: item, label: item }))
+          );
+          emojiCompleter.close();
+          actionCompleter.close();
+          urlCompleter.close();
+          return;
+        }
+        const actionMatch = PROMPT_ACTION_RE.exec(beforeCursor);
+        if (actionMatch?.[2]) {
+          const token = actionMatch[0].trim();
+          actionCompleter.openAt(
+            {
+              start: beforeCursor.length - token.length,
+              end: beforeCursor.length,
+            },
+            actionMatch[2]
+          );
+          actionCompleter.setItems(
+            fuzzyMatches(PROMPT_ACTIONS, actionMatch[2]).map((item) => ({
+              value: item,
+              label: item,
+            }))
+          );
+          emojiCompleter.close();
+          githubCompleter.close();
+          urlCompleter.close();
+          return;
+        }
+        const urlMatch = INTERNAL_URL_RE.exec(beforeCursor);
+        const scheme = urlMatch?.[2]?.slice(0, -3).toLowerCase();
+        if (urlMatch && scheme && INTERNAL_URL_SCHEMES[scheme]) {
+          const query = urlMatch[3] ?? "";
+          urlCompleter.openAt(
+            {
+              start: beforeCursor.length - `${urlMatch[2]}${query}`.length,
+              end: beforeCursor.length,
+            },
+            query
+          );
+          void hostCall("urlComplete", { scheme, query, cwd })
+            .then((data) => {
+              urlCompleter.setItems(
+                data.items.map((item) => ({
+                  value: item.value,
+                  label: item.label ?? item.value,
+                }))
+              );
+            })
+            .catch(() => urlCompleter.setItems([]));
+          emojiCompleter.close();
+          githubCompleter.close();
+          actionCompleter.close();
+          return;
+        }
+        closeCompleters();
+      },
+      [
+        actionCompleter,
+        closeCompleters,
+        cwd,
+        emojiCompleter,
+        githubCompleter,
+        urlCompleter,
+      ]
+    );
+
+    const acceptAction = useCallback(
+      (completion: ComposerCompletion) => {
+        const range = actionCompleter.insertRange;
+        const textarea = textareaRef.current;
+        if (!range || !textarea) return;
+        replaceCompletion(range, "");
+        const lineStart = value.lastIndexOf("\n", range.start - 1) + 1;
+        const lineEnd = value.indexOf("\n", range.end);
+        if (completion.value === "undo") document.execCommand("undo");
+        if (completion.value === "copy-line")
+          void navigator.clipboard.writeText(
+            value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd)
+          );
+        if (completion.value === "copy-prompt")
+          void navigator.clipboard.writeText(value);
+        const cursor =
+          completion.value === "cursor-message-start"
+            ? 0
+            : completion.value === "cursor-message-end"
+              ? value.length
+              : completion.value === "cursor-line-start"
+                ? lineStart
+                : completion.value === "cursor-line-end"
+                  ? lineEnd === -1
+                    ? value.length
+                    : lineEnd
+                  : null;
+        if (cursor !== null)
+          requestAnimationFrame(() =>
+            textarea.setSelectionRange(cursor, cursor)
+          );
+        actionCompleter.close();
+      },
+      [actionCompleter, replaceCompletion, value]
+    );
+
+    const slashQuery =
+      value.startsWith("/") && !/\s/.test(value.slice(1))
+        ? value.slice(1).toLowerCase()
+        : null;
+
+    const filteredSlashCommands = (() => {
+      if (slashQuery === null) return [];
+      const parentCommands: SlashCommandPaletteItem[] = slashCommands ?? [];
+      const commands: SlashCommandPaletteItem[] = [
+        ...BUILTIN_SLASH_COMMANDS,
+        ...parentCommands.flatMap((command) => [
+          command,
+          ...(command.aliases ?? []).map((alias) => ({
+            ...command,
+            name: alias,
+            aliases: undefined,
+            aliasOf: command.name,
+          })),
+        ]),
+      ];
+      return commands
+        .filter((command) => {
+          const name = command.name.toLowerCase();
+          const description = getSlashDescription(command, t).toLowerCase();
+          return name.includes(slashQuery) || description.includes(slashQuery);
+        })
+        .sort((a, b) => {
+          const rankDelta =
+            slashMatchRank(a, slashQuery, t) - slashMatchRank(b, slashQuery, t);
+          if (rankDelta !== 0) return rankDelta;
+          return (
+            SLASH_SOURCE_ORDER[a.source] - SLASH_SOURCE_ORDER[b.source] ||
+            a.name.localeCompare(b.name)
+          );
+        });
+    })();
+
+    const { commands: displayedSlashCommands, groups: groupedSlashCommands } =
+      buildSlashCommandLayout(filteredSlashCommands, skillDormancy);
+
+    const slashCommandCountLabel =
+      filteredSlashCommands.length === 1
+        ? t(slashQuery ? "chat.match" : "chat.command")
+        : t(slashQuery ? "chat.matches" : "chat.commands", {
+            count: filteredSlashCommands.length,
+          });
+    const hasInputText = Boolean(value.trim());
+    const canQueueStreamingMessage =
+      hasInputText && attachedImages.length === 0;
+
+    // ── @ file autocomplete ──────────────────────────────────────────────────
+    // Recomputed from the text before the caret on every change/caret move.
+    // Disabled entirely when there is no cwd (new session without a directory).
+    const updateAtQuery = useCallback(
+      (text: string, cursor: number | null) => {
+        if (!cwd) {
+          setAtQuery(null);
+          return;
+        }
+        const pos = cursor ?? text.length;
+        setAtQuery(extractAtQuery(text.slice(0, pos)));
+      },
+      [cwd]
+    );
+
+    const atQueryText = atQuery?.query ?? null;
+    const atLocalMatches: FileIndexEntry[] = React.useMemo(
+      () =>
+        atQueryText !== null && fileIndex && fileIndex.cwd === cwd
+          ? filterFileEntries(fileIndex.entries, atQueryText)
+          : [],
+      [atQueryText, fileIndex, cwd]
+    );
+
+    // When the client index is truncated (repo larger than the index cap),
+    // local filtering cannot see deep files, so queries are also ranked
+    // server-side against the full listing. Local matches render immediately
+    // and are replaced when the (debounced) server result for the current
+    // query arrives; stale responses are ignored via the query/cwd tag.
+    const needsServerSearch = Boolean(
+      atQueryText && fileIndex?.truncated && fileIndex.cwd === cwd
+    );
+    useEffect(() => {
+      if (!needsServerSearch || !cwd || !atQueryText) return;
+      const fetchCwd = cwd;
+      const query = atQueryText;
+      const timer = setTimeout(() => {
+        hostCall("fileIndex", { cwd: fetchCwd, q: query })
+          .then((data) =>
+            setAtServerResult({
+              cwd: fetchCwd,
+              query,
+              matches: data.matches ?? [],
+            })
+          )
+          .catch(() => {
+            // Keep showing local matches; the next keystroke retries.
+          });
+      }, 150);
+      return () => clearTimeout(timer);
+    }, [needsServerSearch, atQueryText, cwd]);
+
+    const serverResultInUse =
+      needsServerSearch &&
+      atServerResult !== null &&
+      atServerResult.cwd === cwd &&
+      atServerResult.query === atQueryText;
+    const atMatches: FileIndexEntry[] = serverResultInUse
+      ? atServerResult.matches
+      : atLocalMatches;
+
+    // Open/reset the menu whenever the @token appears or changes (mirrors the
+    // slash menu: Escape closes it, the next keystroke re-opens it).
+    const atTokenKey =
+      atQuery === null
+        ? null
+        : `${atQuery.start}:${atQuery.quoted ? 1 : 0}:${atQuery.query}`;
+    useEffect(() => {
+      if (atTokenKey === null) {
         setAtMenuOpen(false);
-        setHistoryActiveIndex(inputHistory.length - 1);
-        setHistoryMenuOpen(true);
+        setAtActiveIndex(0);
         return;
       }
+      setAtMenuOpen(true);
+      setAtActiveIndex(0);
+    }, [atTokenKey]);
 
-      // Esc stops the agent when no slash/@/history menu or IME composition is active.
-      if (e.key === "Escape" && !isComposing && isStreaming && onAbort) {
-        e.preventDefault();
-        onAbort();
+    // Fetch the file index when the menu opens. The server caches per cwd for
+    // ~10s, so re-opening refreshes cheaply; while typing nothing refetches.
+    const atTokenActive = atQuery !== null;
+    useEffect(() => {
+      if (!atTokenActive || !cwd) return;
+      const meta = fileIndexMetaRef.current;
+      if (meta && meta.cwd === cwd && Date.now() - meta.fetchedAt < 10_000)
         return;
+      if (fileIndexFetchingRef.current === cwd) return;
+      fileIndexFetchingRef.current = cwd;
+      const fetchCwd = cwd;
+      setFileIndexLoading(true);
+      hostCall("fileIndex", { cwd: fetchCwd })
+        .then((data) => {
+          setFileIndex({
+            cwd: fetchCwd,
+            entries: buildEntriesFromFiles(data.files ?? []),
+            truncated: !!data.truncated,
+          });
+          fileIndexMetaRef.current = { cwd: fetchCwd, fetchedAt: Date.now() };
+        })
+        .catch(() => {
+          // Leave any previous index in place; next open retries.
+          fileIndexMetaRef.current = null;
+        })
+        .finally(() => {
+          fileIndexFetchingRef.current = null;
+          setFileIndexLoading(false);
+        });
+    }, [atTokenActive, cwd]);
+
+    const applyAtCompletion = useCallback(
+      (entry: FileIndexEntry) => {
+        if (!atQuery) return;
+        const ta = textareaRef.current;
+        const cursor = ta?.selectionStart ?? value.length;
+        const before = value.slice(0, atQuery.start);
+        let after = value.slice(cursor);
+        // Completing inside a quoted token (@"my dir/… with the caret before the
+        // closing quote): the replacement carries its own closing quote, so drop
+        // the old one right after the caret (mirrors the TUI's applyCompletion).
+        if (atQuery.quoted && after.startsWith('"')) {
+          after = after.slice(1);
+        }
+        const insert = buildAtInsertText(
+          entry.path,
+          entry.isDir,
+          atQuery.quoted
+        );
+        const newValue = before + insert.text + after;
+        const newPos = before.length + insert.cursorOffset;
+        setValue(newValue);
+        // setValue alone does not fire onChange — re-derive the token here. Files
+        // end with a space (token closes, menu hides); directories end with "/"
+        // before the caret (token stays open for drill-down into the directory).
+        setAtQuery(extractAtQuery(newValue.slice(0, newPos)));
+        requestAnimationFrame(() => {
+          const el = textareaRef.current;
+          if (!el) return;
+          el.focus();
+          el.setSelectionRange(newPos, newPos);
+          el.style.height = "auto";
+          el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+        });
+      },
+      [atQuery, value]
+    );
+
+    useEffect(() => {
+      if (atActiveIndex >= atMatches.length) {
+        setAtActiveIndex(Math.max(0, atMatches.length - 1));
       }
-      // Edit-from-here: Esc cancels inline editing when idle.
-      if (e.key === "Escape" && !isComposing && !isStreaming && onCancelEdit) {
-        e.preventDefault();
-        onCancelEdit();
-        return;
-      }
+    }, [atMatches.length, atActiveIndex]);
 
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        if (isStreaming && !value.trim() && attachedImages.length === 0) onAbort();
-        else if (isStreaming && (onSteer || onFollowUp)) sendQueued(onSteer ? "steer" : "followup");
-        else handleSend();
-      }
-    },
-    [isStreaming, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, displayedSlashCommands, slashActiveIndex, applySlashCommand, sendQueued, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, emojiCompleter, githubCompleter, actionCompleter, urlCompleter, replaceCompletion, closeCompleters, acceptAction, attachedImages, onRecallQueue, onRoleChange, onOpenModelSelector, onOpenTemporaryModelPicker, onOpenAgentHub, onDisplayReset, onToggleExpandAllTools, onToggleToolsHidden, copyCurrentLine, insertNewlineAtCaret, onBuiltinCommand, onToggleThinking]
-  );
+    useEffect(() => {
+      atItemRefs.current.length = atMatches.length;
+    }, [atMatches.length]);
 
-  const handleInput = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-  }, []);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = Array.from(e.clipboardData?.items ?? []);
-    const imageItems = items.filter((item) => item.type.startsWith("image/"));
-    if (!imageItems.length) return;
-    e.preventDefault();
-    const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
-    processImageFiles(files);
-  }, [processImageFiles]);
-
-  useEffect(() => {
-    if (slashQuery === null) {
-      setSlashMenuOpen(false);
-      setSlashActiveIndex(0);
-      slashCommandsRequestedRef.current = false;
-      return;
-    }
-    setSlashMenuOpen(true);
-    setSlashActiveIndex(0);
-    if (!slashCommandsRequestedRef.current && onLoadSlashCommands) {
-      slashCommandsRequestedRef.current = true;
-      Promise.resolve(onLoadSlashCommands()).catch(() => {
-        slashCommandsRequestedRef.current = false;
+    useEffect(() => {
+      if (!atMenuOpen) return;
+      atItemRefs.current[atActiveIndex]?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
       });
-    }
-  }, [slashQuery, onLoadSlashCommands]);
+    }, [atActiveIndex, atMenuOpen]);
 
-  // Lazy-load skill dormancy (disable-model-invocation) each time the slash
-  // palette opens, so toggles made in the skills panel are reflected on the
-  // next open. Failures degrade silently to the unannotated palette.
-  useEffect(() => {
-    if (!slashMenuOpen || !cwd) return;
-    const requestCwd = cwd;
-    let cancelled = false;
-    setSkillDormancyState({ cwd: requestCwd, values: {} });
-    ompExtensions(requestCwd)
-      .then(({ extensions }) => {
-        if (cancelled) return;
-        const dormancy: Record<string, boolean> = {};
-        for (const extension of extensions) {
-          if (typeof extension !== "object" || extension === null || !("kind" in extension) || !("name" in extension)) continue;
-          if (extension.kind === "skill" && typeof extension.name === "string") {
-            dormancy[extension.name] = false;
+    useEffect(() => {
+      if (historyActiveIndex >= inputHistory.length) {
+        setHistoryActiveIndex(Math.max(0, inputHistory.length - 1));
+      }
+    }, [inputHistory.length, historyActiveIndex]);
+
+    useEffect(() => {
+      historyItemRefs.current.length = inputHistory.length;
+    }, [inputHistory.length]);
+
+    useEffect(() => {
+      if (!historyMenuOpen) return;
+      historyItemRefs.current[historyActiveIndex]?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
+    }, [historyActiveIndex, historyMenuOpen]);
+
+    const applyHistoryInput = useCallback((text: string) => {
+      setValue(text);
+      setHistoryMenuOpen(false);
+      setHistoryActiveIndex(0);
+      setAtQuery(null);
+      requestAnimationFrame(() => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        ta.focus();
+        ta.setSelectionRange(text.length, text.length);
+        ta.style.height = "auto";
+        ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+      });
+    }, []);
+
+    const applySlashCommand = useCallback(
+      (command: SlashCommandPaletteItem) => {
+        const nextValue = `/${command.name} `;
+        setValue(nextValue);
+        setSlashMenuOpen(false);
+        setSlashActiveIndex(0);
+        requestAnimationFrame(() => {
+          const ta = textareaRef.current;
+          if (!ta) return;
+          ta.focus();
+          ta.setSelectionRange(nextValue.length, nextValue.length);
+          ta.style.height = "auto";
+          ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+        });
+      },
+      []
+    );
+
+    const sendQueued = useCallback(
+      (mode: "steer" | "followup") => {
+        const msg = value.trim();
+        if (!msg && !attachedImages.length) return;
+        if (attachedImages.length) return;
+        onAudioUnlock?.();
+        const streamingBehavior = mode === "steer" ? "steer" : "followUp";
+        if (msg.startsWith("/") && onPromptWithStreamingBehavior) {
+          onPromptWithStreamingBehavior(
+            msg,
+            streamingBehavior,
+            attachedImages.length ? attachedImages : undefined
+          );
+          clearInput();
+          return;
+        }
+        if (mode === "steer" && onSteer) {
+          onSteer(msg, attachedImages.length ? attachedImages : undefined);
+        } else if (mode === "followup" && onFollowUp) {
+          onFollowUp(msg, attachedImages.length ? attachedImages : undefined);
+        }
+        clearInput();
+      },
+      [
+        value,
+        attachedImages,
+        onPromptWithStreamingBehavior,
+        onSteer,
+        onFollowUp,
+        clearInput,
+        onAudioUnlock,
+      ]
+    );
+
+    const getNextSlashIndex = useCallback(
+      (direction: "up" | "down" | "left" | "right") => {
+        const lastIndex = displayedSlashCommands.length - 1;
+        if (lastIndex < 0) return 0;
+
+        if (direction === "left") return Math.max(0, slashActiveIndex - 1);
+        if (direction === "right")
+          return Math.min(lastIndex, slashActiveIndex + 1);
+
+        const currentNode = slashItemRefs.current[slashActiveIndex];
+        if (!currentNode) {
+          return direction === "down"
+            ? Math.min(lastIndex, slashActiveIndex + 1)
+            : Math.max(0, slashActiveIndex - 1);
+        }
+
+        const currentRect = currentNode.getBoundingClientRect();
+        const currentX = currentRect.left + currentRect.width / 2;
+        const currentY = currentRect.top + currentRect.height / 2;
+        let bestIndex = -1;
+        let bestScore = Number.POSITIVE_INFINITY;
+
+        for (let index = 0; index <= lastIndex; index += 1) {
+          if (index === slashActiveIndex) continue;
+          const node = slashItemRefs.current[index];
+          if (!node) continue;
+          const rect = node.getBoundingClientRect();
+          const candidateY = rect.top + rect.height / 2;
+          const verticalDelta = candidateY - currentY;
+          if (direction === "down" ? verticalDelta <= 4 : verticalDelta >= -4)
+            continue;
+
+          const candidateX = rect.left + rect.width / 2;
+          const score =
+            Math.abs(verticalDelta) * 1000 + Math.abs(candidateX - currentX);
+          if (score < bestScore) {
+            bestIndex = index;
+            bestScore = score;
           }
         }
-        setSkillDormancyState({ cwd: requestCwd, values: dormancy });
-      })
-      .catch(() => {
-        if (!cancelled) setSkillDormancyState({ cwd: requestCwd, values: {} });
+
+        if (bestIndex >= 0) return bestIndex;
+        return direction === "down"
+          ? Math.min(lastIndex, slashActiveIndex + 1)
+          : Math.max(0, slashActiveIndex - 1);
+      },
+      [displayedSlashCommands.length, slashActiveIndex]
+    );
+    const insertNewlineAtCaret = useCallback(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const nextValue = `${value.slice(0, start)}\n${value.slice(end)}`;
+      setValue(nextValue);
+      requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + 1, start + 1);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [slashMenuOpen, cwd]);
+    }, [value]);
 
-  useEffect(() => {
-    if (slashActiveIndex >= displayedSlashCommands.length) {
-      setSlashActiveIndex(Math.max(0, displayedSlashCommands.length - 1));
-    }
-  }, [displayedSlashCommands.length, slashActiveIndex]);
+    const copyCurrentLine = useCallback(() => {
+      const textarea = textareaRef.current;
+      const cursor = textarea?.selectionStart ?? value.length;
+      const lineStart = value.lastIndexOf("\n", cursor - 1) + 1;
+      const lineEnd = value.indexOf("\n", cursor);
+      void navigator.clipboard.writeText(
+        value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd)
+      );
+    }, [value]);
 
-  useEffect(() => {
-    slashItemRefs.current.length = displayedSlashCommands.length;
-  }, [displayedSlashCommands.length]);
+    const handleKeyDown = useCallback(
+      (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        const nativeEvent = e.nativeEvent;
+        const recentlyComposed =
+          Date.now() - lastCompositionEndAtRef.current <
+          COMPOSITION_END_ENTER_GRACE_MS;
+        const isComposing =
+          isComposingRef.current ||
+          nativeEvent.isComposing ||
+          nativeEvent.keyCode === 229;
 
-  useEffect(() => {
-    if (!slashMenuOpen) return;
-    slashItemRefs.current[slashActiveIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [slashActiveIndex, slashMenuOpen]);
-
-  const compactSavedTokens = compactResult
-    ? Math.max(0, compactResult.tokensBefore - compactResult.estimatedTokensAfter)
-    : 0;
-  const compactResultText = compactResult
-    ? `${compactResult.reason && compactResult.reason !== "manual" ? `${compactResult.reason[0].toUpperCase()}${compactResult.reason.slice(1)} ` : t("chat.compacted")} ${formatTokenCount(compactResult.tokensBefore)} -> ${formatTokenCount(compactResult.estimatedTokensAfter)} tokens (${t("chat.tokensSaved", { saved: formatTokenCount(compactSavedTokens) })})`
-    : null;
-  const thinkingDisplayLabel = (() => {
-    const lvl = thinkingLevel ?? "auto";
-    if (lvl === "auto" || !thinkingLevelMap) return lvl;
-    return thinkingLevelMap[lvl] ?? lvl;
-  })();
-  // Close dropdowns on outside click; in edit mode a pointerdown anywhere
-  // outside the composer collapses it back to the read-only message
-  // (blur is unreliable: clicking empty space yields relatedTarget = null).
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const ta = textareaRef.current;
-      if (ta && !ta.contains(e.target as Node)) {
-        setHistoryMenuOpen(false);
-        setSlashMenuOpen(false);
-        setAtMenuOpen(false);
-      }
-      if (!collapsedRef.current && onCancelEditRef.current && wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        // Radix portals (model/effort pickers) live in body, not in the wrap —
-        // the picker's own click handler owns the interaction, so don't collapse
-        // while one is open. Closing the picker is what ends the edit state.
-        closeCompleters();
-        const targetEl = e.target instanceof Element ? e.target : null;
-        const inRadixPortal = !!targetEl?.closest?.("[data-radix-popper-content-wrapper]");
-        if (!inRadixPortal) onCancelEditRef.current();
-      }
-    };
-    document.addEventListener("pointerdown", handler);
-    return () => document.removeEventListener("pointerdown", handler);
-  }, []);
-
-
-  return (
-    <div
-      ref={wrapRef}
-      className={cn(
-        "sf-chat-input-wrap shrink-0 bg-transparent pb-2",
-        // Inline (collapsed sent message / edit-from-here) sits inside the
-        // message column: no side padding — the box width equals the column
-        // content width, which is exactly the bottom composer's box geometry.
-        // Only the bottom composer (no initialValue, not collapsed) needs the
-        // standard 16px side padding against the window edge.
-        collapsed || initialValue !== undefined ? "px-0" : "px-4",
-      )}
-      onBlur={(event) => {
-        // Radix menu content is portaled outside this wrapper. Moving focus to
-        // it is still part of editing; only collapse for a genuine focus exit.
-        const nextTarget = event.relatedTarget instanceof Element ? event.relatedTarget : null;
-        const movingToComposerMenu = !!nextTarget?.closest?.("[data-radix-popper-content-wrapper]");
-        if (onCancelEdit && !movingToComposerMenu && event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) {
-          onCancelEdit();
+        if (
+          e.key === "Enter" &&
+          !e.shiftKey &&
+          (isComposing || recentlyComposed)
+        ) {
+          if (recentlyComposed) e.preventDefault();
+          return;
         }
-      }}
-    >
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        disabled={isStreaming}
-        className="hidden"
-        onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
-          processImageFiles(files);
-          e.target.value = "";
+        // Ctrl+R opens the local input-history search dialog.
+        if (e.ctrlKey && e.key.toLowerCase() === "r") {
+          e.preventDefault();
+          onOpenHistorySearch?.();
+          return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === "t") {
+          e.preventDefault();
+          onToggleThinking?.();
+          return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === "g") {
+          e.preventDefault();
+          setExternalEditorOpen(true);
+          return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === "j") {
+          e.preventDefault();
+          insertNewlineAtCaret();
+          return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === "o") {
+          e.preventDefault();
+          if (e.shiftKey) onToggleToolsHidden?.();
+          else onToggleExpandAllTools?.();
+          return;
+        }
+        // Ctrl+Q / Ctrl+Enter queues a follow-up, or aborts an empty streaming turn.
+        if (e.ctrlKey && (e.key.toLowerCase() === "q" || e.key === "Enter")) {
+          e.preventDefault();
+          if (!value.trim() && attachedImages.length === 0 && isStreaming)
+            onAbort();
+          else sendQueued("followup");
+          return;
+        }
+        // Alt+Shift+P uses the shared plan-role path.
+        if (e.altKey && e.shiftKey && e.key.toLowerCase() === "p") {
+          e.preventDefault();
+          onRoleChange?.("plan");
+          return;
+        }
+        if (e.altKey && e.key.toLowerCase() === "m") {
+          e.preventDefault();
+          onOpenModelSelector?.();
+          return;
+        }
+        if (e.altKey && e.key.toLowerCase() === "p") {
+          e.preventDefault();
+          onOpenTemporaryModelPicker?.();
+          return;
+        }
+        if (e.altKey && e.key.toLowerCase() === "a") {
+          e.preventDefault();
+          onOpenAgentHub?.();
+          return;
+        }
+        if (e.altKey && e.key.toLowerCase() === "r") {
+          e.preventDefault();
+          if (!isStreaming) onSend("/retry");
+          return;
+        }
+        if (e.altKey && e.key.toLowerCase() === "l") {
+          e.preventDefault();
+          if (e.shiftKey) copyCurrentLine();
+          else onDisplayReset?.();
+          return;
+        }
+        if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
+          e.preventDefault();
+          void navigator.clipboard.writeText(value);
+          return;
+        }
+
+        const activeCompleter = emojiCompleter.open
+          ? emojiCompleter
+          : githubCompleter.open
+            ? githubCompleter
+            : actionCompleter.open
+              ? actionCompleter
+              : urlCompleter.open
+                ? urlCompleter
+                : null;
+        if (activeCompleter && !isComposing) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeCompleter.moveActive(1);
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeCompleter.moveActive(-1);
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            closeCompleters();
+            return;
+          }
+          if (
+            (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) &&
+            activeCompleter.items[activeCompleter.activeIndex]
+          ) {
+            e.preventDefault();
+            const item = activeCompleter.items[activeCompleter.activeIndex];
+            if (item === undefined) return;
+            if (
+              activeCompleter === emojiCompleter &&
+              emojiCompleter.insertRange
+            )
+              replaceCompletion(emojiCompleter.insertRange, item.value);
+            if (
+              activeCompleter === githubCompleter &&
+              githubCompleter.insertRange
+            )
+              replaceCompletion(githubCompleter.insertRange, `${item.value} `);
+            if (activeCompleter === urlCompleter && urlCompleter.insertRange)
+              replaceCompletion(urlCompleter.insertRange, `${item.value} `);
+            if (activeCompleter === actionCompleter) acceptAction(item);
+            closeCompleters();
+            return;
+          }
+        }
+
+        if (historyMenuOpen && !isComposing) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setHistoryActiveIndex((i) =>
+              Math.min(Math.max(0, inputHistory.length - 1), i + 1)
+            );
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHistoryActiveIndex((i) => Math.max(0, i - 1));
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setHistoryMenuOpen(false);
+            return;
+          }
+          if (
+            (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) &&
+            inputHistory[historyActiveIndex]
+          ) {
+            e.preventDefault();
+            applyHistoryInput(inputHistory[historyActiveIndex]);
+            return;
+          }
+        }
+
+        if (slashMenuOpen && slashQuery !== null) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setSlashActiveIndex(getNextSlashIndex("down"));
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setSlashActiveIndex(getNextSlashIndex("up"));
+            return;
+          }
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            setSlashActiveIndex(getNextSlashIndex("right"));
+            return;
+          }
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            setSlashActiveIndex(getNextSlashIndex("left"));
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setSlashMenuOpen(false);
+            return;
+          }
+          if (
+            (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) &&
+            displayedSlashCommands[slashActiveIndex]
+          ) {
+            e.preventDefault();
+            applySlashCommand(displayedSlashCommands[slashActiveIndex]);
+            return;
+          }
+        }
+
+        // @ file menu — skip while composing so IME candidate navigation
+        // (arrows/Enter/Tab) is never intercepted.
+        if (atMenuOpen && atQuery !== null && !isComposing) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setAtActiveIndex((i) =>
+              Math.min(Math.max(0, atMatches.length - 1), i + 1)
+            );
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setAtActiveIndex((i) => Math.max(0, i - 1));
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setAtMenuOpen(false);
+            return;
+          }
+          if (
+            (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) &&
+            atMatches[atActiveIndex]
+          ) {
+            e.preventDefault();
+            applyAtCompletion(atMatches[atActiveIndex]);
+            return;
+          }
+        }
+
+        if (
+          e.key === "ArrowUp" &&
+          !e.altKey &&
+          !e.shiftKey &&
+          !isComposing &&
+          !isStreaming &&
+          inputHistory.length > 0 &&
+          value.trim().length === 0
+        ) {
+          e.preventDefault();
+          setSlashMenuOpen(false);
+          setAtMenuOpen(false);
+          setHistoryActiveIndex(inputHistory.length - 1);
+          setHistoryMenuOpen(true);
+          return;
+        }
+
+        // Esc stops the agent when no slash/@/history menu or IME composition is active.
+        if (e.key === "Escape" && !isComposing && isStreaming && onAbort) {
+          e.preventDefault();
+          onAbort();
+          return;
+        }
+        // Edit-from-here: Esc cancels inline editing when idle.
+        if (
+          e.key === "Escape" &&
+          !isComposing &&
+          !isStreaming &&
+          onCancelEdit
+        ) {
+          e.preventDefault();
+          onCancelEdit();
+          return;
+        }
+
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          if (isStreaming && !value.trim() && attachedImages.length === 0)
+            onAbort();
+          else if (isStreaming && (onSteer || onFollowUp))
+            sendQueued(onSteer ? "steer" : "followup");
+          else handleSend();
+        }
+      },
+      [
+        isStreaming,
+        onSteer,
+        onFollowUp,
+        onAbort,
+        slashMenuOpen,
+        slashQuery,
+        displayedSlashCommands,
+        slashActiveIndex,
+        applySlashCommand,
+        sendQueued,
+        handleSend,
+        getNextSlashIndex,
+        atMenuOpen,
+        atQuery,
+        atMatches,
+        atActiveIndex,
+        applyAtCompletion,
+        historyMenuOpen,
+        inputHistory,
+        historyActiveIndex,
+        applyHistoryInput,
+        value,
+        emojiCompleter,
+        githubCompleter,
+        actionCompleter,
+        urlCompleter,
+        replaceCompletion,
+        closeCompleters,
+        acceptAction,
+        attachedImages,
+        onRoleChange,
+        onOpenModelSelector,
+        onOpenTemporaryModelPicker,
+        onOpenAgentHub,
+        onDisplayReset,
+        onToggleExpandAllTools,
+        onToggleToolsHidden,
+        copyCurrentLine,
+        insertNewlineAtCaret,
+        onBuiltinCommand,
+        onToggleThinking,
+      ]
+    );
+
+    const handleInput = useCallback(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.style.height = "auto";
+      ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+    }, []);
+
+    const handlePaste = useCallback(
+      (e: React.ClipboardEvent) => {
+        const items = Array.from(e.clipboardData?.items ?? []);
+        const imageItems = items.filter((item) =>
+          item.type.startsWith("image/")
+        );
+        if (!imageItems.length) return;
+        e.preventDefault();
+        const files = imageItems
+          .map((item) => item.getAsFile())
+          .filter((f): f is File => f !== null);
+        processImageFiles(files);
+      },
+      [processImageFiles]
+    );
+
+    useEffect(() => {
+      if (slashQuery === null) {
+        setSlashMenuOpen(false);
+        setSlashActiveIndex(0);
+        slashCommandsRequestedRef.current = false;
+        return;
+      }
+      setSlashMenuOpen(true);
+      setSlashActiveIndex(0);
+      if (!slashCommandsRequestedRef.current && onLoadSlashCommands) {
+        slashCommandsRequestedRef.current = true;
+        Promise.resolve(onLoadSlashCommands()).catch(() => {
+          slashCommandsRequestedRef.current = false;
+        });
+      }
+    }, [slashQuery, onLoadSlashCommands]);
+
+    // Lazy-load skill dormancy (disable-model-invocation) each time the slash
+    // palette opens, so toggles made in the skills panel are reflected on the
+    // next open. Failures degrade silently to the unannotated palette.
+    useEffect(() => {
+      if (!slashMenuOpen || !cwd) return;
+      const requestCwd = cwd;
+      let cancelled = false;
+      setSkillDormancyState({ cwd: requestCwd, values: {} });
+      ompExtensions(requestCwd)
+        .then(({ extensions }) => {
+          if (cancelled) return;
+          const dormancy: Record<string, boolean> = {};
+          for (const extension of extensions) {
+            if (
+              typeof extension !== "object" ||
+              extension === null ||
+              !("kind" in extension) ||
+              !("name" in extension)
+            )
+              continue;
+            if (
+              extension.kind === "skill" &&
+              typeof extension.name === "string"
+            ) {
+              dormancy[extension.name] = false;
+            }
+          }
+          setSkillDormancyState({ cwd: requestCwd, values: dormancy });
+        })
+        .catch(() => {
+          if (!cancelled)
+            setSkillDormancyState({ cwd: requestCwd, values: {} });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [slashMenuOpen, cwd]);
+
+    useEffect(() => {
+      if (slashActiveIndex >= displayedSlashCommands.length) {
+        setSlashActiveIndex(Math.max(0, displayedSlashCommands.length - 1));
+      }
+    }, [displayedSlashCommands.length, slashActiveIndex]);
+
+    useEffect(() => {
+      slashItemRefs.current.length = displayedSlashCommands.length;
+    }, [displayedSlashCommands.length]);
+
+    useEffect(() => {
+      if (!slashMenuOpen) return;
+      slashItemRefs.current[slashActiveIndex]?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
+    }, [slashActiveIndex, slashMenuOpen]);
+
+    const compactSavedTokens = compactResult
+      ? Math.max(
+          0,
+          compactResult.tokensBefore - compactResult.estimatedTokensAfter
+        )
+      : 0;
+    const compactResultText = compactResult
+      ? `${compactResult.reason && compactResult.reason !== "manual" ? `${compactResult.reason[0].toUpperCase()}${compactResult.reason.slice(1)} ` : t("chat.compacted")} ${formatTokenCount(compactResult.tokensBefore)} -> ${formatTokenCount(compactResult.estimatedTokensAfter)} tokens (${t("chat.tokensSaved", { saved: formatTokenCount(compactSavedTokens) })})`
+      : null;
+    const thinkingDisplayLabel = (() => {
+      const lvl = thinkingLevel ?? "auto";
+      if (lvl === "auto" || !thinkingLevelMap) return lvl;
+      return thinkingLevelMap[lvl] ?? lvl;
+    })();
+    // Close dropdowns on outside click; in edit mode a pointerdown anywhere
+    // outside the composer collapses it back to the read-only message
+    // (blur is unreliable: clicking empty space yields relatedTarget = null).
+    useEffect(() => {
+      const handler = (e: MouseEvent) => {
+        const ta = textareaRef.current;
+        if (ta && !ta.contains(e.target as Node)) {
+          setHistoryMenuOpen(false);
+          setSlashMenuOpen(false);
+          setAtMenuOpen(false);
+        }
+        if (
+          !collapsedRef.current &&
+          onCancelEditRef.current &&
+          wrapRef.current &&
+          !wrapRef.current.contains(e.target as Node)
+        ) {
+          // Radix portals (model/effort pickers) live in body, not in the wrap —
+          // the picker's own click handler owns the interaction, so don't collapse
+          // while one is open. Closing the picker is what ends the edit state.
+          closeCompleters();
+          const targetEl = e.target instanceof Element ? e.target : null;
+          const inRadixPortal = !!targetEl?.closest?.(
+            "[data-radix-popper-content-wrapper]"
+          );
+          if (!inRadixPortal) onCancelEditRef.current();
+        }
+      };
+      document.addEventListener("pointerdown", handler);
+      return () => document.removeEventListener("pointerdown", handler);
+    }, []);
+
+    return (
+      <div
+        ref={wrapRef}
+        className={cn(
+          "sf-chat-input-wrap shrink-0 bg-transparent pb-2",
+          // Inline (collapsed sent message / edit-from-here) sits inside the
+          // message column: no side padding — the box width equals the column
+          // content width, which is exactly the bottom composer's box geometry.
+          // Only the bottom composer (no initialValue, not collapsed) needs the
+          // standard 16px side padding against the window edge.
+          collapsed || initialValue !== undefined ? "px-0" : "px-4"
+        )}
+        onBlur={(event) => {
+          // Radix menu content is portaled outside this wrapper. Moving focus to
+          // it is still part of editing; only collapse for a genuine focus exit.
+          const nextTarget =
+            event.relatedTarget instanceof Element ? event.relatedTarget : null;
+          const movingToComposerMenu = !!nextTarget?.closest?.(
+            "[data-radix-popper-content-wrapper]"
+          );
+          if (
+            onCancelEdit &&
+            !movingToComposerMenu &&
+            event.relatedTarget instanceof Node &&
+            !event.currentTarget.contains(event.relatedTarget)
+          ) {
+            onCancelEdit();
+          }
         }}
-      />
-      <div className="mx-auto max-w-[820px]">
-        <ModelErrorBanner error={modelError} />
-        <ModelScopeWarningBanner warnings={modelScopeWarnings} />
-        {/* Queued steering / follow-up messages (delivered by pi on upcoming turns) */}
-        {((queuedMessages?.steering.length ?? 0) + (queuedMessages?.followUp.length ?? 0)) > 0 && (
-          <div className="mb-2 rounded-md border border-[var(--border)] bg-[var(--bg-panel)] py-[5px]">
-            <div className="flex items-center justify-between gap-2 px-2.5 pt-0.5 pb-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.4px] text-[var(--text-dim)]">
-                {t("chat.queued", { count: (queuedMessages?.steering.length ?? 0) + (queuedMessages?.followUp.length ?? 0) })}
-              </span>
-              {onRecallQueue && (
-                <Button
-                  onClick={onRecallQueue}
-                  variant="outline"
-                  size="sm"
-                  title={t("chat.recallTitle")}
-                  className="h-6 gap-1.5 rounded-[7px] px-3 text-xs hover:border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] hover:bg-[var(--bg-hover)]"
-                >
-                  <Undo2 size={13} />
-                   {t("chat.recall")}
-                </Button>
+      >
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={isStreaming}
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            processImageFiles(files);
+            e.target.value = "";
+          }}
+        />
+        <div className="mx-auto max-w-[820px]">
+          <ModelErrorBanner error={modelError} />
+          <ModelScopeWarningBanner warnings={modelScopeWarnings} />
+          {/* Retry banner */}
+          {retryInfo && (
+            <div className="border-warning/25 bg-warning/8 text-warning mb-2 flex items-center gap-1.5 rounded-md border px-2.5 py-[5px] text-xs">
+              <RefreshCw size={11} className="shrink-0" />
+              Retrying upstream request ({retryInfo.attempt}/
+              {retryInfo.maxAttempts})…
+              {retryInfo.errorMessage && (
+                <span className="ml-1 opacity-70">
+                  — {retryInfo.errorMessage}
+                </span>
               )}
             </div>
-            {queuedMessages?.steering.map((text, i) => (
-              <QueuedMessageRow key={`steer-${i}`} kind="steer" text={text} />
-            ))}
-            {queuedMessages?.followUp.map((text, i) => (
-              <QueuedMessageRow key={`followup-${i}`} kind="follow-up" text={text} />
-            ))}
-          </div>
-        )}
-        {/* Retry banner */}
-        {retryInfo && (
-          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-warning/25 bg-warning/8 px-2.5 py-[5px] text-xs text-warning">
-            <RefreshCw size={11} className="shrink-0" />
-            Retrying upstream request ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span className="ml-1 opacity-70">— {retryInfo.errorMessage}</span>}
-          </div>
-        )}
-        {compactResultText && (
-          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-success/24 bg-success/8 px-2.5 py-[5px] text-xs text-success">
-            <Check size={11} className="shrink-0" />
-            {compactResultText}
-          </div>
-        )}
-        {compactError && (
-          <div
-            role="alert"
-            className="mb-2 whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/7 px-2.5 py-[7px] font-mono text-xs leading-[1.5] text-destructive"
-          >
-            {compactError}
-          </div>
-        )}
-        {/* Main input */}
-        <div className="relative min-w-0">
-          {historyMenuOpen && inputHistory.length > 0 && (
-            <HistoryMenu
-              items={inputHistory}
-              activeIndex={historyActiveIndex}
-              onSelect={applyHistoryInput}
-              onHover={setHistoryActiveIndex}
-              itemRefs={historyItemRefs}
-            />
           )}
-          {slashMenuOpen && slashQuery !== null && (
-            <SlashPalette
-              loading={slashCommandsLoading}
-              countLabel={slashCommandCountLabel}
-              filtered={filteredSlashCommands}
-              groups={groupedSlashCommands}
-              query={slashQuery}
-              activeIndex={slashActiveIndex}
-              dormancy={skillDormancy}
-              onApply={applySlashCommand}
-              onHover={setSlashActiveIndex}
-              itemRefs={slashItemRefs}
-              t={t}
-            />
-          )}
-          {atMenuOpen && atQuery !== null && (
-            <AtMenu
-              loading={fileIndexLoading && (!fileIndex || fileIndex.cwd !== cwd)}
-              matches={atMatches}
-              activeIndex={atActiveIndex}
-              serverResultInUse={serverResultInUse}
-              needsServerSearch={needsServerSearch}
-              indexTruncated={Boolean(fileIndex?.truncated)}
-              query={atQuery.query}
-              onApply={applyAtCompletion}
-              onHover={setAtActiveIndex}
-              itemRefs={atItemRefs}
-              t={t}
-            />
-          )}
-          {(() => {
-            const completer = emojiCompleter.open ? emojiCompleter : githubCompleter.open ? githubCompleter : actionCompleter.open ? actionCompleter : urlCompleter.open ? urlCompleter : null;
-            if (!completer || completer.items.length === 0) return null;
-            return (
-              <div role="listbox" aria-label="Composer completions" className="absolute bottom-full z-30 mb-2 max-h-64 w-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-panel)] py-1 shadow-lg">
-                {completer.items.map((item, index) => (
-                  <button
-                    key={`${item.value}-${index}`}
-                    type="button"
-                    role="option"
-                    aria-selected={index === completer.activeIndex}
-                    className={cn("flex w-full items-center px-3 py-1.5 text-left text-xs", index === completer.activeIndex && "bg-[var(--bg-hover)]")}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      if (completer === emojiCompleter && emojiCompleter.insertRange) replaceCompletion(emojiCompleter.insertRange, item.value);
-                      if (completer === githubCompleter && githubCompleter.insertRange) replaceCompletion(githubCompleter.insertRange, `${item.value} `);
-                      if (completer === urlCompleter && urlCompleter.insertRange) replaceCompletion(urlCompleter.insertRange, `${item.value} `);
-                      if (completer === actionCompleter) acceptAction(item);
-                      closeCompleters();
-                    }}
-                    onMouseEnter={() => completer.moveActive(index - completer.activeIndex)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
-          <div
-            className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--chat-input-bg)] px-3 pb-2 pt-3 transition-[border-color,background] duration-150"
-            style={{
-              border: `1px solid ${bashMode ? "var(--tool-bg)" : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
-              cursor: collapsed ? "pointer" : undefined,
-            } as React.CSSProperties}
-            onClick={collapsed ? () => onActivateEdit?.() : undefined}
-            title={collapsed ? (t("i18n.editFromHereTitle") ?? "Click to edit") : undefined}
-          >
-          {/* Image previews — strip at the top INSIDE the composer card,
-              above the textarea */}
-          {attachedImages.length > 0 && (
-            <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5">
-              {attachedImages.map((img, i) => (
-                <div key={i} className="group relative shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.previewUrl}
-                    alt=""
-                    onClick={() => openImageInVSCode(img.data, img.mimeType)}
-                    className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover"
-                  />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                    title={t("chat.removeImage") ?? "Remove"}
-                    className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
-                  >
-                    <X size={7} strokeWidth={1.5} />
-                  </button>
-                </div>
-              ))}
+          {compactResultText && (
+            <div className="border-success/24 bg-success/8 text-success mb-2 flex items-center gap-1.5 rounded-md border px-2.5 py-[5px] text-xs">
+              <Check size={11} className="shrink-0" />
+              {compactResultText}
             </div>
           )}
-          <textarea
-            ref={textareaRef}
-            value={value}
-            readOnly={collapsed}
-            onChange={(e) => {
-              dirtyRef.current = true;
-              setValue(e.target.value);
-              setHistoryMenuOpen(false);
-              updateAtQuery(e.target.value, e.target.selectionStart);
-              updateCompleters(e.target.value, e.target.selectionStart);
-            }}
-            onSelect={(e) => {
-              const el = e.currentTarget;
-              updateAtQuery(el.value, el.selectionStart);
-              updateCompleters(el.value, el.selectionStart);
-            }}
-            onKeyDown={handleKeyDown}
-            onCompositionStart={() => {
-              isComposingRef.current = true;
-            }}
-            onCompositionEnd={(e) => {
-              isComposingRef.current = false;
-              lastCompositionEndAtRef.current = Date.now();
-              const el = e.currentTarget;
-              updateAtQuery(el.value, el.selectionStart);
-              updateCompleters(el.value, el.selectionStart);
-            }}
-            onInput={handleInput}
-            onPaste={handlePaste}
-            placeholder={
-              isStreaming && (onSteer || onFollowUp)
-                ? t("chat.steerPlaceholder")
-                : isStreaming ? t("chat.agentPlaceholder")
-                : t("chat.messagePlaceholder")
-            }
-            rows={1}
-            className="min-h-6 max-h-[calc(15*1.6*13px)] w-full min-w-0 flex-none resize-none overflow-auto border-none bg-transparent font-inherit text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
-            style={{ fontSize: 12, textSizeAdjust: "none", maxHeight: TEXTAREA_MAX_HEIGHT, pointerEvents: collapsed ? "none" : undefined }}
-          />
+          {compactError && (
+            <div
+              role="alert"
+              className="border-destructive/30 bg-destructive/7 text-destructive mb-2 rounded-md border px-2.5 py-[7px] font-mono text-xs leading-[1.5] break-words whitespace-pre-wrap"
+            >
+              {compactError}
+            </div>
+          )}
+          {/* Main input */}
+          <div className="relative min-w-0">
+            {historyMenuOpen && inputHistory.length > 0 && (
+              <HistoryMenu
+                items={inputHistory}
+                activeIndex={historyActiveIndex}
+                onSelect={applyHistoryInput}
+                onHover={setHistoryActiveIndex}
+                itemRefs={historyItemRefs}
+              />
+            )}
+            {slashMenuOpen && slashQuery !== null && (
+              <SlashPalette
+                loading={slashCommandsLoading}
+                countLabel={slashCommandCountLabel}
+                filtered={filteredSlashCommands}
+                groups={groupedSlashCommands}
+                query={slashQuery}
+                activeIndex={slashActiveIndex}
+                dormancy={skillDormancy}
+                onApply={applySlashCommand}
+                onHover={setSlashActiveIndex}
+                itemRefs={slashItemRefs}
+                t={t}
+              />
+            )}
+            {atMenuOpen && atQuery !== null && (
+              <AtMenu
+                loading={
+                  fileIndexLoading && (!fileIndex || fileIndex.cwd !== cwd)
+                }
+                matches={atMatches}
+                activeIndex={atActiveIndex}
+                serverResultInUse={serverResultInUse}
+                needsServerSearch={needsServerSearch}
+                indexTruncated={Boolean(fileIndex?.truncated)}
+                query={atQuery.query}
+                onApply={applyAtCompletion}
+                onHover={setAtActiveIndex}
+                itemRefs={atItemRefs}
+                t={t}
+              />
+            )}
+            {(() => {
+              const completer = emojiCompleter.open
+                ? emojiCompleter
+                : githubCompleter.open
+                  ? githubCompleter
+                  : actionCompleter.open
+                    ? actionCompleter
+                    : urlCompleter.open
+                      ? urlCompleter
+                      : null;
+              if (!completer || completer.items.length === 0) return null;
+              return (
+                <div
+                  role="listbox"
+                  aria-label="Composer completions"
+                  className="absolute bottom-full z-30 mb-2 max-h-64 w-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-panel)] py-1 shadow-lg"
+                >
+                  {completer.items.map((item, index) => (
+                    <button
+                      key={`${item.value}-${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={index === completer.activeIndex}
+                      className={cn(
+                        "flex w-full items-center px-3 py-1.5 text-left text-xs",
+                        index === completer.activeIndex &&
+                          "bg-[var(--bg-hover)]"
+                      )}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        if (
+                          completer === emojiCompleter &&
+                          emojiCompleter.insertRange
+                        )
+                          replaceCompletion(
+                            emojiCompleter.insertRange,
+                            item.value
+                          );
+                        if (
+                          completer === githubCompleter &&
+                          githubCompleter.insertRange
+                        )
+                          replaceCompletion(
+                            githubCompleter.insertRange,
+                            `${item.value} `
+                          );
+                        if (
+                          completer === urlCompleter &&
+                          urlCompleter.insertRange
+                        )
+                          replaceCompletion(
+                            urlCompleter.insertRange,
+                            `${item.value} `
+                          );
+                        if (completer === actionCompleter) acceptAction(item);
+                        closeCompleters();
+                      }}
+                      onMouseEnter={() =>
+                        completer.moveActive(index - completer.activeIndex)
+                      }
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+            <div
+              className="sf-chat-input-box flex min-w-0 flex-col rounded-[14px] bg-[var(--chat-input-bg)] px-3 pt-3 pb-2 transition-[border-color,background] duration-150"
+              style={
+                {
+                  border: `1px solid ${bashMode ? "var(--tool-bg)" : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
+                  cursor: collapsed ? "pointer" : undefined,
+                } as React.CSSProperties
+              }
+              onClick={collapsed ? () => onActivateEdit?.() : undefined}
+              title={
+                collapsed
+                  ? (t("i18n.editFromHereTitle") ?? "Click to edit")
+                  : undefined
+              }
+            >
+              {/* Image previews — strip at the top INSIDE the composer card,
+              above the textarea */}
+              {attachedImages.length > 0 && (
+                <div className="mb-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5">
+                  {attachedImages.map((img, i) => (
+                    <div key={i} className="group relative shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.previewUrl}
+                        alt=""
+                        onClick={() =>
+                          openImageInVSCode(img.data, img.mimeType)
+                        }
+                        className="block h-10 w-10 cursor-zoom-in rounded-md border border-[var(--border)] object-cover"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeImage(i);
+                        }}
+                        title={t("chat.removeImage") ?? "Remove"}
+                        className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-panel)] p-0 text-[var(--text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
+                      >
+                        <X size={7} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={value}
+                readOnly={collapsed}
+                onChange={(e) => {
+                  dirtyRef.current = true;
+                  setValue(e.target.value);
+                  setHistoryMenuOpen(false);
+                  updateAtQuery(e.target.value, e.target.selectionStart);
+                  updateCompleters(e.target.value, e.target.selectionStart);
+                }}
+                onSelect={(e) => {
+                  const el = e.currentTarget;
+                  updateAtQuery(el.value, el.selectionStart);
+                  updateCompleters(el.value, el.selectionStart);
+                }}
+                onKeyDown={handleKeyDown}
+                onCompositionStart={() => {
+                  isComposingRef.current = true;
+                }}
+                onCompositionEnd={(e) => {
+                  isComposingRef.current = false;
+                  lastCompositionEndAtRef.current = Date.now();
+                  const el = e.currentTarget;
+                  updateAtQuery(el.value, el.selectionStart);
+                  updateCompleters(el.value, el.selectionStart);
+                }}
+                onInput={handleInput}
+                onPaste={handlePaste}
+                placeholder={
+                  isStreaming && (onSteer || onFollowUp)
+                    ? t("chat.steerPlaceholder")
+                    : isStreaming
+                      ? t("chat.agentPlaceholder")
+                      : t("chat.messagePlaceholder")
+                }
+                rows={1}
+                className="font-inherit max-h-[calc(15*1.6*13px)] min-h-6 w-full min-w-0 flex-none resize-none overflow-auto border-none bg-transparent text-[13px]! leading-[1.6] text-[var(--text)] outline-none"
+                style={{
+                  fontSize: 12,
+                  textSizeAdjust: "none",
+                  maxHeight: TEXTAREA_MAX_HEIGHT,
+                  pointerEvents: collapsed ? "none" : undefined,
+                }}
+              />
 
-        {/* Bash mode status label */}
-        {bashMode && (
-          <div className="mt-1 px-2 py-1 text-xs" style={{ color: bashExcluded ? "var(--text-muted)" : "var(--accent)" }}>
-             {t("chat.shell")} · {bashExcluded ? t("chat.outputLocal") : t("chat.outputModel")}
-          </div>
-        )}
+              {/* Bash mode status label */}
+              {bashMode && (
+                <div
+                  className="mt-1 px-2 py-1 text-xs"
+                  style={{
+                    color: bashExcluded ? "var(--text-muted)" : "var(--accent)",
+                  }}
+                >
+                  {t("chat.shell")} ·{" "}
+                  {bashExcluded ? t("chat.outputLocal") : t("chat.outputModel")}
+                </div>
+              )}
 
-        {/* Bottom bar: role/model left, tools right, send far right */}
-        <ToolbarRow
-          isStreaming={isStreaming}
-          visible={!collapsed}
-          t={t}
-          role={{ modelRoles, model, fastMode, slashCommands, isStreaming, onRoleChange }}
-          model={{
-            model, modelList, modelNames, modelError, thinkingLevel,
-            isStreaming, onModelChange, onModelOpen, onThinkingLevelChange, t,
-          }}
-          attach={{ count: attachedImages.length, onAttach: () => fileInputRef.current?.click() }}
-          contextUsage={contextUsage}
-          stats={stats}
-          toolPreset={toolPreset}
-          onToolPresetChange={onToolPresetChange}
-          canSend={Boolean(value.trim() || attachedImages.length)}
-          onSend={handleSend}
-          onAbort={onAbort}
-        />
-      <ExternalEditorModal
-        open={externalEditorOpen}
-        initialValue={value}
-        onClose={() => setExternalEditorOpen(false)}
-        onSave={(text) => {
-          clearInput();
-          setValue(text);
-          setExternalEditorOpen(false);
-        }}
-      />
+              {/* Bottom bar: role/model left, tools right, send far right */}
+              <ToolbarRow
+                isStreaming={isStreaming}
+                visible={!collapsed}
+                t={t}
+                role={{
+                  modelRoles,
+                  model,
+                  fastMode,
+                  slashCommands,
+                  isStreaming,
+                  onRoleChange,
+                }}
+                model={{
+                  model,
+                  modelList,
+                  modelNames,
+                  modelError,
+                  thinkingLevel,
+                  isStreaming,
+                  onModelChange,
+                  onModelOpen,
+                  onThinkingLevelChange,
+                  t,
+                }}
+                attach={
+                  imageSupported
+                    ? {
+                        count: attachedImages.length,
+                        onAttach: () => fileInputRef.current?.click(),
+                      }
+                    : undefined
+                }
+                contextUsage={contextUsage}
+                stats={stats}
+                toolPreset={toolPreset}
+                onToolPresetChange={onToolPresetChange}
+                canSend={Boolean(value.trim() || attachedImages.length)}
+                onSend={handleSend}
+                onAbort={onAbort}
+              />
+              <ExternalEditorModal
+                open={externalEditorOpen}
+                initialValue={value}
+                onClose={() => setExternalEditorOpen(false)}
+                onSave={(text) => {
+                  clearInput();
+                  setValue(text);
+                  setExternalEditorOpen(false);
+                }}
+              />
+            </div>
           </div>
         </div>
-
       </div>
-    </div>
-  );
-});
+    );
+  }
+);

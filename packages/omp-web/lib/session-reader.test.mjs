@@ -15,7 +15,12 @@ const {
   resolveSessionIdByPath,
 } = await jiti.import("./session-reader.ts");
 
-function userEntry(id, parentId, content, timestamp = "2026-01-01T00:00:00.000Z") {
+function userEntry(
+  id,
+  parentId,
+  content,
+  timestamp = "2026-01-01T00:00:00.000Z"
+) {
   return {
     type: "message",
     id,
@@ -28,7 +33,12 @@ function userEntry(id, parentId, content, timestamp = "2026-01-01T00:00:00.000Z"
   };
 }
 
-function assistantEntry(id, parentId, text, timestamp = "2026-01-01T00:00:00.000Z") {
+function assistantEntry(
+  id,
+  parentId,
+  text,
+  timestamp = "2026-01-01T00:00:00.000Z"
+) {
   return {
     type: "message",
     id,
@@ -64,12 +74,16 @@ test("renders the SDK compaction-aware context with aligned entry IDs", () => {
 
   assert.deepEqual(context.entryIds, ["cmp", "u2", "u3"]);
   assert.deepEqual(
-    context.messages.map((message) => [message.role, message.customType, message.content]),
+    context.messages.map((message) => [
+      message.role,
+      message.customType,
+      message.content,
+    ]),
     [
       ["custom", "compaction", "old exchange summary"],
       ["user", undefined, "kept user request"],
       ["user", undefined, "after compaction"],
-    ],
+    ]
   );
 });
 
@@ -129,13 +143,17 @@ test("uses the selected leaf's path before a later compaction", () => {
   const context = buildSessionContext(entries, "alt");
 
   assert.deepEqual(context.entryIds, ["u1", "a1", "alt"]);
-  assert.equal(context.messages.some((message) => message.role === "custom"), false);
+  assert.equal(
+    context.messages.some((message) => message.role === "custom"),
+    false
+  );
 });
 
 test("returns an empty context for a null leaf", () => {
-  const context = buildSessionContext([
-    userEntry("u1", null, "not active"),
-  ], null);
+  const context = buildSessionContext(
+    [userEntry("u1", null, "not active")],
+    null
+  );
 
   assert.deepEqual(context.messages, []);
   assert.deepEqual(context.entryIds, []);
@@ -158,7 +176,9 @@ test("defers historical thinking without changing live-session content", () => {
     },
   ];
 
-  const deferred = buildSessionContext(entries, undefined, { deferThinking: true });
+  const deferred = buildSessionContext(entries, undefined, {
+    deferThinking: true,
+  });
   assert.deepEqual(deferred.messages[1].content[0], {
     type: "thinking",
     thinking: "",
@@ -186,8 +206,13 @@ test("does not defer empty historical thinking blocks", () => {
     },
   ];
 
-  const context = buildSessionContext(entries, undefined, { deferThinking: true });
-  assert.deepEqual(context.messages[1].content[0], { type: "thinking", thinking: "" });
+  const context = buildSessionContext(entries, undefined, {
+    deferThinking: true,
+  });
+  assert.deepEqual(context.messages[1].content[0], {
+    type: "thinking",
+    thinking: "",
+  });
 });
 
 test("defers only base64 images from historical tool results", () => {
@@ -229,11 +254,19 @@ test("defers only base64 images from historical tool results", () => {
     },
   ];
 
-  const deferred = buildSessionContext(entries, undefined, { deferToolResultImages: true });
+  const deferred = buildSessionContext(entries, undefined, {
+    deferToolResultImages: true,
+  });
   assert.deepEqual(deferred.messages[0].content[1], userImage);
-  assert.deepEqual(deferred.messages[2].content[0], { type: "text", text: "Read image file" });
+  assert.deepEqual(deferred.messages[2].content[0], {
+    type: "text",
+    text: "Read image file",
+  });
   assert.deepEqual(deferred.messages[2].content[1], toolUrlImage);
-  assert.match(deferred.messages[2].content[2].text, /2 tool result images omitted.*image\/jpeg, image\/png.*~8 bytes/);
+  assert.match(
+    deferred.messages[2].content[2].text,
+    /2 tool result images omitted.*image\/jpeg, image\/png.*~8 bytes/
+  );
 
   const full = buildSessionContext(entries);
   assert.deepEqual(full.messages[2].content[1], toolImage);
@@ -291,14 +324,17 @@ test("reads only a bounded session header, including headers larger than 4 KiB",
   const dir = mkdtempSync(join(tmpdir(), "pi-web-header-"));
   const filePath = join(dir, "session.jsonl");
   const parentSession = `/tmp/${"p".repeat(5_000)}.jsonl`;
-  writeFileSync(filePath, `${JSON.stringify({
-    type: "session",
-    version: 3,
-    id: "session",
-    timestamp: "2026-01-01T00:00:00.000Z",
-    cwd: dir,
-    parentSession,
-  })}\n${JSON.stringify(userEntry("u1", null, "message"))}\n`);
+  writeFileSync(
+    filePath,
+    `${JSON.stringify({
+      type: "session",
+      version: 3,
+      id: "session",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      cwd: dir,
+      parentSession,
+    })}\n${JSON.stringify(userEntry("u1", null, "message"))}\n`
+  );
 
   try {
     assert.equal(readSessionHeader(filePath)?.parentSession, parentSession);
@@ -324,18 +360,24 @@ test("returns null for malformed or unbounded session headers", () => {
 
 test("keeps forward and reverse session path caches in sync", async () => {
   const sessionId = "cache-test-session";
-  const filePath = join(tmpdir(), "pi-web-cache-test", "..", "cache-test", "session.jsonl");
+  const filePath = join(
+    tmpdir(),
+    "pi-web-cache-test",
+    "..",
+    "cache-test",
+    "session.jsonl"
+  );
 
   cacheSessionPath(sessionId, filePath);
   try {
-    assert.equal(
-      await resolveSessionIdByPath(filePath),
-      sessionId,
-    );
+    assert.equal(await resolveSessionIdByPath(filePath), sessionId);
   } finally {
     invalidateSessionPathCache(sessionId);
   }
 
   assert.equal(globalThis.__piSessionPathCache?.has(sessionId), false);
-  assert.equal(globalThis.__piPathToSessionIdCache?.has(sessionPathKey(filePath)), false);
+  assert.equal(
+    globalThis.__piPathToSessionIdCache?.has(sessionPathKey(filePath)),
+    false
+  );
 });

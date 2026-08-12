@@ -19,34 +19,37 @@ test("supports the no-open CLI option", () => {
 
 test("supports truthy OMP_WEB_NO_OPEN values", () => {
   for (const value of ["1", "true", "TRUE", "yes", "on"]) {
-    assert.equal(parseLaunchOptions([], { OMP_WEB_NO_OPEN: value }).openBrowser, false);
+    assert.equal(
+      parseLaunchOptions([], { OMP_WEB_NO_OPEN: value }).openBrowser,
+      false
+    );
   }
 });
 
 test("does not disable browser opening for false OMP_WEB_NO_OPEN values", () => {
   for (const value of ["0", "false", "off", ""]) {
-    assert.equal(parseLaunchOptions([], { OMP_WEB_NO_OPEN: value }).openBrowser, true);
+    assert.equal(
+      parseLaunchOptions([], { OMP_WEB_NO_OPEN: value }).openBrowser,
+      true
+    );
   }
 });
 
 test("preserves port and hostname options", () => {
-  assert.deepEqual(
-    parseLaunchOptions(["-p", "8080", "-H", "0.0.0.0"], {}),
-    {
-      port: "8080",
-      hostname: "0.0.0.0",
-      openBrowser: true,
-    },
-  );
+  assert.deepEqual(parseLaunchOptions(["-p", "8080", "-H", "0.0.0.0"], {}), {
+    port: "8080",
+    hostname: "0.0.0.0",
+    openBrowser: true,
+  });
 });
 
 test("supports PI_WEB_HOSTNAME without trusting the ambient system HOSTNAME", () => {
   assert.equal(
     parseLaunchOptions([], { HOSTNAME: "container-id" }).hostname,
-    "127.0.0.1",
+    "127.0.0.1"
   );
   assert.equal(
     parseLaunchOptions([], { PI_WEB_HOSTNAME: "0.0.0.0" }).hostname,
-    "0.0.0.0",
+    "0.0.0.0"
   );
 });

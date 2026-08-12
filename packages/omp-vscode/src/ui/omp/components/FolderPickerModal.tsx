@@ -24,7 +24,12 @@ interface Props {
   onClose: () => void;
 }
 
-export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Props) {
+export function FolderPickerModal({
+  open,
+  initialPath,
+  onSelect,
+  onClose,
+}: Props) {
   const { t } = useLanguage();
   const [currentPath, setCurrentPath] = useState<string>("");
   const [parentPath, setParentPath] = useState<string | null>(null);
@@ -46,7 +51,10 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
     setLoading(true);
     setError(null);
     try {
-      const data = await hostCall("fsDirectoriesList", pathQuery ? { path: pathQuery } : {}) as ApiResponse;
+      const data = (await hostCall(
+        "fsDirectoriesList",
+        pathQuery ? { path: pathQuery } : {}
+      )) as ApiResponse;
       if (data.error) {
         setError(data.error);
         return;
@@ -97,7 +105,10 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
     setLoading(true);
     setCreateError(null);
     try {
-      const data = await hostCall("fsDirectoriesCreate", { parentPath: currentPath, folderName: name }) as { success?: boolean; path?: string; error?: string };
+      const data = (await hostCall("fsDirectoriesCreate", {
+        parentPath: currentPath,
+        folderName: name,
+      })) as { success?: boolean; path?: string; error?: string };
       if (data.error || !data.path) {
         setCreateError(data.error ?? "Unable to create folder");
         return;
@@ -121,7 +132,9 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
   const breadcrumbs: { label: string; path: string }[] = [];
 
   if (isWin && rawSegments.length > 0) {
-    let acc = rawSegments[0].endsWith(":") ? `${rawSegments[0]}\\` : rawSegments[0];
+    let acc = rawSegments[0].endsWith(":")
+      ? `${rawSegments[0]}\\`
+      : rawSegments[0];
     breadcrumbs.push({ label: rawSegments[0], path: acc });
     for (let i = 1; i < rawSegments.length; i++) {
       acc = `${acc}${pathSeparator}${rawSegments[i]}`;
@@ -186,29 +199,36 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <FolderIcon size={18} />
-            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-mono)" }}>
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                fontFamily: "var(--font-mono)",
+              }}
+            >
               {t("Select Target Directory", "选择目标文件夹")}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {typeof window !== "undefined" && "showDirectoryPicker" in window && (
-              <button
-                onClick={handleNativePicker}
-                title="Open native OS folder dialog"
-                style={{
-                  padding: "4px 10px",
-                  fontSize: 11,
-                  fontFamily: "var(--font-mono)",
-                  background: "var(--bg-hover)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 5,
-                  color: "var(--text)",
-                  cursor: "pointer",
-                }}
-              >
-                {t("OS Dialog", "系统原生弹窗")}
-              </button>
-            )}
+            {typeof window !== "undefined" &&
+              "showDirectoryPicker" in window && (
+                <button
+                  onClick={handleNativePicker}
+                  title="Open native OS folder dialog"
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: 11,
+                    fontFamily: "var(--font-mono)",
+                    background: "var(--bg-hover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 5,
+                    color: "var(--text)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("OS Dialog", "系统原生弹窗")}
+                </button>
+              )}
             <button
               onClick={onClose}
               title="Close"
@@ -292,7 +312,9 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
               disabled={loading}
               style={{
                 padding: "3px 8px",
-                background: currentPath.toUpperCase().startsWith(drive.toUpperCase())
+                background: currentPath
+                  .toUpperCase()
+                  .startsWith(drive.toUpperCase())
                   ? "var(--accent)"
                   : "var(--bg)",
                 border: "1px solid var(--border)",
@@ -326,7 +348,15 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
           }}
         >
           {breadcrumbs.map((b, i) => (
-            <div key={b.path} style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <div
+              key={b.path}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                flexShrink: 0,
+              }}
+            >
               <button
                 onClick={() => fetchDirectory(b.path)}
                 style={{
@@ -334,7 +364,10 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
                   border: "none",
                   padding: "2px 4px",
                   borderRadius: 3,
-                  color: i === breadcrumbs.length - 1 ? "var(--text)" : "var(--accent)",
+                  color:
+                    i === breadcrumbs.length - 1
+                      ? "var(--text)"
+                      : "var(--accent)",
                   fontWeight: i === breadcrumbs.length - 1 ? 700 : 400,
                   cursor: "pointer",
                 }}
@@ -347,7 +380,9 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
               >
                 {b.label}
               </button>
-              {i < breadcrumbs.length - 1 && <span style={{ color: "var(--text-dim)" }}>/</span>}
+              {i < breadcrumbs.length - 1 && (
+                <span style={{ color: "var(--text-dim)" }}>/</span>
+              )}
             </div>
           ))}
         </div>
@@ -464,7 +499,9 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
               </button>
             </div>
             {createError && (
-              <div style={{ fontSize: 11, color: "#ef4444" }}>{createError}</div>
+              <div style={{ fontSize: 11, color: "#ef4444" }}>
+                {createError}
+              </div>
             )}
           </div>
         )}
@@ -472,19 +509,40 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
         {/* Folder List Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "6px 8px" }}>
           {loading && (
-            <div style={{ padding: 24, textAlign: "center", color: "var(--text-dim)", fontSize: 12 }}>
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                color: "var(--text-dim)",
+                fontSize: 12,
+              }}
+            >
               Loading directories...
             </div>
           )}
 
           {error && (
-            <div style={{ padding: 16, color: "#ef4444", fontSize: 12, textAlign: "center" }}>
+            <div
+              style={{
+                padding: 16,
+                color: "#ef4444",
+                fontSize: 12,
+                textAlign: "center",
+              }}
+            >
               {error}
             </div>
           )}
 
           {!loading && !error && filteredDirs.length === 0 && (
-            <div style={{ padding: 24, textAlign: "center", color: "var(--text-dim)", fontSize: 12 }}>
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                color: "var(--text-dim)",
+                fontSize: 12,
+              }}
+            >
               No subdirectories found
             </div>
           )}
@@ -505,20 +563,33 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
                     padding: "7px 10px",
                     borderRadius: 6,
                     cursor: "pointer",
-                    background: isSelected ? "var(--bg-selected)" : "transparent",
-                    border: isSelected ? "1px solid var(--accent)" : "1px solid transparent",
+                    background: isSelected
+                      ? "var(--bg-selected)"
+                      : "transparent",
+                    border: isSelected
+                      ? "1px solid var(--accent)"
+                      : "1px solid transparent",
                     marginBottom: 2,
                     userSelect: "none",
                     transition: "background 0.1s",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = "var(--bg-hover)";
+                    if (!isSelected)
+                      e.currentTarget.style.background = "var(--bg-hover)";
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = "transparent";
+                    if (!isSelected)
+                      e.currentTarget.style.background = "transparent";
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      minWidth: 0,
+                    }}
+                  >
                     <FolderIcon size={16} />
                     <span
                       style={{
@@ -572,7 +643,14 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
           }}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--text-dim)",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
               {t("Selected Path", "当前选择路径")}
             </div>
             <div

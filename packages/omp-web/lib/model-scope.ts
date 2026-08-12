@@ -42,7 +42,7 @@ export interface InitialModelScopeResult {
 
 function matchesModel(
   model: { provider: string; id: string },
-  ref: { provider: string; modelId: string },
+  ref: { provider: string; modelId: string }
 ): boolean {
   return model.provider === ref.provider && model.id === ref.modelId;
 }
@@ -56,9 +56,11 @@ function matchesModel(
  */
 export async function resolveVisibleModels(
   modelRuntime: ModelRuntime,
-  patterns: string[] | undefined,
+  patterns: string[] | undefined
 ): Promise<ModelScopeResult> {
-  const cleaned = (patterns ?? []).map((pattern) => pattern.trim()).filter(Boolean);
+  const cleaned = (patterns ?? [])
+    .map((pattern) => pattern.trim())
+    .filter(Boolean);
   if (cleaned.length === 0) {
     return {
       visible: await modelRuntime.getAvailable(),
@@ -68,7 +70,10 @@ export async function resolveVisibleModels(
     };
   }
 
-  const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(cleaned, modelRuntime);
+  const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(
+    cleaned,
+    modelRuntime
+  );
   const warnings = diagnostics.map((diagnostic) => diagnostic.message);
   if (scopedModels.length === 0) {
     return {
@@ -85,7 +90,8 @@ export async function resolveVisibleModels(
   const thinkingLevelPins: Record<string, string> = {};
   for (const scoped of scopedModels) {
     if (scoped.thinkingLevel) {
-      thinkingLevelPins[`${scoped.model.provider}/${scoped.model.id}`] = scoped.thinkingLevel;
+      thinkingLevelPins[`${scoped.model.provider}/${scoped.model.id}`] =
+        scoped.thinkingLevel;
     }
   }
   return {
@@ -106,7 +112,7 @@ export async function resolveVisibleModels(
  */
 export function selectInitialModelScope(
   scope: ModelScopeResult,
-  options: InitialModelScopeOptions = {},
+  options: InitialModelScopeOptions = {}
 ): InitialModelScopeResult {
   const requestedRef = options.requestedModel;
   const defaultRef = options.defaultModel;
@@ -115,21 +121,33 @@ export function selectInitialModelScope(
     : undefined;
   if (requestedRef && !requested) {
     throw new Error(
-      `Model is not available in the enabled scope: ${requestedRef.provider}/${requestedRef.modelId}`,
+      `Model is not available in the enabled scope: ${requestedRef.provider}/${requestedRef.modelId}`
     );
   }
 
   const requestedScoped = requested
-    ? scope.scopedModels.find((scoped) => scoped.model === requested
-      || matchesModel(scoped.model, { provider: requested.provider, modelId: requested.id }))
+    ? scope.scopedModels.find(
+        (scoped) =>
+          scoped.model === requested ||
+          matchesModel(scoped.model, {
+            provider: requested.provider,
+            modelId: requested.id,
+          })
+      )
     : undefined;
-  const defaultScoped = !requested && defaultRef
-    ? scope.scopedModels.find((scoped) => matchesModel(scoped.model, defaultRef))
+  const defaultScoped =
+    !requested && defaultRef
+      ? scope.scopedModels.find((scoped) =>
+          matchesModel(scoped.model, defaultRef)
+        )
+      : undefined;
+  const fallbackScoped = !requested
+    ? (defaultScoped ?? scope.scopedModels[0])
     : undefined;
-  const fallbackScoped = !requested ? (defaultScoped ?? scope.scopedModels[0]) : undefined;
-  const defaultVisible = !requested && !fallbackScoped && defaultRef
-    ? scope.visible.find((model) => matchesModel(model, defaultRef))
-    : undefined;
+  const defaultVisible =
+    !requested && !fallbackScoped && defaultRef
+      ? scope.visible.find((model) => matchesModel(model, defaultRef))
+      : undefined;
   const selectedModel = requested ?? fallbackScoped?.model ?? defaultVisible;
   const scopedSelection = requestedScoped ?? fallbackScoped;
   const thinkingLevel = options.thinkingLevel ?? scopedSelection?.thinkingLevel;

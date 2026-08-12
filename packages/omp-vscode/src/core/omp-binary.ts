@@ -12,5 +12,9 @@ export function resolveOmpBinary(): string {
     "/usr/local/bin/omp",
     "omp",
   ].filter((candidate): candidate is string => Boolean(candidate));
-  return candidates.find((candidate) => candidate === "omp" || existsSync(candidate)) ?? "omp";
+  return (
+    candidates.find(
+      (candidate) => candidate === "omp" || existsSync(candidate)
+    ) ?? "omp"
+  );
 }

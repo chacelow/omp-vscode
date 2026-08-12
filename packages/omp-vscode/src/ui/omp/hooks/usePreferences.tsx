@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { hostCall } from "../../bridge";
 
 interface PreferencesContextValue {
@@ -29,15 +37,27 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
 
   const setShowImages = useCallback(async (next: boolean) => {
     setShowImagesState(next);
-    await hostCall("settingsSet", { category: "display", key: "showImages", value: next });
+    await hostCall("settingsSet", {
+      category: "display",
+      key: "showImages",
+      value: next,
+    });
   }, []);
 
-  const value = useMemo(() => ({ showImages, refreshPreferences, setShowImages }), [refreshPreferences, setShowImages, showImages]);
-  return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
+  const value = useMemo(
+    () => ({ showImages, refreshPreferences, setShowImages }),
+    [refreshPreferences, setShowImages, showImages]
+  );
+  return (
+    <PreferencesContext.Provider value={value}>
+      {children}
+    </PreferencesContext.Provider>
+  );
 }
 
 export function usePreferences(): PreferencesContextValue {
   const preferences = useContext(PreferencesContext);
-  if (!preferences) throw new Error("usePreferences must be used within PreferencesProvider");
+  if (!preferences)
+    throw new Error("usePreferences must be used within PreferencesProvider");
   return preferences;
 }

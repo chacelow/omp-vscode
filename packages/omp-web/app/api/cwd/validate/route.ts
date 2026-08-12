@@ -14,7 +14,7 @@ function normalizeCwd(cwd: string): string {
 // Validates a candidate workspace before the UI selects it.
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { cwd?: unknown };
+    const body = (await req.json()) as { cwd?: unknown };
     const cwd = typeof body.cwd === "string" ? body.cwd.trim() : "";
 
     if (!cwd) {
@@ -26,11 +26,17 @@ export async function POST(req: Request) {
     try {
       stat = statSync(normalizedCwd);
     } catch {
-      return NextResponse.json({ error: `Directory does not exist: ${cwd}` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Directory does not exist: ${cwd}` },
+        { status: 400 }
+      );
     }
 
     if (!stat.isDirectory()) {
-      return NextResponse.json({ error: `Path is not a directory: ${cwd}` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Path is not a directory: ${cwd}` },
+        { status: 400 }
+      );
     }
 
     allowFileRoot(normalizedCwd);

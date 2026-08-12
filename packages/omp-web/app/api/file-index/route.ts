@@ -9,16 +9,31 @@ import {
   isFilePathAllowed,
   isWindowsAbsolutePath,
 } from "@/lib/file-access";
-import { buildEntriesFromFiles, filterFileEntries, type FileIndexEntry } from "@/lib/file-fuzzy";
+import {
+  buildEntriesFromFiles,
+  filterFileEntries,
+  type FileIndexEntry,
+} from "@/lib/file-fuzzy";
 
 const execFileAsync = promisify(execFile);
 
 // Same skip lists as /api/files — only used for the non-git readdir fallback.
 // Git-tracked repos rely on .gitignore instead (matches the TUI's fd behavior).
 const IGNORED_NAMES = new Set([
-  "node_modules", ".git", ".next", "dist", "build", "__pycache__",
-  ".turbo", ".cache", "coverage", ".pytest_cache", ".mypy_cache",
-  "target", "vendor", ".DS_Store",
+  "node_modules",
+  ".git",
+  ".next",
+  "dist",
+  "build",
+  "__pycache__",
+  ".turbo",
+  ".cache",
+  "coverage",
+  ".pytest_cache",
+  ".mypy_cache",
+  "target",
+  "vendor",
+  ".DS_Store",
 ]);
 
 const IGNORED_SUFFIXES = [".pyc"];
@@ -63,8 +78,20 @@ async function listWithGit(cwd: string): Promise<FileListing | null> {
   try {
     const { stdout } = await execFileAsync(
       "git",
-      ["-C", cwd, "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-      { timeout: 10_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, LC_ALL: "C" } },
+      [
+        "-C",
+        cwd,
+        "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+        "-z",
+      ],
+      {
+        timeout: 10_000,
+        maxBuffer: 64 * 1024 * 1024,
+        env: { ...process.env, LC_ALL: "C" },
+      }
     );
     const all = stdout.split("\0").filter(Boolean);
     if (all.length > GIT_HARD_CAP) {
@@ -80,7 +107,9 @@ async function listWithGit(cwd: string): Promise<FileListing | null> {
 function listWithWalk(cwd: string): FileListing {
   const files: string[] = [];
   // BFS so shallow files win when the cap truncates the listing.
-  const queue: Array<{ abs: string; rel: string; depth: number }> = [{ abs: cwd, rel: "", depth: 0 }];
+  const queue: Array<{ abs: string; rel: string; depth: number }> = [
+    { abs: cwd, rel: "", depth: 0 },
+  ];
   while (queue.length > 0) {
     const { abs, rel, depth } = queue.shift()!;
     let dirents: fs.Dirent[];
@@ -90,11 +119,19 @@ function listWithWalk(cwd: string): FileListing {
       continue;
     }
     for (const d of dirents) {
-      if (IGNORED_NAMES.has(d.name) || IGNORED_SUFFIXES.some((s) => d.name.endsWith(s))) continue;
+      if (
+        IGNORED_NAMES.has(d.name) ||
+        IGNORED_SUFFIXES.some((s) => d.name.endsWith(s))
+      )
+        continue;
       const childRel = rel ? `${rel}/${d.name}` : d.name;
       if (d.isDirectory()) {
         if (depth + 1 <= MAX_WALK_DEPTH) {
-          queue.push({ abs: path.join(abs, d.name), rel: childRel, depth: depth + 1 });
+          queue.push({
+            abs: path.join(abs, d.name),
+            rel: childRel,
+            depth: depth + 1,
+          });
         }
       } else if (d.isFile()) {
         if (files.length >= WALK_HARD_CAP) {
@@ -118,9 +155,13 @@ export async function GET(req: NextRequest) {
   try {
     const cwd = req.nextUrl.searchParams.get("cwd")?.trim() ?? "";
     if (!cwd || (!cwd.startsWith("/") && !isWindowsAbsolutePath(cwd))) {
-      return NextResponse.json({ error: "cwd must be an absolute path" }, { status: 400 });
+      return NextResponse.json(
+        { error: "cwd must be an absolute path" },
+        { status: 400 }
+      );
     }
-    const query = req.nextUrl.searchParams.get("q")?.slice(0, MAX_QUERY_LENGTH) ?? "";
+    const query =
+      req.nextUrl.searchParams.get("q")?.slice(0, MAX_QUERY_LENGTH) ?? "";
 
     const allowedRoots = await getAllowedFileRoots();
     if (!isFilePathAllowed(cwd, allowedRoots)) {
@@ -131,7 +172,10 @@ export async function GET(req: NextRequest) {
     try {
       stat = fs.statSync(cwd);
     } catch {
-      return NextResponse.json({ error: "Directory not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Directory not found" },
+        { status: 404 }
+      );
     }
     if (!stat.isDirectory()) {
       return NextResponse.json({ error: "Not a directory" }, { status: 400 });
@@ -155,7 +199,9 @@ export async function GET(req: NextRequest) {
 
     if (query) {
       cached.entries ??= buildEntriesFromFiles(cached.listing.files);
-      return NextResponse.json({ matches: filterFileEntries(cached.entries, query) });
+      return NextResponse.json({
+        matches: filterFileEntries(cached.entries, query),
+      });
     }
 
     const { files, hardTruncated } = cached.listing;

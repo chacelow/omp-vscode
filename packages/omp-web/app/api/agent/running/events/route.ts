@@ -1,4 +1,7 @@
-import { getRunningRpcSessionIds, subscribeRunningSessions } from "@/lib/rpc-manager";
+import {
+  getRunningRpcSessionIds,
+  subscribeRunningSessions,
+} from "@/lib/rpc-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +43,11 @@ export async function GET(req: Request) {
       const cleanup = () => {
         clearInterval(heartbeat);
         unsubscribe();
-        try { controller.close(); } catch { /* already closed */ }
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       };
 
       req.signal?.addEventListener("abort", cleanup);

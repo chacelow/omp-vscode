@@ -1,4 +1,10 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import type { Credential } from "@earendil-works/pi-ai";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
@@ -27,7 +33,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 async function updateStoredCredentials<T>(
   authPath: string,
-  update: (credentials: Record<string, unknown>) => { result: T; changed: boolean },
+  update: (credentials: Record<string, unknown>) => {
+    result: T;
+    changed: boolean;
+  }
 ): Promise<T> {
   ensureAuthFile(authPath);
 
@@ -53,12 +62,17 @@ async function updateStoredCredentials<T>(
   try {
     throwIfCompromised();
     const parsed: unknown = JSON.parse(readFileSync(authPath, "utf-8"));
-    if (!isRecord(parsed)) throw new Error("Invalid auth.json: expected an object");
+    if (!isRecord(parsed))
+      throw new Error("Invalid auth.json: expected an object");
 
     const { result, changed } = update(parsed);
     if (changed) {
       throwIfCompromised();
-      writeFileSync(authPath, JSON.stringify(parsed, null, 2), AUTH_FILE_WRITE_OPTIONS);
+      writeFileSync(
+        authPath,
+        JSON.stringify(parsed, null, 2),
+        AUTH_FILE_WRITE_OPTIONS
+      );
       chmodSync(authPath, 0o600);
       throwIfCompromised();
     }
@@ -76,7 +90,7 @@ async function updateStoredCredentials<T>(
 export function storeProviderCredential(
   providerId: string,
   credential: Credential,
-  authPath = join(getAgentDir(), "auth.json"),
+  authPath = join(getAgentDir(), "auth.json")
 ): Promise<void> {
   return updateStoredCredentials(authPath, (credentials) => {
     credentials[providerId] = credential;
@@ -93,22 +107,29 @@ export function storeProviderCredential(
 export async function removeStoredCredentialIfType(
   providerId: string,
   expectedType: ProviderCredentialType,
-  authPath = join(getAgentDir(), "auth.json"),
+  authPath = join(getAgentDir(), "auth.json")
 ): Promise<CredentialRemovalResult> {
-  return updateStoredCredentials<CredentialRemovalResult>(authPath, (credentials) => {
-    if (!Object.hasOwn(credentials, providerId)) {
-      return { result: { status: "not_found" }, changed: false };
-    }
+  return updateStoredCredentials<CredentialRemovalResult>(
+    authPath,
+    (credentials) => {
+      if (!Object.hasOwn(credentials, providerId)) {
+        return { result: { status: "not_found" }, changed: false };
+      }
 
-    const credential = credentials[providerId];
-    const storedType = isRecord(credential) && typeof credential.type === "string"
-      ? credential.type
-      : "unknown";
-    if (storedType !== expectedType) {
-      return { result: { status: "type_mismatch", storedType }, changed: false };
-    }
+      const credential = credentials[providerId];
+      const storedType =
+        isRecord(credential) && typeof credential.type === "string"
+          ? credential.type
+          : "unknown";
+      if (storedType !== expectedType) {
+        return {
+          result: { status: "type_mismatch", storedType },
+          changed: false,
+        };
+      }
 
-    delete credentials[providerId];
-    return { result: { status: "removed" }, changed: true };
-  });
+      delete credentials[providerId];
+      return { result: { status: "removed" }, changed: true };
+    }
+  );
 }

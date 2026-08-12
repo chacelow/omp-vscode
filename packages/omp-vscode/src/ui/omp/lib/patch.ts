@@ -30,7 +30,11 @@ export function parseUnifiedPatch(text: string): SplitDiffFile[] | null {
   let removed: PendingChangeLine[] = [];
   let added: PendingChangeLine[] = [];
 
-  const emptyCell = (): SplitDiffCell => ({ lineNo: null, text: "", type: "empty" });
+  const emptyCell = (): SplitDiffCell => ({
+    lineNo: null,
+    text: "",
+    type: "empty",
+  });
   const flushChanges = () => {
     if (!current) {
       removed = [];
@@ -40,10 +44,18 @@ export function parseUnifiedPatch(text: string): SplitDiffFile[] | null {
     const count = Math.max(removed.length, added.length);
     for (let i = 0; i < count; i++) {
       const left = removed[i]
-        ? { lineNo: removed[i].lineNo, text: removed[i].text, type: "removed" as const }
+        ? {
+            lineNo: removed[i].lineNo,
+            text: removed[i].text,
+            type: "removed" as const,
+          }
         : emptyCell();
       const right = added[i]
-        ? { lineNo: added[i].lineNo, text: added[i].text, type: "added" as const }
+        ? {
+            lineNo: added[i].lineNo,
+            text: added[i].text,
+            type: "added" as const,
+          }
         : emptyCell();
       current.rows.push({ type: "line", left, right });
     }
@@ -60,7 +72,11 @@ export function parseUnifiedPatch(text: string): SplitDiffFile[] | null {
 
     if (line.startsWith("+++ ")) {
       flushChanges();
-      current = { oldPath: pendingOldPath, newPath: cleanPatchPath(line.slice(4)), rows: [] };
+      current = {
+        oldPath: pendingOldPath,
+        newPath: cleanPatchPath(line.slice(4)),
+        rows: [],
+      };
       files.push(current);
       continue;
     }
@@ -108,7 +124,9 @@ export function parseUnifiedPatch(text: string): SplitDiffFile[] | null {
 
   flushChanges();
 
-  const parsed = files.filter((file) => file.rows.some((row) => row.type === "line"));
+  const parsed = files.filter((file) =>
+    file.rows.some((row) => row.type === "line")
+  );
   return parsed.length > 0 ? parsed : null;
 }
 

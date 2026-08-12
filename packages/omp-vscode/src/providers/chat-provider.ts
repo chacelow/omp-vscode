@@ -68,8 +68,11 @@ export class ChatProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.buildHtml(webviewView.webview, "chat");
     webviewView.webview.onDidReceiveMessage((msg) => {
-      const bodyBrief = typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
-      this.log.appendLine(`[${new Date().toISOString().slice(11, 23)}] [webview:chat] ${msg.type}${msg.url ? ` ${msg.url}` : ""}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`);
+      const bodyBrief =
+        typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
+      this.log.appendLine(
+        `[${new Date().toISOString().slice(11, 23)}] [webview:chat] ${msg.type}${msg.url ? ` ${msg.url}` : ""}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`
+      );
       void this.handleWebviewMessage(msg);
     });
 
@@ -103,13 +106,16 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           vscode.Uri.joinPath(this.extUri(), "dist"),
           vscode.Uri.joinPath(this.extUri(), "media"),
         ],
-      },
+      }
     );
     this.workbenchPanel = panel;
     panel.webview.html = this.buildHtml(panel.webview, "workbench");
     panel.webview.onDidReceiveMessage((msg) => {
-      const bodyBrief = typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
-      this.log.appendLine(`[${new Date().toISOString().slice(11, 23)}] [webview:workbench] ${msg.type}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`);
+      const bodyBrief =
+        typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
+      this.log.appendLine(
+        `[${new Date().toISOString().slice(11, 23)}] [webview:workbench] ${msg.type}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`
+      );
       void this.handleWebviewMessage(msg);
     });
     panel.onDidDispose(() => {
@@ -127,7 +133,9 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     const cacheBust = (): string => {
       try {
         return String(
-          fs.statSync(vscode.Uri.joinPath(this.extUri(), "dist", "webview.js").fsPath).mtimeMs,
+          fs.statSync(
+            vscode.Uri.joinPath(this.extUri(), "dist", "webview.js").fsPath
+          ).mtimeMs
         );
       } catch {
         return Date.now().toString();
@@ -229,7 +237,9 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     try {
       switch (msg.type) {
         case "log":
-          this.log.appendLine(`[${msg.level}] ${msg.message}${msg.stack ? `\n${msg.stack}` : ""}`);
+          this.log.appendLine(
+            `[${msg.level}] ${msg.message}${msg.stack ? `\n${msg.stack}` : ""}`
+          );
           break;
 
         case "openFile": {
@@ -238,10 +248,16 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           // so the actual file is found; otherwise `stat` would falsely report the
           // path as missing and the "File not found" warning would fire on valid files.
           const raw = msg.path;
-          const rangeMatch = raw.match(/^(?<file>.+?)(?:[:#]L?(?<start>\d+)(?:[-:]L?(?<end>\d+))?)?$/);
+          const rangeMatch = raw.match(
+            /^(?<file>.+?)(?:[:#]L?(?<start>\d+)(?:[-:]L?(?<end>\d+))?)?$/
+          );
           const rawFile = rangeMatch?.groups?.file ?? raw;
-          const startLine = rangeMatch?.groups?.start ? Math.max(0, Number.parseInt(rangeMatch.groups.start, 10) - 1) : null;
-          const endLine = rangeMatch?.groups?.end ? Math.max(0, Number.parseInt(rangeMatch.groups.end, 10) - 1) : startLine;
+          const startLine = rangeMatch?.groups?.start
+            ? Math.max(0, Number.parseInt(rangeMatch.groups.start, 10) - 1)
+            : null;
+          const endLine = rangeMatch?.groups?.end
+            ? Math.max(0, Number.parseInt(rangeMatch.groups.end, 10) - 1)
+            : startLine;
           // Agents emit repo-relative paths (`apps/foo/bar.tsx`); resolve them
           // against the session cwd, then fall back to each workspace folder.
           // Absolute paths are used as-is.
@@ -249,7 +265,12 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           if (!filePath) {
             void vscode.window.showWarningMessage(`File not found: ${rawFile}`);
             this.log.appendLine(`[openFile] missing: ${rawFile}`);
-            this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+            this.replyToWebview(null, {
+              type: "acp/response",
+              requestId: 0,
+              ok: true,
+              data: null,
+            });
             break;
           }
           const uri = vscode.Uri.file(filePath);
@@ -257,16 +278,28 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           try {
             stat = await vscode.workspace.fs.stat(uri);
           } catch {
-            void vscode.window.showWarningMessage(`File not found: ${filePath}`);
+            void vscode.window.showWarningMessage(
+              `File not found: ${filePath}`
+            );
             this.log.appendLine(`[openFile] missing: ${filePath}`);
-            this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+            this.replyToWebview(null, {
+              type: "acp/response",
+              requestId: 0,
+              ok: true,
+              data: null,
+            });
             break;
           }
           // Directories can't be opened as text documents ("无法读取实际上
           // 是一个目录的文件"). Reveal them in the OS file manager instead.
           if (stat.type & vscode.FileType.Directory) {
             await vscode.commands.executeCommand("revealFileInOS", uri);
-            this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+            this.replyToWebview(null, {
+              type: "acp/response",
+              requestId: 0,
+              ok: true,
+              data: null,
+            });
             break;
           }
           try {
@@ -280,19 +313,42 @@ export class ChatProvider implements vscode.WebviewViewProvider {
             await vscode.window.showTextDocument(doc, options);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            void vscode.window.showErrorMessage(`Failed to open ${filePath}: ${message}`);
+            void vscode.window.showErrorMessage(
+              `Failed to open ${filePath}: ${message}`
+            );
           }
-          this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+          this.replyToWebview(null, {
+            type: "acp/response",
+            requestId: 0,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "openImage": {
-          const ext = msg.mimeType?.includes("png") ? "png" : msg.mimeType?.includes("webp") ? "webp" : msg.mimeType?.includes("gif") ? "gif" : "jpg";
-          const tmp = path.join(os.tmpdir(), `omp-chat-image-${Date.now()}.${ext}`);
+          const ext = msg.mimeType?.includes("png")
+            ? "png"
+            : msg.mimeType?.includes("webp")
+              ? "webp"
+              : msg.mimeType?.includes("gif")
+                ? "gif"
+                : "jpg";
+          const tmp = path.join(
+            os.tmpdir(),
+            `omp-chat-image-${Date.now()}.${ext}`
+          );
           fs.writeFileSync(tmp, Buffer.from(msg.data, "base64"));
           const uri = vscode.Uri.file(tmp);
-          await vscode.commands.executeCommand("vscode.open", uri, { preview: true });
-          this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+          await vscode.commands.executeCommand("vscode.open", uri, {
+            preview: true,
+          });
+          this.replyToWebview(null, {
+            type: "acp/response",
+            requestId: 0,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
@@ -314,84 +370,165 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           error: { code: "internal", message },
         });
       } else if (msg.type === "host/call") {
-        this.post({ type: "host/result", requestId: msg.requestId, ok: false, error: message });
+        this.post({
+          type: "host/result",
+          requestId: msg.requestId,
+          ok: false,
+          error: message,
+        });
       }
     }
   }
 
-  private async handleAcpRequest(requestId: number, request: AcpRequest): Promise<void> {
+  private async handleAcpRequest(
+    requestId: number,
+    request: AcpRequest
+  ): Promise<void> {
     try {
       switch (request.type) {
         case "acp/start": {
           await this.acp.start();
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: this.acp.getSnapshot() });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: this.acp.getSnapshot(),
+          });
           break;
         }
 
         case "acp/listSessions": {
           const sessions = await this.acp.listSessions(request.cwd);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: sessions });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: sessions,
+          });
           break;
         }
 
         case "acp/newSession": {
           const state = await this.acp.newSession(request.cwd);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: state });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: state,
+          });
           break;
         }
 
         case "acp/loadSession": {
-          const state = await this.acp.loadSession(request.sessionId, request.cwd);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: state });
+          const state = await this.acp.loadSession(
+            request.sessionId,
+            request.cwd
+          );
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: state,
+          });
           break;
         }
 
         case "acp/resumeSession": {
-          const state = await this.acp.resumeSession(request.sessionId, request.cwd);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: state });
+          const state = await this.acp.resumeSession(
+            request.sessionId,
+            request.cwd
+          );
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: state,
+          });
           break;
         }
 
         case "acp/forkSession": {
-          const state = await this.acp.forkSession(request.sessionId, request.cwd);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: state });
+          const state = await this.acp.forkSession(
+            request.sessionId,
+            request.cwd
+          );
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: state,
+          });
           break;
         }
 
         case "acp/closeSession": {
           await this.acp.closeSession(request.sessionId);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "acp/prompt": {
           await this.acp.prompt(request.sessionId, request.prompt);
           const state = this.acp.getSessionSnapshot(request.sessionId);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: state });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: state,
+          });
           break;
         }
 
         case "acp/cancel": {
           await this.acp.cancelPrompt(request.sessionId);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "acp/setMode": {
           await this.acp.setMode(request.sessionId, request.modeId);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "acp/setConfigOption": {
-          await this.acp.setConfigOption(request.sessionId, request.configId, request.value);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          await this.acp.setConfigOption(
+            request.sessionId,
+            request.configId,
+            request.value
+          );
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "acp/respondPermission": {
           this.acp.respondPermission(request.resolverId, request.optionId);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
@@ -401,23 +538,48 @@ export class ChatProvider implements vscode.WebviewViewProvider {
               ? { action: "accept", content: request.content ?? {} }
               : { action: request.action };
           this.acp.respondElicitation(request.resolverId, response);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "acp/extMethod": {
-          const data = await this.acp.extMethod<unknown>(request.method, request.params);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data });
+          const data = await this.acp.extMethod<unknown>(
+            request.method,
+            request.params
+          );
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data,
+          });
           break;
         }
 
         case "acp/subscribeSession": {
           this.sessionSubs.get(request.sessionId)?.();
-          const unsub = this.acp.subscribeSession(request.sessionId, (state) => {
-            this.post({ type: "acp/sessionSnapshot", sessionId: request.sessionId, state });
-          });
+          const unsub = this.acp.subscribeSession(
+            request.sessionId,
+            (state) => {
+              this.post({
+                type: "acp/sessionSnapshot",
+                sessionId: request.sessionId,
+                state,
+              });
+            }
+          );
           this.sessionSubs.set(request.sessionId, unsub);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
@@ -427,13 +589,23 @@ export class ChatProvider implements vscode.WebviewViewProvider {
             unsub();
             this.sessionSubs.delete(request.sessionId);
           }
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
 
         case "acp/deleteSession": {
           await this.acp.deleteSession(request.sessionId);
-          this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
+          this.replyToWebview(requestId, {
+            type: "acp/response",
+            requestId,
+            ok: true,
+            data: null,
+          });
           break;
         }
       }
@@ -448,7 +620,11 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async handleHostCall(requestId: number, method: string, params: unknown): Promise<void> {
+  private async handleHostCall(
+    requestId: number,
+    method: string,
+    params: unknown
+  ): Promise<void> {
     try {
       const data = await this.host.dispatch(method as never, params);
       this.post({ type: "host/result", requestId, ok: true, data });
@@ -458,13 +634,17 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private replyToWebview(requestId: number | null, envelope: AcpResponseEnvelope): void {
+  private replyToWebview(
+    requestId: number | null,
+    envelope: AcpResponseEnvelope
+  ): void {
     this.post(envelope);
   }
 
   private post(message: unknown): void {
     if (this.view) void this.view.webview.postMessage(message);
-    if (this.workbenchPanel) void this.workbenchPanel.webview.postMessage(message);
+    if (this.workbenchPanel)
+      void this.workbenchPanel.webview.postMessage(message);
   }
 
   /**
@@ -478,7 +658,10 @@ export class ChatProvider implements vscode.WebviewViewProvider {
    *     folder but the session cwd wasn't threaded through.
    * Returns null if none of the candidates exist.
    */
-  private async resolveOpenFilePath(rawFile: string, cwd: string | undefined): Promise<string | null> {
+  private async resolveOpenFilePath(
+    rawFile: string,
+    cwd: string | undefined
+  ): Promise<string | null> {
     const exists = async (candidate: string): Promise<boolean> => {
       try {
         await vscode.workspace.fs.stat(vscode.Uri.file(candidate));

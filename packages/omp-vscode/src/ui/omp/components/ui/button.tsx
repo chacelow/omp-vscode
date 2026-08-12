@@ -9,7 +9,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-[var(--accent-hover)]",
+        default:
+          "bg-primary text-primary-foreground shadow hover:bg-[var(--accent-hover)]",
         highlight:
           "border border-[color-mix(in_srgb,var(--border)_55%,transparent)] bg-[var(--highlight-bg)] text-[var(--vscode-button-foreground,#191c22)] shadow-[0_1px_3px_var(--vscode-widget-shadow,rgba(0,0,0,0.2))] hover:bg-[color-mix(in_srgb,var(--highlight-bg)_88%,var(--vscode-button-foreground))] active:bg-[color-mix(in_srgb,var(--highlight-bg)_78%,var(--vscode-button-foreground))]",
         destructive:
@@ -29,14 +30,15 @@ const buttonVariants = cva(
         // Compact 28×28 icon-only button for dense toolbars (top bar,
         // composer). `rounded-md` gives a square-with-rounded-corners hover
         // halo, not a wide rectangle.
-        toolbar: "h-7 w-7 shrink-0 rounded-md p-0 [&_svg:not([class*='size-'])]:size-[15px]",
+        toolbar:
+          "h-7 w-7 shrink-0 rounded-md p-0 [&_svg:not([class*='size-'])]:size-[15px]",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
     },
-  },
+  }
 );
 
 function Button({

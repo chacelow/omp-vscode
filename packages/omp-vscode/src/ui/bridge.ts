@@ -1,4 +1,8 @@
-import type { AcpHostEvent, AcpRequest, AcpResponseEnvelope } from "../core/acp/protocol";
+import type {
+  AcpHostEvent,
+  AcpRequest,
+  AcpResponseEnvelope,
+} from "../core/acp/protocol";
 import type {
   HostMethod,
   HostParams,
@@ -21,7 +25,9 @@ const listeners = new Set<Listener>();
 
 window.addEventListener(
   "message",
-  (ev: MessageEvent<AcpHostEvent | AcpResponseEnvelope | HostResultMessage>) => {
+  (
+    ev: MessageEvent<AcpHostEvent | AcpResponseEnvelope | HostResultMessage>
+  ) => {
     const msg = ev.data;
     if (!msg || typeof msg !== "object") return;
 
@@ -53,7 +59,7 @@ window.addEventListener(
     ) {
       for (const l of listeners) l(msg);
     }
-  },
+  }
 );
 
 export function acpRequest<R extends AcpRequest>(request: R): Promise<unknown> {
@@ -66,7 +72,7 @@ export function acpRequest<R extends AcpRequest>(request: R): Promise<unknown> {
 
 export function hostCall<M extends HostMethod>(
   method: M,
-  params: HostParams<M>,
+  params: HostParams<M>
 ): Promise<HostResult<M>> {
   const requestId = ++hostSeq;
   return new Promise<HostResult<M>>((resolve, reject) => {
@@ -88,9 +94,7 @@ export function openInVSCode(filePath: string, cwd?: string | null): void {
 }
 
 export function openImageInVSCode(data: string, mimeType: string): void {
-  ompPost({ type: "openImage", data, mimeType }
-    
-  );
+  ompPost({ type: "openImage", data, mimeType });
 }
 
 declare global {

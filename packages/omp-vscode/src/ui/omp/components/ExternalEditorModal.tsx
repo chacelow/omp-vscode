@@ -11,7 +11,12 @@ interface ExternalEditorModalProps {
 }
 
 /** Webview-native substitute for the TUI's external $EDITOR workflow. */
-export default function ExternalEditorModal({ open, initialValue, onClose, onSave }: ExternalEditorModalProps) {
+export default function ExternalEditorModal({
+  open,
+  initialValue,
+  onClose,
+  onSave,
+}: ExternalEditorModalProps) {
   const [value, setValue] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -35,8 +40,12 @@ export default function ExternalEditorModal({ open, initialValue, onClose, onSav
     >
       <div className="flex h-[min(78vh,720px)] w-full max-w-4xl flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-panel)] p-4 shadow-2xl">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold text-[var(--text)]">Edit draft</h2>
-          <span className="text-xs text-[var(--text-muted)]">Ctrl+Enter to save</span>
+          <h2 className="text-sm font-semibold text-[var(--text)]">
+            Edit draft
+          </h2>
+          <span className="text-xs text-[var(--text-muted)]">
+            Ctrl+Enter to save
+          </span>
         </div>
         <textarea
           ref={textareaRef}
@@ -56,8 +65,12 @@ export default function ExternalEditorModal({ open, initialValue, onClose, onSav
           }}
         />
         <div className="mt-3 flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={() => onSave(value)}>Save draft</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => onSave(value)}>
+            Save draft
+          </Button>
         </div>
       </div>
     </div>

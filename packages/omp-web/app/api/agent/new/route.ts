@@ -6,11 +6,22 @@ import { allowFileRoot } from "@/lib/file-access";
 import { invalidateSessionListCache } from "@/lib/session-reader";
 import { startRpcSession } from "@/lib/rpc-manager";
 
-const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+const THINKING_LEVELS = new Set<ThinkingLevel>([
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
 
 function parseThinkingLevel(value: unknown): ThinkingLevel | undefined {
   if (value === undefined) return undefined;
-  if (typeof value === "string" && THINKING_LEVELS.has(value as ThinkingLevel)) {
+  if (
+    typeof value === "string" &&
+    THINKING_LEVELS.has(value as ThinkingLevel)
+  ) {
     return value as ThinkingLevel;
   }
   throw new Error(`Invalid thinking level: ${String(value)}`);
@@ -21,18 +32,35 @@ function parseThinkingLevel(value: unknown): ThinkingLevel | undefined {
 // Returns pi's real session id plus the model/thinking state selected at startup.
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { cwd?: string; [key: string]: unknown };
+    const body = (await req.json()) as { cwd?: string; [key: string]: unknown };
     const { cwd, ...command } = body;
 
     if (!cwd || typeof cwd !== "string") {
       return NextResponse.json({ error: "cwd is required" }, { status: 400 });
     }
     if (!existsSync(cwd)) {
-      return NextResponse.json({ error: `Directory does not exist: ${cwd}` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Directory does not exist: ${cwd}` },
+        { status: 400 }
+      );
     }
 
     // Use a one-time key so startRpcSession's lock doesn't conflict with real session ids
-    const { provider, modelId, toolNames, thinkingLevel, forceNewSession, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: unknown; forceNewSession?: boolean; [key: string]: unknown };
+    const {
+      provider,
+      modelId,
+      toolNames,
+      thinkingLevel,
+      forceNewSession,
+      ...promptCommand
+    } = command as {
+      provider?: string;
+      modelId?: string;
+      toolNames?: string[];
+      thinkingLevel?: unknown;
+      forceNewSession?: boolean;
+      [key: string]: unknown;
+    };
     if ((provider && !modelId) || (!provider && modelId)) {
       throw new Error("provider and modelId must be provided together");
     }
@@ -45,7 +73,9 @@ export async function POST(req: Request) {
     const { session, realSessionId } = await startRpcSession(tempKey, "", cwd, {
       ...(toolNames ? { toolNames } : {}),
       ...(provider && modelId ? { initialModel: { provider, modelId } } : {}),
-      ...(explicitThinkingLevel ? { thinkingLevel: explicitThinkingLevel } : {}),
+      ...(explicitThinkingLevel
+        ? { thinkingLevel: explicitThinkingLevel }
+        : {}),
       ...(forceNewSession ? { forceNewSession: true } : {}),
     });
 
@@ -55,7 +85,7 @@ export async function POST(req: Request) {
     allowFileRoot(cwd);
     invalidateSessionListCache();
 
-    const state = await session.send({ type: "get_state" }) as {
+    const state = (await session.send({ type: "get_state" })) as {
       model?: { id: string; provider: string };
       thinkingLevel?: string;
     };

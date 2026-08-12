@@ -295,8 +295,7 @@ export const modelsConfigMetadataHandler: Handler<
   "modelsConfigMetadata"
 > = async (params) => {
   const parsedParams = parseRecord(params);
-  if (!parsedParams)
-    return { ok: false, error: "Invalid metadata request" };
+  if (!parsedParams) return { ok: false, error: "Invalid metadata request" };
   const providerName =
     typeof parsedParams.providerName === "string"
       ? parsedParams.providerName.trim()
@@ -308,9 +307,7 @@ export const modelsConfigMetadataHandler: Handler<
     return { ok: false, error: "Provider and model are required" };
 
   const currentConfig = readModelsConfig();
-  const configuredProvider = parseRecord(
-    currentConfig.providers[providerName]
-  );
+  const configuredProvider = parseRecord(currentConfig.providers[providerName]);
   if (Array.isArray(configuredProvider?.models)) {
     const configuredModel = configuredProvider.models.find((model) => {
       const record = parseRecord(model);
@@ -368,8 +365,7 @@ export const modelsConfigTestHandler: Handler<"modelsConfigTest"> = async (
   params
 ) => {
   const parsedParams = parseRecord(params);
-  if (!parsedParams)
-    return { ok: false, error: "Invalid model test request" };
+  if (!parsedParams) return { ok: false, error: "Invalid model test request" };
   const providerName =
     typeof parsedParams.providerName === "string"
       ? parsedParams.providerName.trim()

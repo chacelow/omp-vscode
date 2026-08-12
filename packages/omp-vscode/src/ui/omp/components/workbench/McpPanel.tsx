@@ -18,7 +18,10 @@ function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-function parseMcpServer(extension: unknown, unknownTransport: string): McpServer | null {
+function parseMcpServer(
+  extension: unknown,
+  unknownTransport: string
+): McpServer | null {
   if (!extension || typeof extension !== "object") return null;
   const value = extension as Record<string, unknown>;
   if (value.kind !== "mcp") return null;
@@ -27,22 +30,34 @@ function parseMcpServer(extension: unknown, unknownTransport: string): McpServer
   if (!source || typeof source !== "object") return null;
   const sourceValue = source as Record<string, unknown>;
   const level = sourceValue.level;
-  if (level !== "user" && level !== "project" && level !== "native") return null;
+  if (level !== "user" && level !== "project" && level !== "native")
+    return null;
 
   const raw = value.raw;
-  const rawValue = raw && typeof raw === "object" ? raw as Record<string, unknown> : undefined;
-  const transport = rawValue && "transport" in rawValue
-    ? readString(rawValue.transport) ?? unknownTransport
-    : unknownTransport;
-  const description = rawValue && "description" in rawValue
-    ? readString(rawValue.description)
-    : undefined;
+  const rawValue =
+    raw && typeof raw === "object"
+      ? (raw as Record<string, unknown>)
+      : undefined;
+  const transport =
+    rawValue && "transport" in rawValue
+      ? (readString(rawValue.transport) ?? unknownTransport)
+      : unknownTransport;
+  const description =
+    rawValue && "description" in rawValue
+      ? readString(rawValue.description)
+      : undefined;
 
   return {
-    name: readString(value.name) ?? readString(value.displayName) ?? "(unnamed server)",
+    name:
+      readString(value.name) ??
+      readString(value.displayName) ??
+      "(unnamed server)",
     description,
     transport,
-    provider: readString(sourceValue.providerName) ?? readString(sourceValue.provider) ?? "MCP",
+    provider:
+      readString(sourceValue.providerName) ??
+      readString(sourceValue.provider) ??
+      "MCP",
     level,
   };
 }
@@ -82,15 +97,26 @@ function ServerRow({
         alignItems: "center",
         gap: 20,
         padding: "16px 0",
-        borderBottom: "1px solid var(--vscode-settings-headerBorder, var(--border))",
+        borderBottom:
+          "1px solid var(--vscode-settings-headerBorder, var(--border))",
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-          <strong style={{ fontSize: 13, color: "var(--text)" }}>{server.name}</strong>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 6,
+          }}
+        >
+          <strong style={{ fontSize: 13, color: "var(--text)" }}>
+            {server.name}
+          </strong>
           <span
             style={{
-              border: "1px solid var(--vscode-settings-headerBorder, var(--border))",
+              border:
+                "1px solid var(--vscode-settings-headerBorder, var(--border))",
               borderRadius: 10,
               color: "var(--text-dim)",
               fontSize: 10,
@@ -102,24 +128,51 @@ function ServerRow({
           </span>
         </div>
         {server.description ? (
-          <p style={{ margin: "3px 0 0", color: "var(--text-dim)", fontSize: 12, lineHeight: 1.45 }}>
+          <p
+            style={{
+              margin: "3px 0 0",
+              color: "var(--text-dim)",
+              fontSize: 12,
+              lineHeight: 1.45,
+            }}
+          >
             {server.description}
           </p>
         ) : null}
-        <p style={{ margin: "4px 0 0", color: "var(--text-dim)", fontSize: 11 }}>
+        <p
+          style={{ margin: "4px 0 0", color: "var(--text-dim)", fontSize: 11 }}
+        >
           {server.provider} · {server.transport}
         </p>
         {status ? (
-          <p role="status" style={{ margin: "7px 0 0", color: "var(--text-dim)", fontSize: 12, whiteSpace: "pre-wrap" }}>
+          <p
+            role="status"
+            style={{
+              margin: "7px 0 0",
+              color: "var(--text-dim)",
+              fontSize: 12,
+              whiteSpace: "pre-wrap",
+            }}
+          >
             {status}
           </p>
         ) : null}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button type="button" disabled={testing || removing} onClick={onTest} style={actionButtonStyle}>
+        <button
+          type="button"
+          disabled={testing || removing}
+          onClick={onTest}
+          style={actionButtonStyle}
+        >
           {testing ? t("mcp.state.testing") : t("mcp.action.test")}
         </button>
-        <button type="button" disabled={testing || removing} onClick={onRemove} style={actionButtonStyle}>
+        <button
+          type="button"
+          disabled={testing || removing}
+          onClick={onRemove}
+          style={actionButtonStyle}
+        >
           {t("mcp.action.remove")}
         </button>
       </div>
@@ -132,7 +185,9 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusByServer, setStatusByServer] = useState<Record<string, string>>({});
+  const [statusByServer, setStatusByServer] = useState<Record<string, string>>(
+    {}
+  );
   const [testing, setTesting] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -142,19 +197,32 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
     setError(null);
     try {
       const result = await ompExtensions(cwd);
-      setServers(result.extensions.map((extension) => parseMcpServer(extension, t("mcp.transport.unknown"))).filter((server): server is McpServer => server !== null));
+      setServers(
+        result.extensions
+          .map((extension) =>
+            parseMcpServer(extension, t("mcp.transport.unknown"))
+          )
+          .filter((server): server is McpServer => server !== null)
+      );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load MCP servers.");
+      setError(
+        reason instanceof Error ? reason.message : "Unable to load MCP servers."
+      );
       setServers([]);
     } finally {
       setLoading(false);
     }
   }, [cwd, t]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const showStatus = (server: McpServer, message: string) => {
-    setStatusByServer((current) => ({ ...current, [`${server.level}:${server.name}`]: message }));
+    setStatusByServer((current) => ({
+      ...current,
+      [`${server.level}:${server.name}`]: message,
+    }));
   };
 
   const testServer = async (server: McpServer) => {
@@ -168,7 +236,10 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
       const detail = result.ok ? result.output : result.error;
       showStatus(server, detail ? `${state}: ${detail}` : state);
     } catch (reason) {
-      showStatus(server, `${t("mcp.state.failed")}: ${reason instanceof Error ? reason.message : "Connection test failed."}`);
+      showStatus(
+        server,
+        `${t("mcp.state.failed")}: ${reason instanceof Error ? reason.message : "Connection test failed."}`
+      );
     } finally {
       setTesting(null);
     }
@@ -188,7 +259,12 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
         showStatus(server, result.error ?? "Unable to remove MCP server.");
       }
     } catch (reason) {
-      showStatus(server, reason instanceof Error ? reason.message : "Unable to remove MCP server.");
+      showStatus(
+        server,
+        reason instanceof Error
+          ? reason.message
+          : "Unable to remove MCP server."
+      );
     } finally {
       setRemoving(null);
     }
@@ -197,43 +273,155 @@ export function McpPanel({ cwd }: { cwd: string }): JSX.Element {
   if (adding) {
     return (
       <div style={{ height: "100%", width: "100%" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", maxWidth: 920, margin: "0 auto" }}>
-          <button type="button" onClick={() => { setAdding(false); void reload(); }} style={actionButtonStyle}>Back to servers</button>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            padding: "10px 16px",
+            maxWidth: 920,
+            margin: "0 auto",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setAdding(false);
+              void reload();
+            }}
+            style={actionButtonStyle}
+          >
+            Back to servers
+          </button>
         </div>
-        <McpAddWizard cwd={cwd} embedded onClose={() => { setAdding(false); void reload(); }} />
+        <McpAddWizard
+          cwd={cwd}
+          embedded
+          onClose={() => {
+            setAdding(false);
+            void reload();
+          }}
+        />
       </div>
     );
   }
 
   const userServers = servers.filter((server) => server.level === "user");
   const projectServers = servers.filter((server) => server.level === "project");
-  const hasConfiguredServers = userServers.length > 0 || projectServers.length > 0;
+  const hasConfiguredServers =
+    userServers.length > 0 || projectServers.length > 0;
 
-  const renderSection = (title: string, sectionServers: McpServer[]) => sectionServers.length > 0 ? (
-    <section style={{ marginTop: 24 }}>
-      <h2 style={{ margin: "0 0 2px", color: "var(--text)", fontSize: 13, fontWeight: 600 }}>{title}</h2>
-      {sectionServers.map((server) => {
-        const key = `${server.level}:${server.name}`;
-        return <ServerRow key={key} server={server} status={statusByServer[key]} testing={testing === key} removing={removing === key} onTest={() => void testServer(server)} onRemove={() => void removeServer(server)} />;
-      })}
-    </section>
-  ) : null;
+  const renderSection = (title: string, sectionServers: McpServer[]) =>
+    sectionServers.length > 0 ? (
+      <section style={{ marginTop: 24 }}>
+        <h2
+          style={{
+            margin: "0 0 2px",
+            color: "var(--text)",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          {title}
+        </h2>
+        {sectionServers.map((server) => {
+          const key = `${server.level}:${server.name}`;
+          return (
+            <ServerRow
+              key={key}
+              server={server}
+              status={statusByServer[key]}
+              testing={testing === key}
+              removing={removing === key}
+              onTest={() => void testServer(server)}
+              onRemove={() => void removeServer(server)}
+            />
+          );
+        })}
+      </section>
+    ) : null;
 
   return (
-    <div style={{ height: "100%", overflow: "auto", width: "100%", color: "var(--text)" }}>
-      <main style={{ boxSizing: "border-box", margin: "0 auto", maxWidth: 920, padding: "20px 24px 32px" }}>
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+    <div
+      style={{
+        height: "100%",
+        overflow: "auto",
+        width: "100%",
+        color: "var(--text)",
+      }}
+    >
+      <main
+        style={{
+          boxSizing: "border-box",
+          margin: "0 auto",
+          maxWidth: 920,
+          padding: "20px 24px 32px",
+        }}
+      >
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
+        >
           <div>
-            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{t("mcp.title")}</h1>
-            <p style={{ margin: "4px 0 0", color: "var(--text-dim)", fontSize: 12 }}>Manage Model Context Protocol server connections.</p>
+            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+              {t("mcp.title")}
+            </h1>
+            <p
+              style={{
+                margin: "4px 0 0",
+                color: "var(--text-dim)",
+                fontSize: 12,
+              }}
+            >
+              Manage Model Context Protocol server connections.
+            </p>
           </div>
-          <button type="button" title={t("mcp.action.reload")} aria-label={t("mcp.action.reload")} disabled={loading} onClick={() => void reload()} style={actionButtonStyle}>↻</button>
+          <button
+            type="button"
+            title={t("mcp.action.reload")}
+            aria-label={t("mcp.action.reload")}
+            disabled={loading}
+            onClick={() => void reload()}
+            style={actionButtonStyle}
+          >
+            ↻
+          </button>
         </header>
 
-        {loading ? <p role="status" style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}>Loading MCP servers…</p> : null}
-        {error ? <p role="alert" style={{ color: "var(--vscode-errorForeground, #f48771)", fontSize: 12, marginTop: 16 }}>{error}</p> : null}
-        {!loading && !error && !hasConfiguredServers ? <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}>{t("mcp.empty")}</p> : null}
-        {!loading && !error ? <>{renderSection(t("mcp.section.user"), userServers)}{renderSection(t("mcp.section.project"), projectServers)}</> : null}
+        {loading ? (
+          <p
+            role="status"
+            style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}
+          >
+            Loading MCP servers…
+          </p>
+        ) : null}
+        {error ? (
+          <p
+            role="alert"
+            style={{
+              color: "var(--vscode-errorForeground, #f48771)",
+              fontSize: 12,
+              marginTop: 16,
+            }}
+          >
+            {error}
+          </p>
+        ) : null}
+        {!loading && !error && !hasConfiguredServers ? (
+          <p style={{ color: "var(--text-dim)", fontSize: 12, marginTop: 24 }}>
+            {t("mcp.empty")}
+          </p>
+        ) : null}
+        {!loading && !error ? (
+          <>
+            {renderSection(t("mcp.section.user"), userServers)}
+            {renderSection(t("mcp.section.project"), projectServers)}
+          </>
+        ) : null}
 
         <button
           type="button"

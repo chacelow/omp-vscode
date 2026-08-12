@@ -38,7 +38,7 @@ test("project extensions execute only after the project is trusted", async (t) =
   await mkdir(extensionDir, { recursive: true });
   await writeFile(
     join(extensionDir, "probe.js"),
-    `import { writeFileSync } from "node:fs";\nexport default () => { writeFileSync(${JSON.stringify(marker)}, "executed"); };\n`,
+    `import { writeFileSync } from "node:fs";\nexport default () => { writeFileSync(${JSON.stringify(marker)}, "executed"); };\n`
   );
 
   assert.deepEqual(getProjectTrustStatus(cwd, agentDir), {
@@ -75,38 +75,67 @@ test("the reload resolver reads the latest persisted trust decision", async (t) 
 });
 
 test("all project resource loaders and reloads enforce project trust", async () => {
-  const rpcSource = await readFile(new URL("./rpc-manager.ts", import.meta.url), "utf8");
-  const modelsSource = await readFile(new URL("../app/api/models/route.ts", import.meta.url), "utf8");
-  const skillsSource = await readFile(new URL("./skills-service.ts", import.meta.url), "utf8");
-  const skillsInstallSource = await readFile(new URL("../app/api/skills/install/route.ts", import.meta.url), "utf8");
-  const pluginsSource = await readFile(new URL("../app/api/plugins/route.ts", import.meta.url), "utf8");
+  const rpcSource = await readFile(
+    new URL("./rpc-manager.ts", import.meta.url),
+    "utf8"
+  );
+  const modelsSource = await readFile(
+    new URL("../app/api/models/route.ts", import.meta.url),
+    "utf8"
+  );
+  const skillsSource = await readFile(
+    new URL("./skills-service.ts", import.meta.url),
+    "utf8"
+  );
+  const skillsInstallSource = await readFile(
+    new URL("../app/api/skills/install/route.ts", import.meta.url),
+    "utf8"
+  );
+  const pluginsSource = await readFile(
+    new URL("../app/api/plugins/route.ts", import.meta.url),
+    "utf8"
+  );
 
   assert.match(rpcSource, /const sessionCwd = sessionManager\.getCwd\(\)/);
   assert.match(rpcSource, /projectTrustReloadOptions\(sessionCwd, agentDir\)/);
   assert.match(rpcSource, /resourceLoaderReloadOptions: trustReloadOptions/);
   assert.equal(
-    Array.from(rpcSource.matchAll(/this\.syncProjectTrust\(\);\s*await this\.inner\.reload/g)).length,
-    2,
+    Array.from(
+      rpcSource.matchAll(
+        /this\.syncProjectTrust\(\);\s*await this\.inner\.reload/g
+      )
+    ).length,
+    2
   );
 
   assert.match(modelsSource, /projectTrustReloadOptions\(cwd, agentDir\)/);
   assert.match(modelsSource, /resourceLoaderReloadOptions: trustReloadOptions/);
-  assert.match(skillsSource, /loader\.reload\(projectTrustReloadOptions\(cwd, agentDir\)\)/);
+  assert.match(
+    skillsSource,
+    /loader\.reload\(projectTrustReloadOptions\(cwd, agentDir\)\)/
+  );
   assert.match(pluginsSource, /projectTrusted: projectTrust\.trusted/);
   assert.match(
     skillsInstallSource,
-    /getProjectTrustStatus\(cwd, getAgentDir\(\)\)\.trusted/,
+    /getProjectTrustStatus\(cwd, getAgentDir\(\)\)\.trusted/
   );
   assert.equal(
-    Array.from(pluginsSource.matchAll(/projectTrusted: projectTrust\.trusted/g)).length,
-    2,
+    Array.from(pluginsSource.matchAll(/projectTrusted: projectTrust\.trusted/g))
+      .length,
+    2
   );
   assert.match(pluginsSource, /scope === "project" && !projectTrust\.trusted/);
 });
 
 test("the trust API invalidates cached models and restricted runtimes", async () => {
-  const source = await readFile(new URL("../app/api/project-trust/route.ts", import.meta.url), "utf8");
-  const rpcSource = await readFile(new URL("./rpc-manager.ts", import.meta.url), "utf8");
+  const source = await readFile(
+    new URL("../app/api/project-trust/route.ts", import.meta.url),
+    "utf8"
+  );
+  const rpcSource = await readFile(
+    new URL("./rpc-manager.ts", import.meta.url),
+    "utf8"
+  );
 
   assert.match(source, /trustProject\(result\.cwd, agentDir\)/);
   assert.match(source, /invalidateModelsCache\(\)/);

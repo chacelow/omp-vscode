@@ -33,7 +33,9 @@ function createShadowTools(tools: AgentTool[]): AgentTool[] {
   return tools.map((tool) => ({
     ...tool,
     execute: async () => {
-      throw new Error("Tools cannot be executed while generating a session title");
+      throw new Error(
+        "Tools cannot be executed while generating a session title"
+      );
     },
   }));
 }
@@ -74,18 +76,18 @@ export function buildSessionTitleAgentOptions(source: Agent): AgentOptions {
  * answered. Fold the title request into a copy of that message so the title
  * request does not send two consecutive user messages to the provider.
  */
-export function appendTitleRequestToTrailingUser(messages: AgentMessage[]): AgentMessage[] {
+export function appendTitleRequestToTrailingUser(
+  messages: AgentMessage[]
+): AgentMessage[] {
   const lastMessage = messages.at(-1);
   if (!lastMessage || lastMessage.role !== "user") return messages;
 
-  const content = typeof lastMessage.content === "string"
-    ? `${lastMessage.content}\n\n${TITLE_PROMPT}`
-    : [...lastMessage.content, { type: "text" as const, text: TITLE_PROMPT }];
+  const content =
+    typeof lastMessage.content === "string"
+      ? `${lastMessage.content}\n\n${TITLE_PROMPT}`
+      : [...lastMessage.content, { type: "text" as const, text: TITLE_PROMPT }];
 
-  return [
-    ...messages.slice(0, -1),
-    { ...lastMessage, content },
-  ];
+  return [...messages.slice(0, -1), { ...lastMessage, content }];
 }
 
 function stripWrappingQuotes(value: string): string {
@@ -98,7 +100,11 @@ function stripWrappingQuotes(value: string): string {
     ["\u300e", "\u300f"],
   ];
   for (const [start, end] of pairs) {
-    if (value.startsWith(start) && value.endsWith(end) && value.length > start.length + end.length) {
+    if (
+      value.startsWith(start) &&
+      value.endsWith(end) &&
+      value.length > start.length + end.length
+    ) {
       return value.slice(start.length, -end.length).trim();
     }
   }
@@ -135,7 +141,10 @@ export function parseGeneratedSessionTitle(raw: string): string {
   return value;
 }
 
-function getAssistantResult(agent: Agent, historyLength: number): GeneratedSessionTitle {
+function getAssistantResult(
+  agent: Agent,
+  historyLength: number
+): GeneratedSessionTitle {
   const generatedMessages = agent.state.messages.slice(historyLength);
   for (let i = generatedMessages.length - 1; i >= 0; i--) {
     const message = generatedMessages[i];
@@ -151,21 +160,25 @@ function getAssistantResult(agent: Agent, historyLength: number): GeneratedSessi
     if (!text) continue;
     return {
       title: parseGeneratedSessionTitle(text),
-      ...(message.usage ? {
-        usage: {
-          input: message.usage.input,
-          output: message.usage.output,
-          cacheRead: message.usage.cacheRead,
-          cacheWrite: message.usage.cacheWrite,
-          total: message.usage.totalTokens,
-        },
-      } : {}),
+      ...(message.usage
+        ? {
+            usage: {
+              input: message.usage.input,
+              output: message.usage.output,
+              cacheRead: message.usage.cacheRead,
+              cacheWrite: message.usage.cacheWrite,
+              total: message.usage.totalTokens,
+            },
+          }
+        : {}),
     };
   }
   throw new Error("The model did not return a session title");
 }
 
-export function sanitizeTitleMessages(messages: AgentMessage[]): AgentMessage[] {
+export function sanitizeTitleMessages(
+  messages: AgentMessage[]
+): AgentMessage[] {
   const sanitized: AgentMessage[] = [];
   let expectedToolResultIds: Set<string> | undefined;
 
@@ -174,7 +187,11 @@ export function sanitizeTitleMessages(messages: AgentMessage[]): AgentMessage[] 
 
     if (message.role === "assistant") {
       const followingToolResultIds = new Set<string>();
-      for (let resultIndex = index + 1; resultIndex < messages.length; resultIndex++) {
+      for (
+        let resultIndex = index + 1;
+        resultIndex < messages.length;
+        resultIndex++
+      ) {
         const resultMessage = messages[resultIndex];
         if (resultMessage.role !== "toolResult") break;
         followingToolResultIds.add(resultMessage.toolCallId);
@@ -208,7 +225,9 @@ export function sanitizeTitleMessages(messages: AgentMessage[]): AgentMessage[] 
   return sanitized;
 }
 
-export async function generateSessionTitle(source: AgentSession): Promise<GeneratedSessionTitle> {
+export async function generateSessionTitle(
+  source: AgentSession
+): Promise<GeneratedSessionTitle> {
   const sourceAgent = source.agent;
   await sourceAgent.waitForIdle();
 
@@ -222,7 +241,8 @@ export async function generateSessionTitle(source: AgentSession): Promise<Genera
   options.initialState!.messages = sanitizedMessages;
   const continuesFromTrailingUser = sanitizedMessages.at(-1)?.role === "user";
   if (continuesFromTrailingUser) {
-    options.initialState!.messages = appendTitleRequestToTrailingUser(sanitizedMessages);
+    options.initialState!.messages =
+      appendTitleRequestToTrailingUser(sanitizedMessages);
   }
 
   const temporaryAgent = new Agent(options);

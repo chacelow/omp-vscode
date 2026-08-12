@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 // see lib/provider-listing.ts for why membership is capability-based (#309).
 export async function GET() {
   const modelRuntime = await ModelRuntime.create();
-  const providers = buildApiKeyProviderList(await collectProviderListingInputs(modelRuntime));
+  const providers = buildApiKeyProviderList(
+    await collectProviderListingInputs(modelRuntime)
+  );
   return Response.json({ providers });
 }

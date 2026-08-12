@@ -16,8 +16,8 @@ function renderMessage(message) {
     React.createElement(
       I18nProvider,
       null,
-      React.createElement(MessageView, { message }),
-    ),
+      React.createElement(MessageView, { message })
+    )
   );
 }
 

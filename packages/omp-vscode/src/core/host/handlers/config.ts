@@ -1,5 +1,13 @@
 import * as vscode from "vscode";
-import { existsSync, readdirSync, statSync, mkdirSync, readFileSync, writeFileSync, type Dirent } from "fs";
+import {
+  existsSync,
+  readdirSync,
+  statSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  type Dirent,
+} from "fs";
 import { homedir } from "os";
 import { join, relative, resolve, dirname } from "path";
 import { load, dump } from "js-yaml";
@@ -8,7 +16,8 @@ import { getOmpAgentDir } from "../../session-reader";
 
 function asSettingsRecord(value: unknown): Record<string, unknown> {
   const record: Record<string, unknown> = {};
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return record;
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return record;
   for (const [key, entry] of Object.entries(value)) record[key] = entry;
   return record;
 }
@@ -23,9 +32,14 @@ function configPath(): string {
   return join(getOmpAgentDir(), "config.yml");
 }
 
-export const settingsGetHandler: Handler<"settingsGet"> = ({ category }) => asSettingsRecord(readOmpConfig()[category]);
+export const settingsGetHandler: Handler<"settingsGet"> = ({ category }) =>
+  asSettingsRecord(readOmpConfig()[category]);
 
-function flattenSettings(source: Record<string, unknown>, prefix: string, out: Record<string, unknown>): void {
+function flattenSettings(
+  source: Record<string, unknown>,
+  prefix: string,
+  out: Record<string, unknown>
+): void {
   for (const [key, value] of Object.entries(source)) {
     const path = prefix ? `${prefix}.${key}` : key;
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
@@ -47,7 +61,11 @@ export const settingsListHandler: Handler<"settingsList"> = () => {
   return { values };
 };
 
-export const settingsSetHandler: Handler<"settingsSet"> = ({ category, key, value }) => {
+export const settingsSetHandler: Handler<"settingsSet"> = ({
+  category,
+  key,
+  value,
+}) => {
   const config = readOmpConfig();
   if (category === "__root__") {
     config[key] = value;
@@ -76,9 +94,16 @@ export const cwdBrowseHandler: Handler<"cwdBrowse"> = ({ path }) => {
     const entries: Array<{ name: string; path: string; isDir: boolean }> = [];
     for (const e of readdirSync(target, { withFileTypes: true })) {
       if (e.name.startsWith(".")) continue;
-      entries.push({ name: e.name, path: join(target, e.name), isDir: e.isDirectory() });
+      entries.push({
+        name: e.name,
+        path: join(target, e.name),
+        isDir: e.isDirectory(),
+      });
     }
-    entries.sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name));
+    entries.sort(
+      (a, b) =>
+        Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name)
+    );
     return {
       path: target,
       entries,
@@ -107,7 +132,11 @@ export const cwdGitBranchHandler: Handler<"cwdGitBranch"> = async ({ cwd }) => {
   type GitExtension = { getAPI(version: 1): GitApi };
 
   // Wait for `predicate` to fire on `event`, or resolve `null` after `timeoutMs`.
-  const waitFor = <T>(event: Event<T>, timeoutMs: number, predicate: (value: T) => boolean): Promise<T | null> =>
+  const waitFor = <T>(
+    event: Event<T>,
+    timeoutMs: number,
+    predicate: (value: T) => boolean
+  ): Promise<T | null> =>
     new Promise((resolve) => {
       let done = false;
       const finish = (value: T | null): void => {
@@ -118,12 +147,16 @@ export const cwdGitBranchHandler: Handler<"cwdGitBranch"> = async ({ cwd }) => {
         resolve(value);
       };
       const timer = setTimeout(() => finish(null), timeoutMs);
-      const sub = event((value: T) => { if (predicate(value)) finish(value); });
+      const sub = event((value: T) => {
+        if (predicate(value)) finish(value);
+      });
     });
 
   const findRepo = (api: GitApi): GitRepository | null =>
     api.getRepository(vscode.Uri.file(cwd)) ??
-    api.repositories.find((r) => cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`)) ??
+    api.repositories.find(
+      (r) => cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`)
+    ) ??
     null;
 
   try {
@@ -145,7 +178,8 @@ export const cwdGitBranchHandler: Handler<"cwdGitBranch"> = async ({ cwd }) => {
       const opened = await waitFor(
         api.onDidOpenRepository,
         2500,
-        (r) => cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`),
+        (r) =>
+          cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`)
       );
       repo = opened ?? findRepo(api);
     }
@@ -154,7 +188,9 @@ export const cwdGitBranchHandler: Handler<"cwdGitBranch"> = async ({ cwd }) => {
     // HEAD populates after the first state refresh; if it's not there yet,
     // wait one state tick.
     if (!repo.state.HEAD) {
-      await waitFor(repo.state.onDidChange, 1500, () => Boolean(repo?.state.HEAD));
+      await waitFor(repo.state.onDidChange, 1500, () =>
+        Boolean(repo?.state.HEAD)
+      );
     }
     return { branch: repo.state.HEAD?.name ?? "detached" };
   } catch {
@@ -167,9 +203,16 @@ export const cwdGitBranchHandler: Handler<"cwdGitBranch"> = async ({ cwd }) => {
 // ---------------------------------------------------------------------------
 
 const IGNORED_DIRS: Record<string, true> = {
-  node_modules: true, ".git": true, ".hg": true, ".svn": true,
-  dist: true, build: true, ".next": true, ".cache": true,
-  ".vscode-test": true, ".DS_Store": true,
+  node_modules: true,
+  ".git": true,
+  ".hg": true,
+  ".svn": true,
+  dist: true,
+  build: true,
+  ".next": true,
+  ".cache": true,
+  ".vscode-test": true,
+  ".DS_Store": true,
 };
 
 export const fileIndexHandler: Handler<"fileIndex"> = ({ cwd, q }) => {
@@ -182,14 +225,21 @@ export const fileIndexHandler: Handler<"fileIndex"> = ({ cwd, q }) => {
   const walk = (dir: string, depth: number): void => {
     if (truncated || depth > MAX_DEPTH) return;
     let entries: Dirent[];
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const e of entries) {
       if (IGNORED_DIRS[e.name]) continue;
       const abs = join(dir, e.name);
       if (e.isDirectory()) walk(abs, depth + 1);
       else if (e.isFile()) {
         files.push(relative(cwd, abs).split("\\").join("/"));
-        if (files.length >= MAX_FILES) { truncated = true; return; }
+        if (files.length >= MAX_FILES) {
+          truncated = true;
+          return;
+        }
       }
     }
   };
@@ -209,21 +259,33 @@ export const fileIndexHandler: Handler<"fileIndex"> = ({ cwd, q }) => {
   const matches: Array<{ path: string; isDir: boolean }> = [];
   for (const d of dirs) matches.push({ path: d, isDir: true });
   for (const f of matched) matches.push({ path: f, isDir: false });
-  matches.sort((a, b) =>
-    a.path.split("/").length - b.path.split("/").length || a.path.localeCompare(b.path),
+  matches.sort(
+    (a, b) =>
+      a.path.split("/").length - b.path.split("/").length ||
+      a.path.localeCompare(b.path)
   );
   return { matches, truncated };
 };
 
 /** Complete recognized internal URL schemes without exposing arbitrary filesystem paths. */
-export const urlCompleteHandler: Handler<"urlComplete"> = ({ scheme, query }) => {
+export const urlCompleteHandler: Handler<"urlComplete"> = ({
+  scheme,
+  query,
+}) => {
   if (scheme !== "skill") return { items: [] };
   const root = join(homedir(), ".omp", "agent");
   const skills: Array<{ value: string; label?: string }> = [];
-  for (const directory of [join(root, "managed-skills"), join(root, "skills")]) {
+  for (const directory of [
+    join(root, "managed-skills"),
+    join(root, "skills"),
+  ]) {
     try {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
-        if (!entry.isDirectory() || !entry.name.toLowerCase().includes(query.toLowerCase())) continue;
+        if (
+          !entry.isDirectory() ||
+          !entry.name.toLowerCase().includes(query.toLowerCase())
+        )
+          continue;
         skills.push({ value: entry.name, label: entry.name });
       }
     } catch {
@@ -238,25 +300,37 @@ export const urlCompleteHandler: Handler<"urlComplete"> = ({ scheme, query }) =>
 // fs directories — the folder picker
 // ---------------------------------------------------------------------------
 
-export const fsDirectoriesListHandler: Handler<"fsDirectoriesList"> = ({ path }) => {
+export const fsDirectoriesListHandler: Handler<"fsDirectoriesList"> = ({
+  path,
+}) => {
   const target = path && existsSync(path) ? resolve(path) : homedir();
   try {
     const entries = readdirSync(target, { withFileTypes: true })
       .filter((e) => e.isDirectory() && !e.name.startsWith("."))
       .map((e) => ({ name: e.name, path: join(target, e.name), isDir: true }));
-    return { path: target, entries, parent: target === "/" ? null : dirname(target) };
+    return {
+      path: target,
+      entries,
+      parent: target === "/" ? null : dirname(target),
+    };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
 };
 
-export const fsDirectoriesCreateHandler: Handler<"fsDirectoriesCreate"> = ({ parentPath, folderName }) => {
+export const fsDirectoriesCreateHandler: Handler<"fsDirectoriesCreate"> = ({
+  parentPath,
+  folderName,
+}) => {
   try {
     const target = join(parentPath, folderName);
     mkdirSync(target, { recursive: false });
     return { success: true, path: target };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 };
 
@@ -264,17 +338,25 @@ export const fsDirectoriesCreateHandler: Handler<"fsDirectoriesCreate"> = ({ par
 // home / defaults / project trust
 // ---------------------------------------------------------------------------
 
-export const homeHandler: Handler<"home"> = () => ({ home: process.env.HOME ?? homedir() });
+export const homeHandler: Handler<"home"> = () => ({
+  home: process.env.HOME ?? homedir(),
+});
 
-export const defaultCwdHandler: Handler<"defaultCwd"> = () => ({ cwd: getOmpAgentDir() });
+export const defaultCwdHandler: Handler<"defaultCwd"> = () => ({
+  cwd: getOmpAgentDir(),
+});
 
-export const projectTrustGetHandler: Handler<"projectTrustGet"> = ({ cwd }) => ({
+export const projectTrustGetHandler: Handler<"projectTrustGet"> = ({
+  cwd,
+}) => ({
   trusted: true,
   cwd,
   projectRoot: cwd,
 });
 
-export const projectTrustSetHandler: Handler<"projectTrustSet"> = () => ({ trusted: true });
+export const projectTrustSetHandler: Handler<"projectTrustSet"> = () => ({
+  trusted: true,
+});
 
 // ---------------------------------------------------------------------------
 // worktrees (stubs — not embedded)

@@ -21,7 +21,10 @@ export async function POST(
   }
   const removal = await removeStoredCredentialIfType(provider, "oauth");
   if (removal.status === "type_mismatch") {
-    return Response.json({ error: `${provider} is authenticated with an API key, not OAuth` }, { status: 409 });
+    return Response.json(
+      { error: `${provider} is authenticated with an API key, not OAuth` },
+      { status: 409 }
+    );
   }
   invalidateModelsCache();
   return Response.json({ ok: true });

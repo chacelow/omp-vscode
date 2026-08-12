@@ -74,14 +74,10 @@ omp-web 按 project root 分组会话，所以 main checkout 和 linked worktree
 
 ## 常见问题
 
-**为什么我看不到 worktree 切换器？**
-请确认当前选择的是 Git 仓库根目录。非 Git 目录和仓库子目录会显示一行轻提示，而不是切换器。
+**为什么我看不到 worktree 切换器？** 请确认当前选择的是 Git 仓库根目录。非 Git 目录和仓库子目录会显示一行轻提示，而不是切换器。
 
-**为什么某个 branch 不能创建 worktree？**
-Git 不允许同一个 branch 同时被多个 worktree checkout。你可以切到已有的 worktree，或者先删除那个 checkout。
+**为什么某个 branch 不能创建 worktree？** Git 不允许同一个 branch 同时被多个 worktree checkout。你可以切到已有的 worktree，或者先删除那个 checkout。
 
-**Git 里还有已经消失的 worktree 记录怎么办？**
-Git 有时会保留 prunable worktree 记录。Pi Web 会过滤这些记录，不在切换器里显示。
+**Git 里还有已经消失的 worktree 记录怎么办？** Git 有时会保留 prunable worktree 记录。Pi Web 会过滤这些记录，不在切换器里显示。
 
-**Explorer 和当前聊天看起来不在同一个分支？**
-Explorer 跟随当前选择的 worktree；聊天跟随打开的会话。重新点击会话，可以把侧边栏切回这个会话所在的 checkout。
+**Explorer 和当前聊天看起来不在同一个分支？** Explorer 跟随当前选择的 worktree；聊天跟随打开的会话。重新点击会话，可以把侧边栏切回这个会话所在的 checkout。

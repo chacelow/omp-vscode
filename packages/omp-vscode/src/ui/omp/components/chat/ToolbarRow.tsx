@@ -20,7 +20,10 @@ import type { ChatFooterStats } from "./ChatFooterBar";
 // Owns its dropdown state (tool preset, mobile controls menu).
 
 const TOOL_PRESETS = ["off", "default", "full"] as const;
-const TOOL_PRESET_MAP: Record<"off" | "default" | "full", "none" | "default" | "full"> = { off: "none", default: "default", full: "full" };
+const TOOL_PRESET_MAP: Record<
+  "off" | "default" | "full",
+  "none" | "default" | "full"
+> = { off: "none", default: "default", full: "full" };
 
 interface ToolbarRowProps {
   isStreaming: boolean;
@@ -30,7 +33,11 @@ interface ToolbarRowProps {
   role: RoleSelectorProps;
   model: ModelSelectorProps;
   attach?: { count: number; onAttach: () => void };
-  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
+  contextUsage?: {
+    percent: number | null;
+    contextWindow: number;
+    tokens: number | null;
+  } | null;
   stats?: ChatFooterStats | null;
   toolPreset?: "none" | "default" | "full";
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
@@ -40,24 +47,39 @@ interface ToolbarRowProps {
 }
 
 export const ToolbarRow = memo(function ToolbarRow({
-  isStreaming, t, role, model, attach, contextUsage, stats,
-  toolPreset, onToolPresetChange,
-  canSend, onSend, onAbort,
+  isStreaming,
+  t,
+  role,
+  model,
+  attach,
+  contextUsage,
+  stats,
+  toolPreset,
+  onToolPresetChange,
+  canSend,
+  onSend,
+  onAbort,
   visible = true,
 }: ToolbarRowProps) {
   const [toolOpen, setToolOpen] = useState(false);
 
-  const details: ContextRingDetails | null = stats ? {
-    input: stats.input,
-    output: stats.output,
-    cacheRead: stats.cacheRead,
-    cacheWrite: stats.cacheWrite,
-    cost: stats.cost ?? null,
-  } : null;
+  const details: ContextRingDetails | null = stats
+    ? {
+        input: stats.input,
+        output: stats.output,
+        cacheRead: stats.cacheRead,
+        cacheWrite: stats.cacheWrite,
+        cost: stats.cost ?? null,
+      }
+    : null;
 
-  const toolPresetLabel = Object.entries(TOOL_PRESET_MAP).find(([, v]) => v === (toolPreset ?? "default"))?.[0] ?? "default";
+  const toolPresetLabel =
+    Object.entries(TOOL_PRESET_MAP).find(
+      ([, v]) => v === (toolPreset ?? "default")
+    )?.[0] ?? "default";
 
-  const iconBtn = "h-6 rounded-[9px] px-2 text-[13px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
+  const iconBtn =
+    "h-6 rounded-[9px] px-2 text-[13px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
   return (
     <AnimatePresence initial={false}>
@@ -71,86 +93,112 @@ export const ToolbarRow = memo(function ToolbarRow({
           className="overflow-hidden"
         >
           <div className="mt-2 flex items-center gap-2">
-      {/* LEFT: role + model */}
-      <div className="flex min-w-0 items-center gap-1.5">
-        <RoleSelector {...role} />
-        <ModelSelector {...model} />
-      </div>
+            {/* LEFT: role + model */}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <RoleSelector {...role} />
+              <ModelSelector {...model} />
+            </div>
 
-      {/* spacer */}
-      <div className="flex-1" />
+            {/* spacer */}
+            <div className="flex-1" />
 
-      {/* RIGHT: tools + send */}
-      <div className="relative flex shrink-0 items-center justify-end gap-1.5 ml-auto">
-        <div className="flex items-center gap-1.5">
-          {!isStreaming && onToolPresetChange && (
-            <DropdownMenu open={toolOpen} onOpenChange={setToolOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={isStreaming}
-                  variant="ghost"
-                  size="sm"
-                  title={`${t("chat.changeToolPreset")}: ${toolPresetLabel}`}
-                  aria-label={t("chat.changeToolPreset")}
-                  className={`${iconBtn} gap-1.5 data-[state=open]:bg-[var(--toolbar-hover)]`}
-                >
-                  <Wrench size={11} className="shrink-0" />
-                  <span className="whitespace-nowrap">{toolPresetLabel}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="end" className="min-w-[140px] p-1">
-                {TOOL_PRESETS.map((lvl) => {
-                  const preset = TOOL_PRESET_MAP[lvl];
-                  const isActive = (toolPreset ?? "default") === preset;
-                  const desc = lvl === "off" ? t("chat.noTools") : lvl === "default" ? t("chat.builtInTools", { count: 4 }) : t("chat.allBuiltInTools");
-                  return (
-                    <DropdownMenuItem
-                      key={lvl}
-                      onSelect={() => { if (!isActive) onToolPresetChange(preset); }}
-                      className={`gap-2 text-xs ${isActive ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] focus:bg-[var(--bg-selected)]" : "text-[var(--text-muted)]"}`}
+            {/* RIGHT: tools + send */}
+            <div className="relative ml-auto flex shrink-0 items-center justify-end gap-1.5">
+              <div className="flex items-center gap-1.5">
+                {!isStreaming && onToolPresetChange && (
+                  <DropdownMenu open={toolOpen} onOpenChange={setToolOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        disabled={isStreaming}
+                        variant="ghost"
+                        size="sm"
+                        title={`${t("chat.changeToolPreset")}: ${toolPresetLabel}`}
+                        aria-label={t("chat.changeToolPreset")}
+                        className={`${iconBtn} gap-1.5 data-[state=open]:bg-[var(--toolbar-hover)]`}
+                      >
+                        <Wrench size={11} className="shrink-0" />
+                        <span className="whitespace-nowrap">
+                          {toolPresetLabel}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="top"
+                      align="end"
+                      className="min-w-[140px] p-1"
                     >
-                      {isActive
-                        ? <Check size={10} strokeWidth={2} className="shrink-0 text-[var(--accent)]" />
-                        : <span className="w-2.5 shrink-0" />}
-                      <span className="flex-1">{lvl}</span>
-                      <span className="ml-2 text-[11px] text-[var(--text-dim)]">{desc}</span>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                      {TOOL_PRESETS.map((lvl) => {
+                        const preset = TOOL_PRESET_MAP[lvl];
+                        const isActive = (toolPreset ?? "default") === preset;
+                        const desc =
+                          lvl === "off"
+                            ? t("chat.noTools")
+                            : lvl === "default"
+                              ? t("chat.builtInTools", { count: 4 })
+                              : t("chat.allBuiltInTools");
+                        return (
+                          <DropdownMenuItem
+                            key={lvl}
+                            onSelect={() => {
+                              if (!isActive) onToolPresetChange(preset);
+                            }}
+                            className={`gap-2 text-xs ${isActive ? "bg-[var(--bg-selected)] font-semibold text-[var(--text)] focus:bg-[var(--bg-selected)]" : "text-[var(--text-muted)]"}`}
+                          >
+                            {isActive ? (
+                              <Check
+                                size={10}
+                                strokeWidth={2}
+                                className="shrink-0 text-[var(--accent)]"
+                              />
+                            ) : (
+                              <span className="w-2.5 shrink-0" />
+                            )}
+                            <span className="flex-1">{lvl}</span>
+                            <span className="ml-2 text-[11px] text-[var(--text-dim)]">
+                              {desc}
+                            </span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
-          {contextUsage && (
-            <ContextRing
-              percent={contextUsage.percent}
-              contextWindow={contextUsage.contextWindow}
-              tokens={contextUsage.tokens}
-              details={details}
-            />
-          )}
-          {attach && (
-            <Button
-              onClick={attach.onAttach}
-              disabled={isStreaming}
-              variant="ghost"
-              size="sm"
-              title={t("chat.attachImage")}
-              className={cn("h-6 w-6 shrink-0 rounded-[9px] p-0", attach.count ? "text-[var(--accent)] hover:text-[var(--accent)]" : "text-[var(--text-muted)]")}
-            >
-              <ImagePlus size={15} strokeWidth={1.8} />
-            </Button>
-          )}
-        </div>
+                {contextUsage && (
+                  <ContextRing
+                    percent={contextUsage.percent}
+                    contextWindow={contextUsage.contextWindow}
+                    tokens={contextUsage.tokens}
+                    details={details}
+                  />
+                )}
+                {attach && (
+                  <Button
+                    onClick={attach.onAttach}
+                    disabled={isStreaming}
+                    variant="ghost"
+                    size="sm"
+                    title={t("chat.attachImage")}
+                    className={cn(
+                      "h-6 w-6 shrink-0 rounded-[9px] p-0",
+                      attach.count
+                        ? "text-[var(--accent)] hover:text-[var(--accent)]"
+                        : "text-[var(--text-muted)]"
+                    )}
+                  >
+                    <ImagePlus size={15} strokeWidth={1.8} />
+                  </Button>
+                )}
+              </div>
 
-        <SendButton
-          isStreaming={isStreaming}
-          canSend={canSend}
-          onSend={onSend}
-          onAbort={onAbort}
-        />
-        </div>
-      </div>
+              <SendButton
+                isStreaming={isStreaming}
+                canSend={canSend}
+                onSend={onSend}
+                onAbort={onAbort}
+              />
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

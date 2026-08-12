@@ -1,10 +1,5 @@
 export type GitFileStatusKind =
-  | "modified"
-  | "added"
-  | "deleted"
-  | "renamed"
-  | "untracked"
-  | "conflict";
+  "modified" | "added" | "deleted" | "renamed" | "untracked" | "conflict";
 
 export interface GitFileStatus {
   filePath: string;

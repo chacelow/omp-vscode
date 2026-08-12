@@ -26,7 +26,8 @@ export function getFileDirectory(filePath: string): string {
   const lastSlash = normalized.lastIndexOf("/");
   if (lastSlash < 0) return "";
   if (lastSlash === 0) return "/";
-  if (lastSlash === 2 && /^[a-zA-Z]:\//.test(normalized)) return normalized.slice(0, 3);
+  if (lastSlash === 2 && /^[a-zA-Z]:\//.test(normalized))
+    return normalized.slice(0, 3);
   return normalized.slice(0, lastSlash);
 }
 
@@ -45,9 +46,11 @@ export function joinFilePath(parent: string, child: string): string {
   return `${normalizeFilePathSlashes(parent).replace(/\/$/, "")}/${child}`;
 }
 
-
 export function getOmpAgentDir(): string {
-  const dir = process.env.OMP_CODING_AGENT_DIR || process.env.PI_CODING_AGENT_DIR || join(homedir(), ".omp", "agent");
+  const dir =
+    process.env.OMP_CODING_AGENT_DIR ||
+    process.env.PI_CODING_AGENT_DIR ||
+    join(homedir(), ".omp", "agent");
   if (!process.env.OMP_CODING_AGENT_DIR) {
     process.env.OMP_CODING_AGENT_DIR = dir;
   }

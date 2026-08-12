@@ -50,7 +50,9 @@ export function normalizeDisplayMath(markdown: string): string {
     const rawCodeOpen = line.match(/<(code|pre|script|style)\b/i);
     if (rawCodeOpen) {
       const tag = rawCodeOpen[1].toLowerCase();
-      const remainder = line.slice((rawCodeOpen.index ?? 0) + rawCodeOpen[0].length);
+      const remainder = line.slice(
+        (rawCodeOpen.index ?? 0) + rawCodeOpen[0].length
+      );
       if (!new RegExp(`</${tag}\\s*>`, "i").test(remainder)) rawCodeTag = tag;
       inlineCodeMarkerSize = 0;
       normalized.push(line);
@@ -69,11 +71,17 @@ export function normalizeDisplayMath(markdown: string): string {
       continue;
     }
 
-    const bracketDisplayOneLine = line.match(/^([ ]{0,3})\\\[[ \t]*(.+?)[ \t]*\\\][ \t]*$/);
+    const bracketDisplayOneLine = line.match(
+      /^([ ]{0,3})\\\[[ \t]*(.+?)[ \t]*\\\][ \t]*$/
+    );
     if (bracketDisplayOneLine) {
       const math = bracketDisplayOneLine[2].trim();
       if (math) {
-        normalized.push(`${bracketDisplayOneLine[1]}$$`, math, `${bracketDisplayOneLine[1]}$$`);
+        normalized.push(
+          `${bracketDisplayOneLine[1]}$$`,
+          math,
+          `${bracketDisplayOneLine[1]}$$`
+        );
         continue;
       }
     }
@@ -85,7 +93,7 @@ export function normalizeDisplayMath(markdown: string): string {
         normalized.push(
           `${bracketDisplayStart[1]}$$`,
           ...lines.slice(index + 1, closingIndex),
-          `${bracketDisplayStart[1]}$$`,
+          `${bracketDisplayStart[1]}$$`
         );
         index = closingIndex;
         continue;
@@ -96,7 +104,11 @@ export function normalizeDisplayMath(markdown: string): string {
     if (displayMathMatch) {
       const math = displayMathMatch[2].trim();
       if (math) {
-        normalized.push(`${displayMathMatch[1]}$$`, math, `${displayMathMatch[1]}$$`);
+        normalized.push(
+          `${displayMathMatch[1]}$$`,
+          math,
+          `${displayMathMatch[1]}$$`
+        );
         continue;
       }
     }
@@ -125,7 +137,10 @@ function findBracketDisplayClose(lines: string[], startIndex: number): number {
   return -1;
 }
 
-function updateInlineCodeMarker(line: string, initialMarkerSize: number): number {
+function updateInlineCodeMarker(
+  line: string,
+  initialMarkerSize: number
+): number {
   let markerSize = initialMarkerSize;
   for (let cursor = 0; cursor < line.length;) {
     if (line[cursor] !== "`") {
@@ -156,12 +171,16 @@ function normalizeInlineLatexMath(line: string): string {
 
   return line.replace(
     /(?<!\\)\\\(([^`\r\n$]+?)(?<!\\)\\\)/g,
-    (match, math: string) => (math.trim() ? `$${math}$` : match),
+    (match, math: string) => (math.trim() ? `$${math}$` : match)
   );
 }
 
-export const markdownRemarkPlugins: ReactMarkdownOptions["remarkPlugins"] = [remarkGfm, remarkMath];
-export const markdownPreviewRemarkPlugins: ReactMarkdownOptions["remarkPlugins"] = [remarkGfm, remarkMath];
+export const markdownRemarkPlugins: ReactMarkdownOptions["remarkPlugins"] = [
+  remarkGfm,
+  remarkMath,
+];
+export const markdownPreviewRemarkPlugins: ReactMarkdownOptions["remarkPlugins"] =
+  [remarkGfm, remarkMath];
 
 export const markdownRehypePlugins: ReactMarkdownOptions["rehypePlugins"] = [
   rehypeRaw,
@@ -169,8 +188,9 @@ export const markdownRehypePlugins: ReactMarkdownOptions["rehypePlugins"] = [
   [rehypeKatex, { throwOnError: false, strict: false }],
 ];
 
-export const markdownPreviewRehypePlugins: ReactMarkdownOptions["rehypePlugins"] = [
-  rehypeRaw,
-  [rehypeSanitize, markdownSanitizeSchema],
-  [rehypeKatex, { throwOnError: false, strict: false }],
-];
+export const markdownPreviewRehypePlugins: ReactMarkdownOptions["rehypePlugins"] =
+  [
+    rehypeRaw,
+    [rehypeSanitize, markdownSanitizeSchema],
+    [rehypeKatex, { throwOnError: false, strict: false }],
+  ];

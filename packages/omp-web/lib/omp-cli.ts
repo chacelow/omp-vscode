@@ -19,9 +19,15 @@ export function getOmpCliVersion(): string {
   try {
     const pkg = JSON.parse(
       readFileSync(
-        join(process.cwd(), "node_modules", "@oh-my-pi", "pi-coding-agent", "package.json"),
-        "utf8",
-      ),
+        join(
+          process.cwd(),
+          "node_modules",
+          "@oh-my-pi",
+          "pi-coding-agent",
+          "package.json"
+        ),
+        "utf8"
+      )
     ) as { version?: string };
     versionCache = typeof pkg.version === "string" ? pkg.version : "";
   } catch {

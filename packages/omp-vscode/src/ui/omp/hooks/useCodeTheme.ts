@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { vs, vscDarkPlus, oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import {
+  vs,
+  vscDarkPlus,
+  oneDark,
+} from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { useTheme } from "./useTheme";
 
 export type CodeTheme = "auto" | "vs" | "vscDarkPlus" | "oneDark";
@@ -21,7 +25,12 @@ function getSnapshot(): CodeTheme {
   if (typeof document === "undefined") return "auto";
   try {
     const val = localStorage.getItem(STORAGE_KEY);
-    if (val === "vs" || val === "vscDarkPlus" || val === "oneDark" || val === "auto") {
+    if (
+      val === "vs" ||
+      val === "vscDarkPlus" ||
+      val === "oneDark" ||
+      val === "auto"
+    ) {
       return val;
     }
   } catch {
@@ -44,7 +53,11 @@ export function setCodeThemeStorage(next: CodeTheme) {
 }
 
 export function useCodeTheme() {
-  const codeTheme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const codeTheme = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot
+  );
   const { isDark } = useTheme();
 
   const setCodeTheme = useCallback((next: CodeTheme) => {
@@ -52,7 +65,9 @@ export function useCodeTheme() {
   }, []);
 
   let codeStyle = isDark ? vscDarkPlus : vs;
-  let codeThemeName: "vs" | "vscDarkPlus" | "oneDark" = isDark ? "vscDarkPlus" : "vs";
+  let codeThemeName: "vs" | "vscDarkPlus" | "oneDark" = isDark
+    ? "vscDarkPlus"
+    : "vs";
 
   if (codeTheme === "vs") {
     codeStyle = vs;
@@ -66,7 +81,9 @@ export function useCodeTheme() {
   }
 
   // Derive background color for syntax container
-  const styleBg = codeStyle['pre[class*="language-"]']?.background || codeStyle['code[class*="language-"]']?.background;
+  const styleBg =
+    codeStyle['pre[class*="language-"]']?.background ||
+    codeStyle['code[class*="language-"]']?.background;
 
   return {
     codeTheme,

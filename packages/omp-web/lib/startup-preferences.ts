@@ -22,7 +22,7 @@ export interface EffectiveStartupPreferences {
 export async function persistExplicitStartupPreferences(
   settingsManager: SettingsManager,
   explicit: ExplicitStartupPreferences,
-  effective: EffectiveStartupPreferences,
+  effective: EffectiveStartupPreferences
 ): Promise<{ modelDefaultChanged: boolean }> {
   if (!explicit.model && !explicit.thinkingLevel) {
     return { modelDefaultChanged: false };
@@ -31,21 +31,21 @@ export async function persistExplicitStartupPreferences(
   let modelDefaultChanged = false;
 
   if (
-    explicit.model
-    && effective.model
-    && explicit.model.provider === effective.model.provider
-    && explicit.model.modelId === effective.model.modelId
+    explicit.model &&
+    effective.model &&
+    explicit.model.provider === effective.model.provider &&
+    explicit.model.modelId === effective.model.modelId
   ) {
     settingsManager.setDefaultModelAndProvider(
       effective.model.provider,
-      effective.model.modelId,
+      effective.model.modelId
     );
     modelDefaultChanged = true;
   }
 
   if (
-    explicit.thinkingLevel
-    && (effective.supportsThinking || effective.thinkingLevel !== "off")
+    explicit.thinkingLevel &&
+    (effective.supportsThinking || effective.thinkingLevel !== "off")
   ) {
     settingsManager.setDefaultThinkingLevel(effective.thinkingLevel);
   }

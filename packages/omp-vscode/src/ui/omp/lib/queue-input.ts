@@ -1,7 +1,8 @@
 const QUEUE_PREFIXES: readonly string[] = ["->", "=>"];
 /** Prefix matcher shared by queue-list parsing and editor highlighting. */
 export const QUEUE_LIST_MARKER_RE = /^(\s*)(\d+|[A-Za-z]+)([.)])(?=\s|$)/;
-const CANONICAL_ROMAN_RE = /^(?=[MDCLXVI])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/i;
+const CANONICAL_ROMAN_RE =
+  /^(?=[MDCLXVI])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/i;
 
 interface EnumeratedItem {
   line: number;
@@ -23,12 +24,22 @@ export function parseQueueShorthand(text: string): string | undefined {
   return prefix ? text.slice(prefix.length).trim() : undefined;
 }
 
-function parseEnumeratedItem(line: string, lineIndex: number): EnumeratedItem | undefined {
+function parseEnumeratedItem(
+  line: string,
+  lineIndex: number
+): EnumeratedItem | undefined {
   const match = QUEUE_LIST_MARKER_RE.exec(line);
   if (!match) return undefined;
   const [matched, indent, marker, punctuation] = match;
-  if (indent === undefined || marker === undefined || punctuation === undefined) return undefined;
-  return { line: lineIndex, indent, marker, punctuation, content: line.slice(matched.length).trimStart() };
+  if (indent === undefined || marker === undefined || punctuation === undefined)
+    return undefined;
+  return {
+    line: lineIndex,
+    indent,
+    marker,
+    punctuation,
+    content: line.slice(matched.length).trimStart(),
+  };
 }
 
 function decodeDecimal(marker: string): number | undefined {
@@ -39,7 +50,15 @@ function decodeDecimal(marker: string): number | undefined {
 
 function decodeRoman(marker: string): number | undefined {
   if (!CANONICAL_ROMAN_RE.test(marker)) return undefined;
-  const values: Readonly<Record<string, number>> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  const values: Readonly<Record<string, number>> = {
+    I: 1,
+    V: 5,
+    X: 10,
+    L: 50,
+    C: 100,
+    D: 500,
+    M: 1000,
+  };
   const upper = marker.toUpperCase();
   let value = 0;
   for (let index = 0; index < upper.length; index += 1) {
@@ -61,7 +80,10 @@ function decodeAlpha(marker: string): number | undefined {
   return value;
 }
 
-function isSequential(markers: readonly string[], decode: (marker: string) => number | undefined): boolean {
+function isSequential(
+  markers: readonly string[],
+  decode: (marker: string) => number | undefined
+): boolean {
   let previous = decode(markers[0] ?? "");
   if (previous === undefined) return false;
   for (let index = 1; index < markers.length; index += 1) {
@@ -74,9 +96,16 @@ function isSequential(markers: readonly string[], decode: (marker: string) => nu
 
 function isEnumeratedSequence(items: readonly EnumeratedItem[]): boolean {
   const markers = items.map((item) => item.marker);
-  if (markers.every((marker) => /^\d+$/.test(marker))) return isSequential(markers, decodeDecimal);
-  if (!markers.every((marker) => marker === marker.toUpperCase()) && !markers.every((marker) => marker === marker.toLowerCase())) return false;
-  return isSequential(markers, decodeRoman) || isSequential(markers, decodeAlpha);
+  if (markers.every((marker) => /^\d+$/.test(marker)))
+    return isSequential(markers, decodeDecimal);
+  if (
+    !markers.every((marker) => marker === marker.toUpperCase()) &&
+    !markers.every((marker) => marker === marker.toLowerCase())
+  )
+    return false;
+  return (
+    isSequential(markers, decodeRoman) || isSequential(markers, decodeAlpha)
+  );
 }
 
 function parseEnumeratedList(text: string): EnumeratedList | undefined {
@@ -90,7 +119,12 @@ function parseEnumeratedList(text: string): EnumeratedList | undefined {
     const item = parseEnumeratedItem(lines[lineIndex] ?? "", lineIndex);
     if (item?.indent === first.indent) items.push(item);
   }
-  if (items.length < 2 || items.some((item) => item.punctuation !== first.punctuation) || !isEnumeratedSequence(items)) return undefined;
+  if (
+    items.length < 2 ||
+    items.some((item) => item.punctuation !== first.punctuation) ||
+    !isEnumeratedSequence(items)
+  )
+    return undefined;
   return { source, lines, items };
 }
 
@@ -108,8 +142,12 @@ export function splitQueuedMessages(text: string): string[] {
   }
   const messages = list.items.map((item, index) => {
     const nextLine = list.items[index + 1]?.line ?? list.lines.length;
-    return [item.content, ...list.lines.slice(item.line + 1, nextLine)].join("\n").trim();
+    return [item.content, ...list.lines.slice(item.line + 1, nextLine)]
+      .join("\n")
+      .trim();
   });
   while (messages.at(-1) === "") messages.pop();
-  return messages.length > 0 && messages.every(Boolean) ? messages : [list.source];
+  return messages.length > 0 && messages.every(Boolean)
+    ? messages
+    : [list.source];
 }

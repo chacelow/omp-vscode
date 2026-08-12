@@ -66,7 +66,8 @@ export const enLocale: LocalePlugin = {
     "files.noneOpen": "No file open",
     "layout.resizeSidebar": "Resize sidebar",
     "layout.resizeFilePanel": "Resize file panel",
-    "layout.resizeHint": "Drag to resize. Double-click or press Enter to reset.",
+    "layout.resizeHint":
+      "Drag to resize. Double-click or press Enter to reset.",
     "sidebar.new": "New",
     "sidebar.newSessionTitle": "New session in {path}",
     "sidebar.refresh": "Refresh",
@@ -90,9 +91,11 @@ export const enLocale: LocalePlugin = {
     "sidebar.open": "Open",
     "sidebar.cancel": "Cancel",
     "sidebar.openRepoRoot": "Open repo root",
-    "sidebar.openRepoRootTitle": "Open the repository root to manage worktrees.",
+    "sidebar.openRepoRootTitle":
+      "Open the repository root to manage worktrees.",
     "sidebar.gitRepoRootOnly": "Git repo root only",
-    "sidebar.gitRepoRootOnlyTitle": "Worktrees are available in Git repository roots.",
+    "sidebar.gitRepoRootOnlyTitle":
+      "Worktrees are available in Git repository roots.",
     "sidebar.worktrees": "Worktrees...",
     "sidebar.checkingWorktrees": "Checking worktrees for this directory.",
     "sidebar.filterWorktrees": "Filter worktrees…",
@@ -100,7 +103,8 @@ export const enLocale: LocalePlugin = {
     "sidebar.switchWorktree": "Switch worktree",
     "sidebar.switchWorktreeTitle": "Switch worktree: {path}",
     "sidebar.main": "main",
-    "sidebar.forceRemoveCheckout": "Uncommitted changes. Force remove checkout?",
+    "sidebar.forceRemoveCheckout":
+      "Uncommitted changes. Force remove checkout?",
     "sidebar.force": "Force",
     "sidebar.createWorktreeTitle": "Create a worktree checkout for a branch",
     "sidebar.newWorktree": "New worktree…",
@@ -119,12 +123,14 @@ export const enLocale: LocalePlugin = {
     "sidebar.deleteSession": "Delete {title}?",
     "sidebar.rename": "Rename",
     "sidebar.delete": "Delete",
-    "sidebar.deleteWithShiftClick": "Delete (Shift+click to delete without confirmation)",
+    "sidebar.deleteWithShiftClick":
+      "Delete (Shift+click to delete without confirmation)",
     "sidebar.expandForks": "Expand forks",
     "sidebar.collapseForks": "Collapse forks",
     "sidebar.messagesCount": "{count} msgs",
     "sidebar.worktreePath": "Worktree: {path}",
-    "sidebar.removeWorktreeTitle": "Remove worktree checkout {path}; the branch is kept",
+    "sidebar.removeWorktreeTitle":
+      "Remove worktree checkout {path}; the branch is kept",
     "files.modified": "Modified",
     "files.added": "Added",
     "files.deleted": "Deleted",
@@ -144,7 +150,8 @@ export const enLocale: LocalePlugin = {
     "files.noFiles": "No files found",
     "files.explorer": "Explorer",
     "files.changedCount": "{count} files",
-    "files.changeStats": "{count} changed files, {additions} lines added, {deletions} lines deleted",
+    "files.changeStats":
+      "{count} changed files, {additions} lines added, {deletions} lines deleted",
     "files.conflictSummary": "{count} file{countSuffix} already exist: {files}",
     "files.cannotReplace": "Cannot replace: {files}",
     "files.replace": "Replace",
@@ -177,7 +184,8 @@ export const enLocale: LocalePlugin = {
     "chat.close": "Close",
     "chat.queued": "Queued · {count}",
     "chat.recall": "Recall to input",
-    "chat.recallTitle": "Remove all queued messages and put them back into the input box for editing",
+    "chat.recallTitle":
+      "Remove all queued messages and put them back into the input box for editing",
     "chat.retrying": "Retrying ({attempt}/{max})…",
     "chat.loadingCommands": "Loading commands...",
     "chat.slashCommands": "Slash commands · {label}",
@@ -287,10 +295,14 @@ export const enLocale: LocalePlugin = {
     "trust.trusting": "Trusting...",
     "trust.cancel": "Cancel",
     "trust.dialogTitle": "Trust this project?",
-    "trust.dialogBody": "Project resources can run local code. Trust only projects whose contents you know.",
-    "trust.skillsNotLoaded": "Project skills are not loaded because this project is not trusted.",
-    "trust.pluginsNotLoaded": "Project plugins are not loaded because this project is not trusted.",
-    "trust.projectScopeUnavailable": "Project installs are unavailable while project resources are not loaded.",
+    "trust.dialogBody":
+      "Project resources can run local code. Trust only projects whose contents you know.",
+    "trust.skillsNotLoaded":
+      "Project skills are not loaded because this project is not trusted.",
+    "trust.pluginsNotLoaded":
+      "Project plugins are not loaded because this project is not trusted.",
+    "trust.projectScopeUnavailable":
+      "Project installs are unavailable while project resources are not loaded.",
     "i18n.creatingSession": "Creating new session…",
     "i18n.creating": "Creating…",
     "i18n.subscription": "Subscription",
@@ -414,12 +426,14 @@ export const enLocale: LocalePlugin = {
     "i18n.editFromHere": "Edit from here",
     "i18n.editFromHereTitle": "Edit from here — branches within this session",
     "i18n.newSession": "New session",
-    "i18n.newSessionTitle": "New session — creates an independent copy from here",
+    "i18n.newSessionTitle":
+      "New session — creates an independent copy from here",
     "i18n.estimatedTokens": "Estimated token count while streaming",
     "i18n.noOutput": "(no output)",
     "i18n.noSummary": "(no summary)",
     "i18n.conversationCompacted": "Conversation compacted",
-    "i18n.compactionDescription": "The conversation history before this point was compacted into the following summary:",
+    "i18n.compactionDescription":
+      "The conversation history before this point was compacted into the following summary:",
     "i18n.fileContext": "File context: {details}",
     "i18n.readFiles": "Read files",
     "i18n.modifiedFiles": "Modified files",

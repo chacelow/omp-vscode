@@ -68,8 +68,14 @@ test("flattens supported models.dev metadata and prices", () => {
 });
 
 test("ranks exact model IDs and provider hints first", () => {
-  assert.equal(searchModelCatalog(catalog, "gpt-5", "openai")[0].providerId, "openai");
-  assert.equal(searchModelCatalog(catalog, "openai/gpt-5", "openrouter")[0].providerId, "openrouter");
+  assert.equal(
+    searchModelCatalog(catalog, "gpt-5", "openai")[0].providerId,
+    "openai"
+  );
+  assert.equal(
+    searchModelCatalog(catalog, "openai/gpt-5", "openrouter")[0].providerId,
+    "openrouter"
+  );
 });
 
 test("prefers an exact Pi provider match", () => {
@@ -77,7 +83,7 @@ test("prefers an exact Pi provider match", () => {
     catalog,
     "openai/gpt-5",
     "openrouter",
-    "https://proxy.example.com/v1",
+    "https://proxy.example.com/v1"
   );
   assert.equal(recommendation.metadataMethod, "provider");
   assert.equal(recommendation.matchedProviderId, "openrouter");
@@ -97,7 +103,7 @@ test("matches canonical and catalog Base URLs by hostname", () => {
     catalog,
     "openai/gpt-5",
     "custom-provider",
-    "https://api.openai.com/v1",
+    "https://api.openai.com/v1"
   );
   assert.equal(openai.metadataMethod, "base-url");
   assert.equal(openai.matchedProviderId, "openai");
@@ -109,7 +115,7 @@ test("matches canonical and catalog Base URLs by hostname", () => {
     catalog,
     "openai/gpt-5",
     "custom-provider",
-    "https://api.openrouter.ai/api/v1",
+    "https://api.openrouter.ai/api/v1"
   );
   assert.equal(openrouter.matchedProviderId, "openrouter");
   assert.equal(openrouter.price.status, "reliable");
@@ -119,7 +125,7 @@ test("matches canonical and catalog Base URLs by hostname", () => {
     catalog,
     "openai/gpt-5",
     "custom-provider",
-    "https://openrouter.ai.example.com/v1",
+    "https://openrouter.ai.example.com/v1"
   );
   assert.equal(lookalike.metadataMethod, "consensus");
 });
@@ -175,7 +181,12 @@ test("uses stable metadata and price consensus with cache modes", () => {
       },
     },
   });
-  const recommendation = recommendModelCatalogPreset(consensusCatalog, "shared", "custom", "");
+  const recommendation = recommendModelCatalogPreset(
+    consensusCatalog,
+    "shared",
+    "custom",
+    ""
+  );
   assert.equal(recommendation.metadataMethod, "consensus");
   assert.deepEqual(recommendation.preset, {
     name: "Shared Model",
@@ -201,7 +212,12 @@ test("refuses tied or single-record fallback prices", () => {
     c: { models: { model: { id: "model", cost: { input: 3, output: 4 } } } },
     d: { models: { model: { id: "model", cost: { input: 3, output: 4 } } } },
   });
-  const conflict = recommendModelCatalogPreset(conflictCatalog, "model", "custom", "");
+  const conflict = recommendModelCatalogPreset(
+    conflictCatalog,
+    "model",
+    "custom",
+    ""
+  );
   assert.deepEqual(conflict.price, {
     status: "unreliable",
     reason: "conflict",
@@ -212,11 +228,13 @@ test("refuses tied or single-record fallback prices", () => {
 
   const single = recommendModelCatalogPreset(
     flattenModelsDevCatalog({
-      only: { models: { model: { id: "model", cost: { input: 1, output: 2 } } } },
+      only: {
+        models: { model: { id: "model", cost: { input: 1, output: 2 } } },
+      },
     }),
     "model",
     "custom",
-    "",
+    ""
   );
   assert.equal(single.price.status, "unreliable");
   assert.equal(single.price.reason, "insufficient-support");

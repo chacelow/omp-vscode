@@ -45,8 +45,7 @@ OMP_WEB_NO_OPEN=1 omp-web         # 适用于后台服务或开机自启
 
 设置 `PI_WEB_PASSWORD` 后，网页和所有 API 端点都会启用 HTTP Basic Auth，用户名固定为 `pi`。未设置或设置为空值时不启用认证。
 
-Pi Web 可以调用高权限智能体。Basic Auth 不会加密传输中的密码，因此不要把明文 HTTP 暴露到互联网。远程访问时应使用可信反向代理提供 HTTPS，或通过可信 VPN 访问。
-API 请求仅接受 loopback 名称、IP 字面量、当前监听主机名，以及 `PI_WEB_ALLOWED_HOSTS` 中以逗号分隔的精确主机名。可信反向代理使用不同的外部主机名时，请配置该变量。
+Pi Web 可以调用高权限智能体。Basic Auth 不会加密传输中的密码，因此不要把明文 HTTP 暴露到互联网。远程访问时应使用可信反向代理提供 HTTPS，或通过可信 VPN 访问。API 请求仅接受 loopback 名称、IP 字面量、当前监听主机名，以及 `PI_WEB_ALLOWED_HOSTS` 中以逗号分隔的精确主机名。可信反向代理使用不同的外部主机名时，请配置该变量。
 
 ## HTTP 代理
 
@@ -97,7 +96,7 @@ npx omp-web@latest
 omp-web 直接 Fork 自 [pi-web](https://github.com/agegr/pi-web)，下表列出了针对 Oh My Pi (omp) 生态与用户体验所做的主要增强与改动：
 
 | 改动点 | 说明 |
-|---|---|
+| --- | --- |
 | 包名与二进制 | 改为 `omp-web`，原为 `pi-web` |
 | 代码语法主题选择器 | **新增** 独立代码块主题选择器，支持 **One Dark Pro** 等主流主题切换 |
 | OMP 数据库与角色适配 | **新增** 对 `~/.omp/agent/` 下 `models.db`、`config.yml` 角色模型及 SQLite API Key 的读取与映射 |
@@ -107,6 +106,7 @@ omp-web 直接 Fork 自 [pi-web](https://github.com/agegr/pi-web)，下表列出
 | 默认端口 | 30141（与 omp 开发约定一致） |
 
 其余内容——会话读取、AgentSession 生命周期、SSE 流式传输、Fork/分支逻辑、文件访问、worktree 管理——均继承自 pi-web，详见 [AGENTS.md](./AGENTS.md)。
+
 ## 开发
 
 ```bash

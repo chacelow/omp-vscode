@@ -1,4 +1,4 @@
 /* Webview CSS entry: katex + omp-web globals (Tailwind v4).
    Compiled by @tailwindcss/cli into dist/webview.css. */
-@import "../../node_modules/katex/dist/katex.min.css";
-@import "./omp/globals.css";
+@import url("../../node_modules/katex/dist/katex.min.css");
+@import url("./omp/globals.css");

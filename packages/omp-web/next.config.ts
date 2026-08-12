@@ -2,12 +2,21 @@ import type { NextConfig } from "next";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const { version } = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as { version: string };
+const { version } = JSON.parse(
+  readFileSync(join(__dirname, "package.json"), "utf8")
+) as { version: string };
 let piVersion = "unknown";
 try {
-  const piPkgPath = join(__dirname, "node_modules/@earendil-works/pi-coding-agent/package.json");
-  piVersion = (JSON.parse(readFileSync(piPkgPath, "utf8")) as { version: string }).version;
-} catch { /* package not found, use default */ }
+  const piPkgPath = join(
+    __dirname,
+    "node_modules/@earendil-works/pi-coding-agent/package.json"
+  );
+  piVersion = (
+    JSON.parse(readFileSync(piPkgPath, "utf8")) as { version: string }
+  ).version;
+} catch {
+  /* package not found, use default */
+}
 
 const nextConfig: NextConfig = {
   serverExternalPackages: [
@@ -18,13 +27,16 @@ const nextConfig: NextConfig = {
     "@earendil-works/pi-ai",
     "@earendil-works/pi-tui",
   ],
-  allowedDevOrigins: ['192.168.*.*'],
+  allowedDevOrigins: ["192.168.*.*"],
   async headers() {
     return [
       {
         source: "/",
         headers: [
-          { key: "Cache-Control", value: "private, no-cache, max-age=0, must-revalidate" },
+          {
+            key: "Cache-Control",
+            value: "private, no-cache, max-age=0, must-revalidate",
+          },
         ],
       },
       {

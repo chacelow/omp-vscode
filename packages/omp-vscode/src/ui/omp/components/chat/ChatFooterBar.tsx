@@ -1,6 +1,17 @@
 import { memo, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDownRight, ArrowUpRight, Clock, Database, Gauge, GitBranch, Shrink, Square, Volume2, VolumeX } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Clock,
+  Database,
+  Gauge,
+  GitBranch,
+  Shrink,
+  Square,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { hostCall } from "../../../bridge";
@@ -64,16 +75,25 @@ export const ChatFooterBar = memo(function ChatFooterBar({
     }
     let active = true;
     void hostCall("cwdGitBranch", { cwd })
-      .then((data) => { if (active) setBranch(data.branch); })
-      .catch(() => { if (active) setBranch(null); });
-    return () => { active = false; };
+      .then((data) => {
+        if (active) setBranch(data.branch);
+      })
+      .catch(() => {
+        if (active) setBranch(null);
+      });
+    return () => {
+      active = false;
+    };
   }, [cwd]);
   return (
-    <div className="chat-footer-bar flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden whitespace-nowrap px-4 pb-1 text-[11px] text-[var(--text-muted)]">
+    <div className="chat-footer-bar flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden px-4 pb-1 text-[11px] whitespace-nowrap text-[var(--text-muted)]">
       {/* LEFT: compact + sound */}
       <div className="chat-footer-actions flex shrink-0 items-center gap-1">
         {branch && (
-          <span className="chat-footer-branch flex max-w-48 items-center gap-1 truncate px-1.5 font-mono text-[10px] text-[var(--text-dim)]" title={branch}>
+          <span
+            className="chat-footer-branch flex max-w-48 items-center gap-1 truncate px-1.5 font-mono text-[10px] text-[var(--text-dim)]"
+            title={branch}
+          >
             <GitBranch size={10} className="shrink-0" strokeWidth={1.8} />
             <span className="truncate">{branch}</span>
           </span>
@@ -84,13 +104,20 @@ export const ChatFooterBar = memo(function ChatFooterBar({
             disabled={isStreaming && !isCompacting}
             variant="ghost"
             size="sm"
-            title={isCompacting ? t("chat.stopCompaction") : t("chat.compactContext")}
+            title={
+              isCompacting ? t("chat.stopCompaction") : t("chat.compactContext")
+            }
             className={cn(
               "h-5 w-5 rounded-[6px] p-0 text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)]",
-              isCompacting && "bg-[#ef4444]/8 text-[var(--destructive)] hover:bg-[#ef4444]/15",
+              isCompacting &&
+                "bg-[#ef4444]/8 text-[var(--destructive)] hover:bg-[#ef4444]/15"
             )}
           >
-            {isCompacting ? <Square size={9} fill="currentColor" /> : <Shrink size={11} className="shrink-0" />}
+            {isCompacting ? (
+              <Square size={9} fill="currentColor" />
+            ) : (
+              <Shrink size={11} className="shrink-0" />
+            )}
           </Button>
         )}
         {onSoundToggle !== undefined && (
@@ -98,22 +125,37 @@ export const ChatFooterBar = memo(function ChatFooterBar({
             onClick={onSoundToggle}
             variant="ghost"
             size="sm"
-            title={soundEnabled ? t("chat.disableSound") : t("chat.enableSound")}
-            className={cn("h-5 w-5 rounded-[6px] p-0 hover:bg-[var(--toolbar-hover)]", soundEnabled ? "text-[var(--text-muted)]" : "opacity-50")}
+            title={
+              soundEnabled ? t("chat.disableSound") : t("chat.enableSound")
+            }
+            className={cn(
+              "h-5 w-5 rounded-[6px] p-0 hover:bg-[var(--toolbar-hover)]",
+              soundEnabled ? "text-[var(--text-muted)]" : "opacity-50"
+            )}
           >
             {soundEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
           </Button>
         )}
-        {onBranchFrom && <Button type="button" onClick={onBranchFrom} variant="ghost" size="sm" className="h-5 rounded-[6px] px-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)]">Branch from…</Button>}
-      </div>
-        {activeModes && activeModes.length > 0 && (
-          <span
-            className="chat-footer-modes max-w-48 shrink truncate rounded-full border border-[var(--border)] px-1.5 py-0.5 font-medium text-[10px] text-[var(--text-muted)]"
-            title={`Active modes: ${activeModes.join(", ")}`}
+        {onBranchFrom && (
+          <Button
+            type="button"
+            onClick={onBranchFrom}
+            variant="ghost"
+            size="sm"
+            className="h-5 rounded-[6px] px-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--toolbar-hover)]"
           >
-            {activeModes.join(" · ")}
-          </span>
+            Branch from…
+          </Button>
         )}
+      </div>
+      {activeModes && activeModes.length > 0 && (
+        <span
+          className="chat-footer-modes max-w-48 shrink truncate rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-muted)]"
+          title={`Active modes: ${activeModes.join(", ")}`}
+        >
+          {activeModes.join(" · ")}
+        </span>
+      )}
       {fastMode && (
         <Button
           type="button"
@@ -137,16 +179,21 @@ export const ChatFooterBar = memo(function ChatFooterBar({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 2 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="flex min-w-0 flex-nowrap items-center justify-end gap-3 overflow-hidden whitespace-nowrap font-mono text-[10px] text-[var(--text-dim)] tabular-nums"
+              className="flex min-w-0 flex-nowrap items-center justify-end gap-3 overflow-hidden font-mono text-[10px] whitespace-nowrap text-[var(--text-dim)] tabular-nums"
             >
-              {hoveredMeta.input !== undefined && hoveredMeta.output !== undefined && (
-                <span className="chat-footer-usage flex shrink-0 items-center gap-1">
-                  <ArrowUpRight size={10} strokeWidth={1.8} />
-                  {hoveredMeta.input.toLocaleString()} in
-                  <ArrowDownRight size={10} strokeWidth={1.8} className="ml-1" />
-                  {hoveredMeta.output.toLocaleString()} out
-                </span>
-              )}
+              {hoveredMeta.input !== undefined &&
+                hoveredMeta.output !== undefined && (
+                  <span className="chat-footer-usage flex shrink-0 items-center gap-1">
+                    <ArrowUpRight size={10} strokeWidth={1.8} />
+                    {hoveredMeta.input.toLocaleString()} in
+                    <ArrowDownRight
+                      size={10}
+                      strokeWidth={1.8}
+                      className="ml-1"
+                    />
+                    {hoveredMeta.output.toLocaleString()} out
+                  </span>
+                )}
               {hoveredMeta.cacheRead ? (
                 <span className="chat-footer-cache flex shrink-0 items-center gap-1">
                   <Database size={10} strokeWidth={1.8} />
@@ -171,7 +218,16 @@ export const ChatFooterBar = memo(function ChatFooterBar({
         {!hoveredMeta && tps !== null && tps !== undefined && (
           <span
             className="chat-footer-throughput shrink-0 font-mono tabular-nums"
-            style={{ color: tps >= 50 ? "#53b3cb" : tps >= 30 ? "#9bc53d" : tps >= 15 ? "#f9c22e" : "#e01a4f" }}
+            style={{
+              color:
+                tps >= 50
+                  ? "#53b3cb"
+                  : tps >= 30
+                    ? "#9bc53d"
+                    : tps >= 15
+                      ? "#f9c22e"
+                      : "#e01a4f",
+            }}
           >
             <Gauge size={10} className="mr-1 inline-block align-[-1px]" />
             {Math.round(tps).toLocaleString()} tok/s

@@ -52,7 +52,11 @@ const HEADING_STYLE: CSSProperties = {
   letterSpacing: 0.6,
 };
 
-export function TuiRowList({ items, activeId, onSelect }: TuiRowListProps): JSX.Element {
+export function TuiRowList({
+  items,
+  activeId,
+  onSelect,
+}: TuiRowListProps): JSX.Element {
   const activeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -60,10 +64,18 @@ export function TuiRowList({ items, activeId, onSelect }: TuiRowListProps): JSX.
   }, [activeId]);
 
   return (
-    <div role="listbox" aria-label="Settings" style={{ display: "flex", flexDirection: "column", padding: "4px 0" }}>
+    <div
+      role="listbox"
+      aria-label="Settings"
+      style={{ display: "flex", flexDirection: "column", padding: "4px 0" }}
+    >
       {items.map((item) => {
         if (item.kind === "heading") {
-          return <div key={item.id} style={HEADING_STYLE}>{item.label}</div>;
+          return (
+            <div key={item.id} style={HEADING_STYLE}>
+              {item.label}
+            </div>
+          );
         }
         const isActive = item.id === activeId;
         return (
@@ -79,24 +91,57 @@ export function TuiRowList({ items, activeId, onSelect }: TuiRowListProps): JSX.
               }}
               style={{
                 ...ROW_STYLE,
-                background: isActive ? "var(--bg-selected, rgba(255,255,255,0.05))" : "transparent",
+                background: isActive
+                  ? "var(--bg-selected, rgba(255,255,255,0.05))"
+                  : "transparent",
                 borderLeftColor: isActive ? "var(--accent)" : "transparent",
                 opacity: item.disabled ? 0.55 : 1,
               }}
               onMouseEnter={(event) => {
                 if (item.disabled || isActive) return;
-                (event.currentTarget as HTMLDivElement).style.background = "var(--bg-panel)";
+                (event.currentTarget as HTMLDivElement).style.background =
+                  "var(--bg-panel)";
               }}
               onMouseLeave={(event) => {
                 if (isActive) return;
-                (event.currentTarget as HTMLDivElement).style.background = "transparent";
+                (event.currentTarget as HTMLDivElement).style.background =
+                  "transparent";
               }}
             >
-              <div style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</div>
-              <div style={{ color: "var(--text-muted)", fontSize: 12, fontFamily: "var(--vscode-editor-font-family, ui-monospace)", flexShrink: 0, maxWidth: "50%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.value}</div>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.label}
+              </div>
+              <div
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: 12,
+                  fontFamily: "var(--vscode-editor-font-family, ui-monospace)",
+                  flexShrink: 0,
+                  maxWidth: "50%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.value}
+              </div>
             </div>
             {isActive && item.detail ? (
-              <div style={{ padding: "6px 16px 12px 30px", background: "var(--bg-panel)", borderLeft: "2px solid var(--accent)" }}>
+              <div
+                style={{
+                  padding: "6px 16px 12px 30px",
+                  background: "var(--bg-panel)",
+                  borderLeft: "2px solid var(--accent)",
+                }}
+              >
                 {item.detail}
               </div>
             ) : null}

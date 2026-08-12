@@ -38,7 +38,9 @@ test("compares a global lock version with the remote Git tree", async () => {
       seen.push(url);
       return jsonResponse({
         sha: "root-hash",
-        tree: [{ type: "tree", path: "skills/example-skill", sha: "current-hash" }],
+        tree: [
+          { type: "tree", path: "skills/example-skill", sha: "current-hash" },
+        ],
       });
     },
   });
@@ -48,10 +50,13 @@ test("compares a global lock version with the remote Git tree", async () => {
   assert.match(seen[0], /repos\/owner\/repo\/git\/trees\/HEAD/);
 
   const available = await checkSkillUpdate(install(), {
-    fetcher: async () => jsonResponse({
-      sha: "root-hash",
-      tree: [{ type: "tree", path: "skills/example-skill", sha: "next-hash" }],
-    }),
+    fetcher: async () =>
+      jsonResponse({
+        sha: "root-hash",
+        tree: [
+          { type: "tree", path: "skills/example-skill", sha: "next-hash" },
+        ],
+      }),
   });
   assert.equal(available.state, "update-available");
   assert.equal(available.currentVersion, "current-hash");
@@ -80,7 +85,7 @@ test("compares a project lock version with the skills.sh snapshot", async () => 
   assert.equal(result.state, "up-to-date");
   assert.equal(
     requestedUrl,
-    "https://skills.test/api/download/owner/repo/example-skill",
+    "https://skills.test/api/download/owner/repo/example-skill"
   );
 });
 
@@ -88,7 +93,12 @@ test("returns unsupported without making a remote request", async () => {
   let called = false;
   const result = await checkSkillUpdate(
     install({ canCheckForUpdates: false, versionHash: undefined }),
-    { fetcher: async () => { called = true; return jsonResponse({}); } },
+    {
+      fetcher: async () => {
+        called = true;
+        return jsonResponse({});
+      },
+    }
   );
 
   assert.equal(result.state, "unsupported");
@@ -157,26 +167,32 @@ test("builds Pi-only update commands for each scope", () => {
 
 test("reuses one remote request for skills from the same GitHub source", async () => {
   let requests = 0;
-  const results = await checkSkillUpdates([
-    install(),
-    install({
-      package: "owner/repo@another-skill",
-      skillPath: "skills/another-skill/SKILL.md",
-      versionHash: "another-hash",
-    }),
-  ], {
-    fetcher: async () => {
-      requests++;
-      return jsonResponse({
-        sha: "root-hash",
-        tree: [
-          { type: "tree", path: "skills/example-skill", sha: "current-hash" },
-          { type: "tree", path: "skills/another-skill", sha: "another-hash" },
-        ],
-      });
-    },
-  });
+  const results = await checkSkillUpdates(
+    [
+      install(),
+      install({
+        package: "owner/repo@another-skill",
+        skillPath: "skills/another-skill/SKILL.md",
+        versionHash: "another-hash",
+      }),
+    ],
+    {
+      fetcher: async () => {
+        requests++;
+        return jsonResponse({
+          sha: "root-hash",
+          tree: [
+            { type: "tree", path: "skills/example-skill", sha: "current-hash" },
+            { type: "tree", path: "skills/another-skill", sha: "another-hash" },
+          ],
+        });
+      },
+    }
+  );
 
   assert.equal(requests, 1);
-  assert.deepEqual(results.map((item) => item.state), ["up-to-date", "up-to-date"]);
+  assert.deepEqual(
+    results.map((item) => item.state),
+    ["up-to-date", "up-to-date"]
+  );
 });

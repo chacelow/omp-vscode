@@ -5,7 +5,16 @@
 // branch via navigate-leaf (same file, no new session).
 import { useEffect, useRef, useState } from "react";
 import { Tree, TreeItem, TreeItemLabel } from "@/components/reui/tree";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { hotkeysCoreFeature, syncDataLoaderFeature } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
 import { Bot, CornerDownRight, User, Wrench } from "lucide-react";
@@ -25,26 +34,37 @@ interface NodeData {
 function entryText(entry?: SessionEntry): string {
   if (!entry) return "";
   if (!("message" in entry) || !entry.message) return "";
-  const blocks = "content" in entry.message && Array.isArray(entry.message.content)
-    ? entry.message.content as Array<{ type?: string; text?: string }>
-    : [];
+  const blocks =
+    "content" in entry.message && Array.isArray(entry.message.content)
+      ? (entry.message.content as Array<{ type?: string; text?: string }>)
+      : [];
   const text = blocks.find((c) => c.type === "text" && c.text)?.text ?? "";
   return text.replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
 function entryRole(entry?: SessionEntry): string {
-  return entry && "message" in entry && entry.message ? entry.message.role : "entry";
+  return entry && "message" in entry && entry.message
+    ? entry.message.role
+    : "entry";
 }
 
 function roleIcon(role: string) {
-  if (role === "user") return <User size={11} className="shrink-0 text-[var(--text-dim)]" />;
-  if (role === "assistant") return <Bot size={11} className="shrink-0 text-[var(--accent)]" />;
+  if (role === "user")
+    return <User size={11} className="shrink-0 text-[var(--text-dim)]" />;
+  if (role === "assistant")
+    return <Bot size={11} className="shrink-0 text-[var(--accent)]" />;
   return <Wrench size={11} className="shrink-0 text-[var(--text-dim)]" />;
 }
 
 function buildTreeData(tree: SessionTreeNode[], activeIds: Set<string>) {
   const items: Record<string, NodeData & { children?: string[] }> = {
-    [ROOT_ID]: { name: "Session", role: "root", isActive: false, hasBranch: false, children: [] },
+    [ROOT_ID]: {
+      name: "Session",
+      role: "root",
+      isActive: false,
+      hasBranch: false,
+      children: [],
+    },
   };
   const walk = (node: SessionTreeNode, displayParentId: string): void => {
     const nodeId = node.entry?.id;
@@ -62,7 +82,8 @@ function buildTreeData(tree: SessionTreeNode[], activeIds: Set<string>) {
       walk(node.children[0], displayParentId);
       return;
     }
-    for (const child of node.children) walk(child, hasBranch ? nodeId : displayParentId);
+    for (const child of node.children)
+      walk(child, hasBranch ? nodeId : displayParentId);
   };
   for (const node of tree) walk(node, ROOT_ID);
   return items;
@@ -84,7 +105,9 @@ export function SessionTreeNodes({
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(false);
   useEffect(() => {
-    const frame = requestAnimationFrame(() => latestRef.current?.scrollIntoView({ block: "end" }));
+    const frame = requestAnimationFrame(() =>
+      latestRef.current?.scrollIntoView({ block: "end" })
+    );
     return () => cancelAnimationFrame(frame);
   }, [tree]);
   const treeApi = useTree<NodeData>({
@@ -92,7 +115,9 @@ export function SessionTreeNodes({
     indent: INDENT,
     rootItemId: ROOT_ID,
     getItemName: (item) => item.getItemData().name,
-    isItemFolder: (item) => (item.getItemData() as { children?: string[] })?.children?.length !== undefined,
+    isItemFolder: (item) =>
+      (item.getItemData() as { children?: string[] })?.children?.length !==
+      undefined,
     dataLoader: {
       getItem: (itemId) => items[itemId],
       getChildren: (itemId) => items[itemId].children ?? [],
@@ -102,76 +127,115 @@ export function SessionTreeNodes({
   return (
     <>
       <div>
-      <Tree
-        className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
-        indent={INDENT}
-        tree={treeApi}
-      >
-        {treeApi.getItems().map((item) => {
-          const id = item.getId();
-          const data = item.getItemData();
-          if (id === ROOT_ID) return null;
-          let visible = true;
-          let parent = item.getParent();
-          while (parent) {
-            if (parent.getId() !== ROOT_ID && !parent.isExpanded()) {
-              visible = false;
-              break;
+        <Tree
+          className="relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
+          indent={INDENT}
+          tree={treeApi}
+        >
+          {treeApi.getItems().map((item) => {
+            const id = item.getId();
+            const data = item.getItemData();
+            if (id === ROOT_ID) return null;
+            let visible = true;
+            let parent = item.getParent();
+            while (parent) {
+              if (parent.getId() !== ROOT_ID && !parent.isExpanded()) {
+                visible = false;
+                break;
+              }
+              parent = parent.getParent();
             }
-            parent = parent.getParent();
-          }
-          if (!visible) return null;
-          return (
-            <TreeItem key={id} item={item}>
-              <TreeItemLabel
-                className={cn(
-                  "flex w-full min-w-0 items-center gap-1.5 rounded-[7px] px-2 py-1 text-left text-xs",
-                  data.isActive
-                    ? "bg-[var(--bg-selected)] text-[var(--text)]"
-                    : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]",
-                )}
-              >
-                {roleIcon(data.role)}
-                <span className="min-w-0 flex-1 truncate">{data.name}</span>
-                {data.hasBranch && <span className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[4px] py-[1px] text-[9px] leading-none whitespace-nowrap text-[var(--text-dim)]">branch</span>}
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => { event.preventDefault(); event.stopPropagation(); setPendingResumeId(id); }}
-                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); setPendingResumeId(id); } }}
-                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-                ><CornerDownRight size={11} />Resume</span>
-              </TreeItemLabel>
-            </TreeItem>
-          );
-        })}
-        <div ref={latestRef} />
-      </Tree>
+            if (!visible) return null;
+            return (
+              <TreeItem key={id} item={item}>
+                <TreeItemLabel
+                  className={cn(
+                    "flex w-full min-w-0 items-center gap-1.5 rounded-[7px] px-2 py-1 text-left text-xs",
+                    data.isActive
+                      ? "bg-[var(--bg-selected)] text-[var(--text)]"
+                      : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+                  )}
+                >
+                  {roleIcon(data.role)}
+                  <span className="min-w-0 flex-1 truncate">{data.name}</span>
+                  {data.hasBranch && (
+                    <span className="shrink-0 rounded-[4px] border border-[var(--border)] bg-[var(--bg-hover)] px-[4px] py-[1px] text-[9px] leading-none whitespace-nowrap text-[var(--text-dim)]">
+                      branch
+                    </span>
+                  )}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setPendingResumeId(id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setPendingResumeId(id);
+                      }
+                    }}
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-dim)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+                  >
+                    <CornerDownRight size={11} />
+                    Resume
+                  </span>
+                </TreeItemLabel>
+              </TreeItem>
+            );
+          })}
+          <div ref={latestRef} />
+        </Tree>
       </div>
-      <AlertDialog open={pendingResumeId !== null} onOpenChange={(open) => { if (!open && !resuming) { setPendingResumeId(null); setResumeError(null); } }}>
+      <AlertDialog
+        open={pendingResumeId !== null}
+        onOpenChange={(open) => {
+          if (!open && !resuming) {
+            setPendingResumeId(null);
+            setResumeError(null);
+          }
+        }}
+      >
         <AlertDialogContent className="border-[var(--border)] bg-[var(--bg)] text-[var(--text)]">
           <AlertDialogHeader>
             <AlertDialogTitle>Resume from this message?</AlertDialogTitle>
             <AlertDialogDescription className="text-[var(--text-muted)]">
-              The current conversation remains intact. OMP restarts at this message; the next send creates a new branch. The composer stays locked until the new RPC event stream and saved session context are both loaded.
+              The current conversation remains intact. OMP restarts at this
+              message; the next send creates a new branch. The composer stays
+              locked until the new RPC event stream and saved session context
+              are both loaded.
             </AlertDialogDescription>
-            {resumeError && <p className="text-sm text-[var(--destructive)]">{resumeError}</p>}
+            {resumeError && (
+              <p className="text-sm text-[var(--destructive)]">{resumeError}</p>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={resuming}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={resuming} onClick={async () => {
-              if (!pendingResumeId) return;
-              setResuming(true);
-              setResumeError(null);
-              try {
-                await onSelect(pendingResumeId);
-                setPendingResumeId(null);
-              } catch (error) {
-                setResumeError(error instanceof Error ? error.message : "Unable to resume this message.");
-              } finally {
-                setResuming(false);
-              }
-            }}>{resuming ? "Resuming…" : "Resume here"}</AlertDialogAction>
+            <AlertDialogAction
+              disabled={resuming}
+              onClick={async () => {
+                if (!pendingResumeId) return;
+                setResuming(true);
+                setResumeError(null);
+                try {
+                  await onSelect(pendingResumeId);
+                  setPendingResumeId(null);
+                } catch (error) {
+                  setResumeError(
+                    error instanceof Error
+                      ? error.message
+                      : "Unable to resume this message."
+                  );
+                } finally {
+                  setResuming(false);
+                }
+              }}
+            >
+              {resuming ? "Resuming…" : "Resume here"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

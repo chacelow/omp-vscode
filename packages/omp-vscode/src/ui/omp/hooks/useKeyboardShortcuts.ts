@@ -40,7 +40,7 @@ interface UseGlobalKeyboardShortcutsOptions {
  * state that is local to that component.
  */
 export function useGlobalKeyboardShortcuts(
-  options: UseGlobalKeyboardShortcutsOptions,
+  options: UseGlobalKeyboardShortcutsOptions
 ): void {
   const { onNewSession, activeCwd } = options;
 

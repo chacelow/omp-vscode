@@ -13,12 +13,18 @@ test("lists directories and directory symlinks without returning files", async (
   try {
     await mkdir(path.join(root, "project"));
     await writeFile(path.join(root, "notes.txt"), "test", "utf8");
-    await symlink(path.join(root, "project"), path.join(root, "linked-project"));
+    await symlink(
+      path.join(root, "project"),
+      path.join(root, "linked-project")
+    );
 
     const { listDirectories } = await loadSubject();
     const directories = await listDirectories(root);
 
-    assert.deepEqual(directories.map((entry) => entry.name), ["linked-project", "project"]);
+    assert.deepEqual(
+      directories.map((entry) => entry.name),
+      ["linked-project", "project"]
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -37,8 +43,13 @@ test("expands home-relative paths and rejects missing directories", async () => 
   assert.equal(shouldShowWindowsDrivePicker(undefined, "darwin"), false);
   assert.equal(shouldShowWindowsDrivePicker(undefined, "linux"), false);
   assert.equal(shouldShowWindowsDrivePicker("C:\\Projects", "win32"), false);
-  assert.equal(normalizeDirectory("~/project"), path.join(homedir(), "project"));
-  await assert.rejects(resolveDirectory(path.join(tmpdir(), `pi-web-missing-${Date.now()}`)));
+  assert.equal(
+    normalizeDirectory("~/project"),
+    path.join(homedir(), "project")
+  );
+  await assert.rejects(
+    resolveDirectory(path.join(tmpdir(), `pi-web-missing-${Date.now()}`))
+  );
 });
 
 test("builds every Windows drive-letter candidate", async () => {
@@ -55,6 +66,9 @@ test("finds parent directories across POSIX and Windows paths", async () => {
 
   assert.equal(getParentDirectory("/Users/alex/project"), "/Users/alex");
   assert.equal(getParentDirectory("/"), null);
-  assert.equal(getParentDirectory("C:\\Users\\Alex\\project"), "C:\\Users\\Alex");
+  assert.equal(
+    getParentDirectory("C:\\Users\\Alex\\project"),
+    "C:\\Users\\Alex"
+  );
   assert.equal(getParentDirectory("C:\\"), null);
 });

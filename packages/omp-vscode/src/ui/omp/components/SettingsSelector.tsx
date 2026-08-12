@@ -107,7 +107,11 @@ function safeOptionKey(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, "_");
 }
 
-function translateOr(t: (key: string) => string, key: string, fallback: string): string {
+function translateOr(
+  t: (key: string) => string,
+  key: string,
+  fallback: string
+): string {
   const value = t(key);
   return value === key ? fallback : value;
 }
@@ -116,16 +120,26 @@ function translatedLabel(def: SettingDef, t: (key: string) => string): string {
   return translateOr(t, `settings.${def.path}.label`, def.label);
 }
 
-function translatedDescription(def: SettingDef, t: (key: string) => string): string {
+function translatedDescription(
+  def: SettingDef,
+  t: (key: string) => string
+): string {
   return translateOr(t, `settings.${def.path}.description`, def.description);
 }
 
-function translatedOption(def: SettingDef, option: SelectOption, t: (key: string) => string): SelectOption {
+function translatedOption(
+  def: SettingDef,
+  option: SelectOption,
+  t: (key: string) => string
+): SelectOption {
   const base = `settings.${def.path}.option.${safeOptionKey(option.value)}`;
   return {
     value: option.value,
     label: translateOr(t, `${base}.label`, option.label),
-    description: option.description !== undefined ? translateOr(t, `${base}.description`, option.description) : undefined,
+    description:
+      option.description !== undefined
+        ? translateOr(t, `${base}.description`, option.description)
+        : undefined,
   };
 }
 
@@ -328,7 +342,13 @@ function renderControl(
                     )
                   }
                 />
-                <span>{translateOr(t, `settings.${def.path}.option.${safeOptionKey(option.value)}.label`, option.label)}</span>
+                <span>
+                  {translateOr(
+                    t,
+                    `settings.${def.path}.option.${safeOptionKey(option.value)}.label`,
+                    option.label
+                  )}
+                </span>
               </label>
               {def.ordered && index >= 0 ? (
                 <>
@@ -382,8 +402,12 @@ function renderControl(
     );
   }
   const currentValue = value == null ? "" : String(value);
-  const translatedOptions = options.map((option) => translatedOption(def, option, t));
-  const selectedOption = translatedOptions.find((opt) => opt.value === currentValue);
+  const translatedOptions = options.map((option) =>
+    translatedOption(def, option, t)
+  );
+  const selectedOption = translatedOptions.find(
+    (opt) => opt.value === currentValue
+  );
   return (
     <div>
       <select
@@ -610,7 +634,20 @@ export function SettingsPanel({
           }}
         >
           {activeTab === "appearance" ? (
-            <div style={{ margin: "12px 0 0", padding: "8px 12px", border: "1px solid var(--vscode-inputValidation-warningBorder, var(--border))", borderRadius: 4, background: "var(--vscode-inputValidation-warningBackground, var(--bg-panel))", color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5 }}>
+            <div
+              style={{
+                margin: "12px 0 0",
+                padding: "8px 12px",
+                border:
+                  "1px solid var(--vscode-inputValidation-warningBorder, var(--border))",
+                borderRadius: 4,
+                background:
+                  "var(--vscode-inputValidation-warningBackground, var(--bg-panel))",
+                color: "var(--text-muted)",
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
               {t("settings.appearance.tuiNote")}
             </div>
           ) : null}

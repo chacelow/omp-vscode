@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
+import {
+  readdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "fs";
 import { dirname, join } from "path";
 import {
   resolveSessionPath,
@@ -22,9 +28,13 @@ const MAX_PROJECTED_TREE_DEPTH = 200;
  * without recursive traversal. Contracted entry IDs are attached to the next
  * visible node so the UI can still recognize an active leaf inside the chain.
  */
-function projectTreeForResponse<T extends { entry: { id: string }; children: T[]; compressedEntryIds?: string[] }>(
-  nodes: T[]
-): T[] {
+function projectTreeForResponse<
+  T extends {
+    entry: { id: string };
+    children: T[];
+    compressedEntryIds?: string[];
+  },
+>(nodes: T[]): T[] {
   const keep = new Set<T>();
   const roots = new Set(nodes);
   const seen = new Set<T>();
@@ -35,10 +45,7 @@ function projectTreeForResponse<T extends { entry: { id: string }; children: T[]
     if (seen.has(node)) continue;
     seen.add(node);
 
-    if (
-      roots.has(node) ||
-      node.children.length !== 1
-    ) {
+    if (roots.has(node) || node.children.length !== 1) {
       keep.add(node);
     }
 
@@ -106,7 +113,11 @@ function projectTreeForResponse<T extends { entry: { id: string }; children: T[]
 
       const projectedChild = cloneNode(child, compressedEntryIds);
       projected.children.push(projectedChild);
-      tasks.push({ source: child, projected: projectedChild, depth: depth + 1 });
+      tasks.push({
+        source: child,
+        projected: projectedChild,
+        depth: depth + 1,
+      });
     }
   }
 
@@ -131,31 +142,47 @@ export async function GET(
     const searchParams = new URL(req.url).searchParams;
     const deferThinking = searchParams.has("deferThinking");
     const deferToolResultImages = searchParams.has("deferMedia");
-    const context = buildSessionContext(entries, leafId, { deferThinking, deferToolResultImages });
+    const context = buildSessionContext(entries, leafId, {
+      deferThinking,
+      deferToolResultImages,
+    });
 
     const header = sm.getHeader();
     let modified = header?.timestamp ?? new Date().toISOString();
-    try { modified = statSync(filePath).mtime.toISOString(); } catch { /* use header timestamp */ }
+    try {
+      modified = statSync(filePath).mtime.toISOString();
+    } catch {
+      /* use header timestamp */
+    }
     const parentSessionId = header?.parentSession
       ? await resolveSessionIdByPath(header.parentSession)
       : undefined;
-    const info = header ? {
-      path: filePath,
-      id: header.id,
-      cwd: header.cwd ?? "",
-      name: sm.getSessionName(),
-      created: header.timestamp,
-      modified,
-      messageCount: context.messages.length,
-      firstMessage: context.messages.find((m) => m.role === "user")
-        ? (() => {
-            const msg = context.messages.find((m) => m.role === "user")!;
-            const c = (msg as { content: unknown }).content;
-            return typeof c === "string" ? c : (Array.isArray(c) ? (c.find((b: { type: string }) => b.type === "text") as { text: string } | undefined)?.text ?? "" : "") || "(no messages)";
-          })()
-        : "(no messages)",
-      parentSessionId,
-    } : null;
+    const info = header
+      ? {
+          path: filePath,
+          id: header.id,
+          cwd: header.cwd ?? "",
+          name: sm.getSessionName(),
+          created: header.timestamp,
+          modified,
+          messageCount: context.messages.length,
+          firstMessage: context.messages.find((m) => m.role === "user")
+            ? (() => {
+                const msg = context.messages.find((m) => m.role === "user")!;
+                const c = (msg as { content: unknown }).content;
+                return typeof c === "string"
+                  ? c
+                  : (Array.isArray(c)
+                      ? ((
+                          c.find((b: { type: string }) => b.type === "text") as
+                            { text: string } | undefined
+                        )?.text ?? "")
+                      : "") || "(no messages)";
+              })()
+            : "(no messages)",
+          parentSessionId,
+        }
+      : null;
 
     return NextResponse.json({
       sessionId: id,
@@ -177,7 +204,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const { name } = await req.json() as { name?: string };
+    const { name } = (await req.json()) as { name?: string };
     if (typeof name !== "string") {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
@@ -215,14 +242,19 @@ export async function DELETE(
     const dir = dirname(filePath);
     try {
       const files = readdirSync(dir).filter(
-        (file) => file.endsWith(".jsonl") && sessionPathKey(join(dir, file)) !== targetPathKey,
+        (file) =>
+          file.endsWith(".jsonl") &&
+          sessionPathKey(join(dir, file)) !== targetPathKey
       );
       for (const file of files) {
         const childPath = join(dir, file);
         try {
           const content = readFileSync(childPath, "utf8");
           const lines = content.split("\n");
-          const header = JSON.parse(lines[0]) as { type?: string; parentSession?: string };
+          const header = JSON.parse(lines[0]) as {
+            type?: string;
+            parentSession?: string;
+          };
           if (
             header.type === "session" &&
             header.parentSession &&
@@ -233,9 +265,13 @@ export async function DELETE(
             lines[0] = JSON.stringify(header);
             writeFileSync(childPath, lines.join("\n"));
           }
-        } catch { /* skip malformed */ }
+        } catch {
+          /* skip malformed */
+        }
       }
-    } catch { /* skip if dir unreadable */ }
+    } catch {
+      /* skip if dir unreadable */
+    }
 
     await getRpcSession(id)?.shutdown();
     unlinkSync(filePath);

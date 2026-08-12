@@ -28,23 +28,40 @@ function decodeJsonString(value: string): string {
   } catch {
     // The partial value has not closed its JSON string yet.
   }
-  return value.replace(/\\(?:u([\da-fA-F]{0,4})|(["\\/bfnrt]))?/g, (_match, unicode: string | undefined, escaped: string | undefined) => {
-    if (unicode !== undefined && unicode.length === 4) return String.fromCharCode(Number.parseInt(unicode, 16));
-    const escapes: Record<string, string> = { b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" };
-    return escaped === undefined ? "" : (escapes[escaped] ?? escaped);
-  });
+  return value.replace(
+    /\\(?:u([\da-fA-F]{0,4})|(["\\/bfnrt]))?/g,
+    (_match, unicode: string | undefined, escaped: string | undefined) => {
+      if (unicode !== undefined && unicode.length === 4)
+        return String.fromCharCode(Number.parseInt(unicode, 16));
+      const escapes: Record<string, string> = {
+        b: "\b",
+        f: "\f",
+        n: "\n",
+        r: "\r",
+        t: "\t",
+      };
+      return escaped === undefined ? "" : (escapes[escaped] ?? escaped);
+    }
+  );
 }
 
 function partialDisplayInput(prefix: string): Record<string, unknown> {
   const parsed: Record<string, unknown> = {};
   for (const key of REVEALED_KEYS) {
-    const match = new RegExp(`(?:^|[,{]\\s*)"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)`, "s").exec(prefix);
+    const match = new RegExp(
+      `(?:^|[,{]\\s*)"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)`,
+      "s"
+    ).exec(prefix);
     if (match?.[1] !== undefined) parsed[key] = decodeJsonString(match[1]);
   }
 
   try {
     const complete = JSON.parse(prefix);
-    if (typeof complete === "object" && complete !== null && !Array.isArray(complete)) {
+    if (
+      typeof complete === "object" &&
+      complete !== null &&
+      !Array.isArray(complete)
+    ) {
       for (const key of REVEALED_KEYS) {
         const value = complete[key];
         if (value !== undefined) parsed[key] = value;
@@ -58,7 +75,9 @@ function partialDisplayInput(prefix: string): Record<string, unknown> {
 }
 
 /** Paces raw streamed tool arguments and exposes safely decoded top-level preview fields. */
-export function useToolArgsReveal(rawInput: unknown): { displayInput: Record<string, unknown> } {
+export function useToolArgsReveal(rawInput: unknown): {
+  displayInput: Record<string, unknown>;
+} {
   const target = useMemo(() => rawInputText(rawInput), [rawInput]);
   const targetRef = useRef(target);
   const revealedRef = useRef(0);
@@ -86,8 +105,14 @@ export function useToolArgsReveal(rawInput: unknown): { displayInput: Record<str
         frameRef.current = null;
         return;
       }
-      const step = Math.max(MIN_STEP, Math.ceil((total - revealedRef.current) / CATCHUP_FRAMES));
-      revealedRef.current = clampSliceEnd(targetRef.current, Math.min(total, revealedRef.current + step));
+      const step = Math.max(
+        MIN_STEP,
+        Math.ceil((total - revealedRef.current) / CATCHUP_FRAMES)
+      );
+      revealedRef.current = clampSliceEnd(
+        targetRef.current,
+        Math.min(total, revealedRef.current + step)
+      );
       setRevealed(revealedRef.current);
       frameRef.current = requestAnimationFrame(tick);
     };
@@ -100,6 +125,9 @@ export function useToolArgsReveal(rawInput: unknown): { displayInput: Record<str
     };
   }, [target]);
 
-  const displayInput = useMemo(() => partialDisplayInput(target.slice(0, revealed)), [revealed, target]);
+  const displayInput = useMemo(
+    () => partialDisplayInput(target.slice(0, revealed)),
+    [revealed, target]
+  );
   return useMemo(() => ({ displayInput }), [displayInput]);
 }

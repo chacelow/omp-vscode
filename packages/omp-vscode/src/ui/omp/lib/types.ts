@@ -72,7 +72,8 @@ export interface ToolCallContent {
   locations?: ToolCallLocation[];
 }
 
-export type AssistantContentBlock = TextContent | ImageContent | ThinkingContent | ToolCallContent;
+export type AssistantContentBlock =
+  TextContent | ImageContent | ThinkingContent | ToolCallContent;
 
 export interface UserMessage {
   role: "user";
@@ -141,7 +142,12 @@ export interface BashExecutionMessage {
   timestamp?: number;
 }
 
-export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage | CustomMessage | BashExecutionMessage;
+export type AgentMessage =
+  | UserMessage
+  | AssistantMessage
+  | ToolResultMessage
+  | CustomMessage
+  | BashExecutionMessage;
 
 export type ExtensionUiRequest =
   | {

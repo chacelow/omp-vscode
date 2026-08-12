@@ -1,9 +1,8 @@
 import { isIP } from "node:net";
 
 function normalizeHostname(value: string): string {
-  const unbracketed = value.startsWith("[") && value.endsWith("]")
-    ? value.slice(1, -1)
-    : value;
+  const unbracketed =
+    value.startsWith("[") && value.endsWith("]") ? value.slice(1, -1) : value;
   return unbracketed.toLowerCase().replace(/\.$/, "");
 }
 
@@ -11,7 +10,13 @@ function hostnameFromAuthority(value: string): string | null {
   if (!value || /[\s/@\\]/.test(value)) return null;
   try {
     const parsed = new URL(`http://${value}`);
-    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    if (
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== "/" ||
+      parsed.search ||
+      parsed.hash
+    ) {
       return null;
     }
     return normalizeHostname(parsed.hostname);
@@ -23,7 +28,9 @@ function hostnameFromAuthority(value: string): string | null {
 function normalizeConfiguredHostname(value: string | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
-  return isIP(trimmed) ? normalizeHostname(trimmed) : hostnameFromAuthority(trimmed);
+  return isIP(trimmed)
+    ? normalizeHostname(trimmed)
+    : hostnameFromAuthority(trimmed);
 }
 
 function isLoopbackHostname(hostname: string): boolean {
@@ -53,16 +60,18 @@ function getRequestOrigin(request: Request): string | null {
 
 function isUserInitiatedSessionExportNavigation(request: Request): boolean {
   if (
-    request.method !== "GET"
-    || request.headers.get("sec-fetch-mode") !== "navigate"
-    || request.headers.get("sec-fetch-dest") !== "document"
-    || request.headers.get("sec-fetch-user") !== "?1"
+    request.method !== "GET" ||
+    request.headers.get("sec-fetch-mode") !== "navigate" ||
+    request.headers.get("sec-fetch-dest") !== "document" ||
+    request.headers.get("sec-fetch-user") !== "?1"
   ) {
     return false;
   }
 
   try {
-    return /^\/api\/sessions\/[^/]+\/export$/.test(new URL(request.url).pathname);
+    return /^\/api\/sessions\/[^/]+\/export$/.test(
+      new URL(request.url).pathname
+    );
   } catch {
     return false;
   }
@@ -75,7 +84,7 @@ function isUserInitiatedSessionExportNavigation(request: Request): boolean {
  */
 export function isApiRequestHostAllowed(
   request: Request,
-  configuredHostnames = configuredHostnamesFromEnvironment(),
+  configuredHostnames = configuredHostnamesFromEnvironment()
 ): boolean {
   const host = request.headers.get("host");
   const hostname = host ? hostnameFromAuthority(host) : null;
@@ -83,7 +92,7 @@ export function isApiRequestHostAllowed(
   if (isLoopbackHostname(hostname) || isIP(hostname)) return true;
 
   return configuredHostnames.some(
-    (configured) => normalizeConfiguredHostname(configured) === hostname,
+    (configured) => normalizeConfiguredHostname(configured) === hostname
   );
 }
 
@@ -104,15 +113,25 @@ export function shouldCheckApiRequestOrigin(request: Request): boolean {
 
 export function isApiRequestAllowed(
   request: Request,
-  configuredHostnames = configuredHostnamesFromEnvironment(),
+  configuredHostnames = configuredHostnamesFromEnvironment()
 ): boolean {
   if (!isApiRequestHostAllowed(request, configuredHostnames)) return false;
   if (isUserInitiatedSessionExportNavigation(request)) return true;
-  return !shouldCheckApiRequestOrigin(request) || isApiRequestOriginAllowed(request);
+  return (
+    !shouldCheckApiRequestOrigin(request) || isApiRequestOriginAllowed(request)
+  );
 }
 
 export function hasJsonContentType(request: Request): boolean {
-  const mediaType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-  return mediaType === "application/json"
-    || Boolean(mediaType?.startsWith("application/") && mediaType.endsWith("+json"));
+  const mediaType = request.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  return (
+    mediaType === "application/json" ||
+    Boolean(
+      mediaType?.startsWith("application/") && mediaType.endsWith("+json")
+    )
+  );
 }

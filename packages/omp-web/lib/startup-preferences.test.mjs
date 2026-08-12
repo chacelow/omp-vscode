@@ -6,8 +6,9 @@ import test from "node:test";
 import { SettingsManager } from "@earendil-works/pi-coding-agent";
 import { createJiti } from "jiti";
 
-const { persistExplicitStartupPreferences } = await createJiti(import.meta.url)
-  .import("./startup-preferences.ts");
+const { persistExplicitStartupPreferences } = await createJiti(
+  import.meta.url
+).import("./startup-preferences.ts");
 
 async function withSettings(run) {
   const root = await mkdtemp(join(tmpdir(), "pi-web-startup-preferences-"));
@@ -36,7 +37,7 @@ test("persists explicit effective model and thinking defaults", async () => {
         model: { provider: "deepseek", modelId: "deepseek-chat" },
         thinkingLevel: "high",
         supportsThinking: true,
-      },
+      }
     );
 
     const saved = JSON.parse(await readFile(settingsPath, "utf8"));
@@ -50,7 +51,7 @@ test("persists explicit effective model and thinking defaults", async () => {
         defaultProvider: "deepseek",
         defaultModel: "deepseek-chat",
         defaultThinkingLevel: "high",
-      },
+      }
     );
     assert.equal(result.modelDefaultChanged, true);
   });
@@ -69,7 +70,7 @@ test("does not persist implicit scope selections", async () => {
         model: { provider: "scoped", modelId: "scoped-model" },
         thinkingLevel: "high",
         supportsThinking: true,
-      },
+      }
     );
 
     assert.equal(settings.getDefaultProvider(), "saved");
@@ -88,7 +89,7 @@ test("does not persist a model when startup resolved a different model", async (
         model: { provider: "fallback", modelId: "fallback-model" },
         thinkingLevel: "off",
         supportsThinking: false,
-      },
+      }
     );
 
     assert.equal(settings.getDefaultProvider(), undefined);
@@ -105,7 +106,7 @@ test("does not replace a reasoning default with off for a non-thinking model", a
     await persistExplicitStartupPreferences(
       settings,
       { thinkingLevel: "off" },
-      { thinkingLevel: "off", supportsThinking: false },
+      { thinkingLevel: "off", supportsThinking: false }
     );
 
     assert.equal(settings.getDefaultThinkingLevel(), "high");

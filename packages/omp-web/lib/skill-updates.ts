@@ -3,14 +3,12 @@ import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { promisify } from "util";
-import type {
-  SkillInstallInfo,
-  SkillUpdateResult,
-} from "@/lib/api-types";
+import type { SkillInstallInfo, SkillUpdateResult } from "@/lib/api-types";
 
 const CHECK_TIMEOUT_MS = 15_000;
 const GIT_CHECK_TIMEOUT_MS = 30_000;
-const DEFAULT_SKILLS_API_BASE = process.env.SKILLS_API_URL || "https://skills.sh";
+const DEFAULT_SKILLS_API_BASE =
+  process.env.SKILLS_API_URL || "https://skills.sh";
 const execFileAsync = promisify(execFile);
 
 type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
@@ -44,7 +42,9 @@ class HttpError extends Error {
   }
 }
 
-export function skillUpdateKey(install: Pick<SkillInstallInfo, "scope" | "package">): string {
+export function skillUpdateKey(
+  install: Pick<SkillInstallInfo, "scope" | "package">
+): string {
   return `${install.scope}\0${install.package}`;
 }
 
@@ -83,7 +83,8 @@ function skillNameFromPackage(pkg: string): string {
 function skillFolder(skillPath: string): string {
   let folder = skillPath.replace(/\\/g, "/");
   if (folder.toLowerCase().endsWith("/skill.md")) folder = folder.slice(0, -9);
-  else if (folder.toLowerCase().endsWith("skill.md")) folder = folder.slice(0, -8);
+  else if (folder.toLowerCase().endsWith("skill.md"))
+    folder = folder.slice(0, -8);
   return folder.replace(/\/$/, "");
 }
 
@@ -91,7 +92,7 @@ function result(
   install: SkillInstallInfo,
   state: SkillUpdateResult["state"],
   latestVersion?: string,
-  message?: string,
+  message?: string
 ): SkillUpdateResult {
   return {
     package: install.package,
@@ -106,7 +107,7 @@ function result(
 async function fetchJson(
   url: string,
   fetcher: Fetcher,
-  headers?: HeadersInit,
+  headers?: HeadersInit
 ): Promise<unknown> {
   const response = await fetcher(url, {
     cache: "no-store",
@@ -127,20 +128,24 @@ async function resolveGitTreeHash(install: SkillInstallInfo): Promise<string> {
     await execFileAsync("git", ["init", "--bare", gitDir], {
       timeout: GIT_CHECK_TIMEOUT_MS,
     });
-    await execFileAsync("git", [
-      `--git-dir=${gitDir}`,
-      "fetch",
-      "--depth=1",
-      "--filter=blob:none",
-      "--no-tags",
-      repository,
-      ref,
-    ], { timeout: GIT_CHECK_TIMEOUT_MS });
+    await execFileAsync(
+      "git",
+      [
+        `--git-dir=${gitDir}`,
+        "fetch",
+        "--depth=1",
+        "--filter=blob:none",
+        "--no-tags",
+        repository,
+        ref,
+      ],
+      { timeout: GIT_CHECK_TIMEOUT_MS }
+    );
     const revision = folder ? `FETCH_HEAD:${folder}` : "FETCH_HEAD^{tree}";
     const { stdout } = await execFileAsync(
       "git",
       [`--git-dir=${gitDir}`, "rev-parse", revision],
-      { timeout: GIT_CHECK_TIMEOUT_MS },
+      { timeout: GIT_CHECK_TIMEOUT_MS }
     );
     const hash = stdout.trim();
     if (!/^[0-9a-f]{40}$/i.test(hash)) throw new Error("Invalid Git tree hash");
@@ -152,7 +157,8 @@ async function resolveGitTreeHash(install: SkillInstallInfo): Promise<string> {
 
 async function checkGlobalSkill(
   install: SkillInstallInfo,
-  options: Required<Pick<CheckOptions, "fetcher" | "resolveGitTreeHash">> & CheckOptions,
+  options: Required<Pick<CheckOptions, "fetcher" | "resolveGitTreeHash">> &
+    CheckOptions
 ): Promise<SkillUpdateResult> {
   const ref = install.ref || "HEAD";
   const url = `https://api.github.com/repos/${install.source}/git/trees/${encodeURIComponent(ref)}?recursive=1`;
@@ -160,40 +166,55 @@ async function checkGlobalSkill(
     Accept: "application/vnd.github.v3+json",
     "User-Agent": "omp-web",
   };
-  if (options.githubToken) headers.Authorization = `Bearer ${options.githubToken}`;
+  if (options.githubToken)
+    headers.Authorization = `Bearer ${options.githubToken}`;
   const folder = skillFolder(install.skillPath!);
   let latestVersion: string | undefined;
 
   try {
-    const raw = (await fetchJson(url, options.fetcher, headers)) as GitHubTreeResponse;
-    latestVersion = typeof raw.sha === "string" && !folder ? raw.sha : undefined;
+    const raw = (await fetchJson(
+      url,
+      options.fetcher,
+      headers
+    )) as GitHubTreeResponse;
+    latestVersion =
+      typeof raw.sha === "string" && !folder ? raw.sha : undefined;
 
     if (folder && Array.isArray(raw.tree)) {
       const entry = (raw.tree as GitHubTreeEntry[]).find(
-        (item) => item.type === "tree" && item.path === folder,
+        (item) => item.type === "tree" && item.path === folder
       );
       if (entry && typeof entry.sha === "string") latestVersion = entry.sha;
     }
   } catch (error) {
-    if (!(error instanceof HttpError) || ![401, 403, 429].includes(error.status)) {
+    if (
+      !(error instanceof HttpError) ||
+      ![401, 403, 429].includes(error.status)
+    ) {
       throw error;
     }
     latestVersion = await options.resolveGitTreeHash(install);
   }
 
   if (!latestVersion) {
-    return result(install, "error", undefined, "Remote skill path was not found.");
+    return result(
+      install,
+      "error",
+      undefined,
+      "Remote skill path was not found."
+    );
   }
   return result(
     install,
     latestVersion === install.versionHash ? "up-to-date" : "update-available",
-    latestVersion,
+    latestVersion
   );
 }
 
 async function checkProjectSkill(
   install: SkillInstallInfo,
-  options: Required<Pick<CheckOptions, "fetcher" | "skillsApiBase">> & CheckOptions,
+  options: Required<Pick<CheckOptions, "fetcher" | "skillsApiBase">> &
+    CheckOptions
 ): Promise<SkillUpdateResult> {
   const [owner, repo] = install.source.split("/");
   const name = skillSlug(skillNameFromPackage(install.package));
@@ -201,21 +222,35 @@ async function checkProjectSkill(
   const raw = (await fetchJson(url, options.fetcher)) as SnapshotResponse;
   const latestVersion = typeof raw.hash === "string" ? raw.hash : undefined;
   if (!latestVersion) {
-    return result(install, "error", undefined, "skills.sh did not return a version hash.");
+    return result(
+      install,
+      "error",
+      undefined,
+      "skills.sh did not return a version hash."
+    );
   }
   return result(
     install,
     latestVersion === install.versionHash ? "up-to-date" : "update-available",
-    latestVersion,
+    latestVersion
   );
 }
 
 export async function checkSkillUpdate(
   install: SkillInstallInfo,
-  options: CheckOptions = {},
+  options: CheckOptions = {}
 ): Promise<SkillUpdateResult> {
-  if (!install.canCheckForUpdates || !install.versionHash || !install.skillPath) {
-    return result(install, "unsupported", undefined, "This lock entry cannot be checked automatically.");
+  if (
+    !install.canCheckForUpdates ||
+    !install.versionHash ||
+    !install.skillPath
+  ) {
+    return result(
+      install,
+      "unsupported",
+      undefined,
+      "This lock entry cannot be checked automatically."
+    );
   }
 
   const resolvedOptions = {
@@ -234,14 +269,14 @@ export async function checkSkillUpdate(
       install,
       "error",
       undefined,
-      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.message : String(error)
     );
   }
 }
 
 export async function checkSkillUpdates(
   installs: SkillInstallInfo[],
-  options: CheckOptions = {},
+  options: CheckOptions = {}
 ): Promise<SkillUpdateResult[]> {
   const fetcher = options.fetcher ?? fetch;
   const requests = new Map<string, Promise<Response>>();
@@ -255,9 +290,11 @@ export async function checkSkillUpdates(
   };
 
   return Promise.all(
-    installs.map((install) => checkSkillUpdate(install, {
-      ...options,
-      fetcher: cachedFetcher,
-    })),
+    installs.map((install) =>
+      checkSkillUpdate(install, {
+        ...options,
+        fetcher: cachedFetcher,
+      })
+    )
   );
 }

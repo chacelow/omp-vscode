@@ -2,7 +2,10 @@
 "use strict";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getUnsupportedNodeVersionMessage, isNodeVersionSupported } = require("./node-version");
+const {
+  getUnsupportedNodeVersionMessage,
+  isNodeVersionSupported,
+} = require("./node-version");
 
 if (!isNodeVersionSupported(process.versions.node)) {
   console.error(getUnsupportedNodeVersionMessage(process.versions.node));
@@ -41,18 +44,20 @@ const loopbackHostnames = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const passwordEnabled = Boolean(process.env.PI_WEB_PASSWORD);
 
 if (!fs.existsSync(nextDir)) {
-  console.error("Build artifacts not found. Run `npm run build` first, or install via `npm install -g omp-web` to get a pre-built package.");
+  console.error(
+    "Build artifacts not found. Run `npm run build` first, or install via `npm install -g omp-web` to get a pre-built package."
+  );
   process.exit(1);
 }
 
 if (!loopbackHostnames.has(hostname)) {
   if (passwordEnabled) {
     console.warn(
-      `Warning: omp-web is listening on ${hostname} with Basic Auth over HTTP. Use HTTPS or a trusted VPN to protect the password in transit.`,
+      `Warning: omp-web is listening on ${hostname} with Basic Auth over HTTP. Use HTTPS or a trusted VPN to protect the password in transit.`
     );
   } else {
     console.warn(
-      `Warning: omp-web is listening on ${hostname} without authentication. Only use this on a trusted network.`,
+      `Warning: omp-web is listening on ${hostname} without authentication. Only use this on a trusted network.`
     );
   }
 }

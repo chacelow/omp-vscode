@@ -9,7 +9,9 @@ import { getOmpCliVersion } from "@/lib/omp-cli";
 export async function GET() {
   let omp = "";
   try {
-    const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as {
+    const pkg = JSON.parse(
+      readFileSync(join(process.cwd(), "package.json"), "utf8")
+    ) as {
       version?: string;
     };
     omp = pkg.version ?? "";

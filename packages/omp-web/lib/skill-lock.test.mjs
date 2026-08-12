@@ -27,11 +27,11 @@ function makeSkill(name, filePath, scope) {
 test("uses the CLI global lock location", () => {
   assert.equal(
     getGlobalSkillsLockPath({ homeDir: "/home/test", xdgStateHome: undefined }),
-    join("/home/test", ".agents", ".skill-lock.json"),
+    join("/home/test", ".agents", ".skill-lock.json")
   );
   assert.equal(
     getGlobalSkillsLockPath({ homeDir: "/home/test", xdgStateHome: "/state" }),
-    join("/state", "skills", ".skill-lock.json"),
+    join("/state", "skills", ".skill-lock.json")
   );
 });
 
@@ -43,11 +43,22 @@ test("annotates only lock entries that exist in the matching Pi scope", () => {
     const globalLockPath = join(root, "global-lock.json");
     const projectLockPath = join(cwd, "skills-lock.json");
     const globalSkillPath = join(agentDir, "skills", "edge-tts", "SKILL.md");
-    const projectSkillPath = join(cwd, ".pi", "skills", "find-skills", "SKILL.md");
+    const projectSkillPath = join(
+      cwd,
+      ".pi",
+      "skills",
+      "find-skills",
+      "SKILL.md"
+    );
     const manualSkillPath = join(agentDir, "skills", "manual", "SKILL.md");
     const otherAgentSkillPath = join(root, "other-agent", "tts", "SKILL.md");
 
-    for (const path of [globalSkillPath, projectSkillPath, manualSkillPath, otherAgentSkillPath]) {
+    for (const path of [
+      globalSkillPath,
+      projectSkillPath,
+      manualSkillPath,
+      otherAgentSkillPath,
+    ]) {
       mkdirSync(join(path, ".."), { recursive: true });
       writeFileSync(path, "---\nname: test\n---\n", "utf8");
     }
@@ -83,7 +94,7 @@ test("annotates only lock entries that exist in the matching Pi scope", () => {
         makeSkill("manual", manualSkillPath, "user"),
         makeSkill("tts", otherAgentSkillPath, "user"),
       ],
-      { cwd, agentDir, globalLockPath, projectLockPath },
+      { cwd, agentDir, globalLockPath, projectLockPath }
     );
 
     assert.deepEqual(annotated[0].install, {
@@ -137,7 +148,7 @@ test("ignores stale lock entries and malformed lock files", () => {
         makeSkill("missing", missingPath, "user"),
         makeSkill("broken", projectSkillPath, "project"),
       ],
-      { cwd, agentDir, globalLockPath, projectLockPath },
+      { cwd, agentDir, globalLockPath, projectLockPath }
     );
 
     assert.equal(skills[0].install, undefined);
@@ -171,7 +182,12 @@ test("does not compare a project ref with the default skills.sh snapshot", () =>
 
     const [skill] = annotateSkillsWithInstallInfo(
       [makeSkill("preview", projectSkillPath, "project")],
-      { cwd, agentDir, projectLockPath, globalLockPath: join(root, "missing.json") },
+      {
+        cwd,
+        agentDir,
+        projectLockPath,
+        globalLockPath: join(root, "missing.json"),
+      }
     );
 
     assert.equal(skill.install.ref, "preview");

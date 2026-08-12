@@ -24,10 +24,25 @@ interface TuiFrameProps {
   children: ReactNode;
 }
 
-const BORDER: CSSProperties = { border: "1px solid var(--border)", borderRadius: 6 };
-const DIVIDER: CSSProperties = { height: 1, background: "var(--border)", flexShrink: 0 };
+const BORDER: CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+};
+const DIVIDER: CSSProperties = {
+  height: 1,
+  background: "var(--border)",
+  flexShrink: 0,
+};
 
-function TuiTabButton({ tab, active, onSelect }: { tab: TuiTab; active: boolean; onSelect: () => void }): JSX.Element {
+function TuiTabButton({
+  tab,
+  active,
+  onSelect,
+}: {
+  tab: TuiTab;
+  active: boolean;
+  onSelect: () => void;
+}): JSX.Element {
   return (
     <button
       type="button"
@@ -36,7 +51,9 @@ function TuiTabButton({ tab, active, onSelect }: { tab: TuiTab; active: boolean;
       style={{
         padding: "6px 14px",
         border: "none",
-        borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
+        borderBottom: active
+          ? "2px solid var(--accent)"
+          : "2px solid transparent",
         background: "transparent",
         color: active ? "var(--text)" : "var(--text-muted)",
         cursor: "pointer",
@@ -51,7 +68,16 @@ function TuiTabButton({ tab, active, onSelect }: { tab: TuiTab; active: boolean;
   );
 }
 
-export function TuiFrame({ title, tabs, activeTab, onSelectTab, footerHint, detail, bodyStyle, children }: TuiFrameProps): JSX.Element {
+export function TuiFrame({
+  title,
+  tabs,
+  activeTab,
+  onSelectTab,
+  footerHint,
+  detail,
+  bodyStyle,
+  children,
+}: TuiFrameProps): JSX.Element {
   return (
     <div
       style={{
@@ -67,7 +93,14 @@ export function TuiFrame({ title, tabs, activeTab, onSelectTab, footerHint, deta
     >
       {title ? (
         <>
-          <header style={{ padding: "8px 14px", fontSize: 12, color: "var(--text-muted)", letterSpacing: 0.5 }}>
+          <header
+            style={{
+              padding: "8px 14px",
+              fontSize: 12,
+              color: "var(--text-muted)",
+              letterSpacing: 0.5,
+            }}
+          >
             {title}
           </header>
           <div style={DIVIDER} />
@@ -85,21 +118,55 @@ export function TuiFrame({ title, tabs, activeTab, onSelectTab, footerHint, deta
         }}
       >
         {tabs.map((tab) => (
-          <TuiTabButton key={tab.id} tab={tab} active={tab.id === activeTab} onSelect={() => onSelectTab(tab.id)} />
+          <TuiTabButton
+            key={tab.id}
+            tab={tab}
+            active={tab.id === activeTab}
+            onSelect={() => onSelectTab(tab.id)}
+          />
         ))}
       </nav>
       <div style={DIVIDER} />
-      <div style={{ flex: 1, minHeight: 0, overflow: "auto", ...(bodyStyle ?? {}) }}>{children}</div>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "auto",
+          ...(bodyStyle ?? {}),
+        }}
+      >
+        {children}
+      </div>
       {detail ? (
         <>
           <div style={DIVIDER} />
-          <div style={{ padding: "10px 16px", minHeight: 56, color: "var(--text-dim)", fontSize: 12, lineHeight: 1.5, background: "var(--bg-panel)" }}>{detail}</div>
+          <div
+            style={{
+              padding: "10px 16px",
+              minHeight: 56,
+              color: "var(--text-dim)",
+              fontSize: 12,
+              lineHeight: 1.5,
+              background: "var(--bg-panel)",
+            }}
+          >
+            {detail}
+          </div>
         </>
       ) : null}
       {footerHint ? (
         <>
           <div style={DIVIDER} />
-          <footer style={{ padding: "6px 14px", color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--vscode-font-family)" }}>{footerHint}</footer>
+          <footer
+            style={{
+              padding: "6px 14px",
+              color: "var(--text-dim)",
+              fontSize: 11,
+              fontFamily: "var(--vscode-font-family)",
+            }}
+          >
+            {footerHint}
+          </footer>
         </>
       ) : null}
     </div>

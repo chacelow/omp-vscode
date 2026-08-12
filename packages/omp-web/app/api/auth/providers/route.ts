@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 // (Claude Pro/Max) — see lib/provider-listing.ts (#309).
 export async function GET() {
   const modelRuntime = await ModelRuntime.create();
-  const providers = buildOAuthProviderList(await collectProviderListingInputs(modelRuntime));
+  const providers = buildOAuthProviderList(
+    await collectProviderListingInputs(modelRuntime)
+  );
 
   // Also surface custom OAuth providers recorded in omp-web's CLI-synced
   // credential store that do not appear as first-class runtime providers.

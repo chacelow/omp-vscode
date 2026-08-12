@@ -11,14 +11,19 @@ export { allowFileRoot, normalizeSlashes } from "./allowed-roots";
 // enough that newly-created cwds appear promptly; stored on globalThis so it
 // survives Next.js hot-reload.
 declare global {
-  var __ompAllowedRootsCache: { roots: Set<string>; expiresAt: number } | undefined;
+  var __ompAllowedRootsCache:
+    { roots: Set<string>; expiresAt: number } | undefined;
 }
 
 const ALLOWED_ROOTS_TTL_MS = 5_000;
 const WINDOWS_ABSOLUTE_RE = /^[a-zA-Z]:[\\/]/;
 
 export function isWindowsAbsolutePath(filePath: string): boolean {
-  return WINDOWS_ABSOLUTE_RE.test(filePath) || filePath.startsWith("\\\\") || filePath.startsWith("//");
+  return (
+    WINDOWS_ABSOLUTE_RE.test(filePath) ||
+    filePath.startsWith("\\\\") ||
+    filePath.startsWith("//")
+  );
 }
 
 export async function getAllowedFileRoots(): Promise<Set<string>> {
@@ -48,20 +53,31 @@ export async function getAllowedFileRoots(): Promise<Set<string>> {
 
   for (const root of getAdditionalAllowedRoots()) roots.add(root);
 
-  globalThis.__ompAllowedRootsCache = { roots, expiresAt: now + ALLOWED_ROOTS_TTL_MS };
+  globalThis.__ompAllowedRootsCache = {
+    roots,
+    expiresAt: now + ALLOWED_ROOTS_TTL_MS,
+  };
   return roots;
 }
 
-export function isFilePathAllowed(target: string, allowedRoots: Set<string>): boolean {
+export function isFilePathAllowed(
+  target: string,
+  allowedRoots: Set<string>
+): boolean {
   for (const root of allowedRoots) {
-    const useWindowsRules = isWindowsAbsolutePath(target) || isWindowsAbsolutePath(root);
+    const useWindowsRules =
+      isWindowsAbsolutePath(target) || isWindowsAbsolutePath(root);
     const resolver = useWindowsRules ? path.win32 : path;
     const sep = useWindowsRules ? "\\" : path.sep;
     const normalized = resolver.resolve(target);
     const normalizedRoot = resolver.resolve(root);
     const comparable = useWindowsRules ? normalized.toLowerCase() : normalized;
-    const comparableRoot = useWindowsRules ? normalizedRoot.toLowerCase() : normalizedRoot;
-    const rootWithSep = comparableRoot.endsWith(sep) ? comparableRoot : comparableRoot + sep;
+    const comparableRoot = useWindowsRules
+      ? normalizedRoot.toLowerCase()
+      : normalizedRoot;
+    const rootWithSep = comparableRoot.endsWith(sep)
+      ? comparableRoot
+      : comparableRoot + sep;
     if (comparable === comparableRoot || comparable.startsWith(rootWithSep)) {
       return true;
     }
@@ -70,6 +86,9 @@ export function isFilePathAllowed(target: string, allowedRoots: Set<string>): bo
 }
 
 /** Authorize an existing path after resolving symbolic links. */
-export function isExistingFilePathAllowed(target: string, allowedRoots: Set<string>): boolean {
+export function isExistingFilePathAllowed(
+  target: string,
+  allowedRoots: Set<string>
+): boolean {
   return isExistingPathWithinRoots(target, allowedRoots);
 }

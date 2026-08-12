@@ -96,7 +96,7 @@ npx omp-web@latest
 omp-web is a direct fork of [pi-web](https://github.com/agegr/pi-web). The table below details the enhancements and changes introduced for the Oh My Pi environment:
 
 | Area | Change |
-|---|---|
+| --- | --- |
 | Package name & binary | `omp-web` instead of `pi-web` |
 | Code Theme Selector | **Added** independent syntax theme selector with support for **One Dark Pro** and others |
 | OMP DB & Role Mapping | **Added** support for `models.db`, `config.yml` model roles, and SQLite credentials under `~/.omp/agent/` |

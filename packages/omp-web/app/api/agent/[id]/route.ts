@@ -10,7 +10,7 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const body = await req.json() as { type: string; [key: string]: unknown };
+    const body = (await req.json()) as { type: string; [key: string]: unknown };
 
     // Fast path: already-running session
     const existing = getRpcSession(id);

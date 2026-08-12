@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import url("tailwindcss");
 
 /* ── Global motion tokens ─────────────────────────────────────────────
    One place to tune the "everything moves the same amount" feel of the
@@ -10,8 +10,9 @@
   --omp-motion-fast: 120ms;
   --omp-motion-base: 160ms;
   --omp-motion-slow: 240ms;
-  --omp-motion-ease: cubic-bezier(0.2, 0.0, 0.0, 1);
+  --omp-motion-ease: cubic-bezier(0.2, 0, 0, 1);
 }
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --omp-motion-fast: 0ms;
@@ -25,7 +26,11 @@
    layout-shifting properties (height, width, transform) intentionally
    stay out of the * selector so we don't animate layout changes we
    didn't opt into.                                                    */
-button, a, [role="button"], [role="tab"], [role="menuitem"] {
+button,
+a,
+[role="button"],
+[role="tab"],
+[role="menuitem"] {
   transition:
     color var(--omp-motion-fast) var(--omp-motion-ease),
     background-color var(--omp-motion-fast) var(--omp-motion-ease),
@@ -37,111 +42,128 @@ button, a, [role="button"], [role="tab"], [role="menuitem"] {
    component. Add `data-omp-mount` to any element and it fades in on
    first paint. Cheap: pure CSS, GPU-composited.                       */
 @keyframes omp-mount-in {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 [data-omp-mount] {
   animation: omp-mount-in var(--omp-motion-base) var(--omp-motion-ease) both;
 }
 
-@import "tailwindcss";
+@import url("tailwindcss");
 
 /* The webview iframe is width/height 100%; the app must fill it exactly
    or the body background shows below the chat page. Scrolling happens
    inside the app's own containers; the page itself must never scroll,
    or a hidden scrollbar leaves a dead gap at the bottom. */
 html {
-  height: 100%;
-  margin: 0;
-  padding: 0;
   overflow: hidden;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+
   /* WebKit auto-enlarges form controls (textarea/input ≥16px) in narrow
      viewports regardless of per-element font-size; kill it at the root. */
-  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
   text-size-adjust: none;
 }
+
 body,
 #app {
-  height: 100%;
-  margin: 0;
-  padding: 0;
   overflow: hidden;
+  height: 100%;
+  padding: 0;
+  margin: 0;
 }
 
 /* ── Unified slim scrollbar (all scrollable containers) ────────────────
    No track background, thin thumb, VS Code scrollbar tokens so it follows
    the theme and matches the native look. */
 * {
-  scrollbar-width: thin;
   scrollbar-color: var(
       --vscode-scrollbarSlider-background,
-      rgba(128, 128, 128, 0.45)
+      rgb(128 128 128 / 45%)
     )
     transparent;
+  scrollbar-width: thin;
 }
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 4px;
   background: var(
     --vscode-scrollbarSlider-background,
-    rgba(128, 128, 128, 0.45)
+    rgb(128 128 128 / 45%)
   );
-  border: 2px solid transparent;
-  border-radius: 4px;
   background-clip: padding-box;
 }
+
 ::-webkit-scrollbar-thumb:hover {
+  border: 2px solid transparent;
+  border-radius: 4px;
   background: var(
     --vscode-scrollbarSlider-hoverBackground,
-    rgba(128, 128, 128, 0.7)
+    rgb(128 128 128 / 70%)
   );
-  border: 2px solid transparent;
-  border-radius: 4px;
   background-clip: padding-box;
 }
+
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* ── Local font: HarmonyOS Sans (UI chrome) ─────────────────────────────── */
 @font-face {
+  font-display: swap;
   font-family: "HarmonyOS Sans";
+  font-style: normal;
+  font-weight: 100 900;
   src: local("HarmonyOS Sans");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
 }
+
 @font-face {
-  font-family: "HarmonyOS Sans SC";
-  src: local("HarmonyOS Sans SC");
-  font-weight: 100 900;
-  font-style: normal;
   font-display: swap;
+  font-family: "HarmonyOS Sans SC";
+  font-style: normal;
+  font-weight: 100 900;
+  src: local("HarmonyOS Sans SC");
 }
 
 /* ── Local font: Maple Mono Normal NL NF CN (session/code) ──────────────── */
 @font-face {
+  font-display: swap;
   font-family: "Maple Mono NL NF CN";
+  font-style: normal;
+  font-weight: 400;
   src:
     local("Maple Mono NL NF CN"), local("MapleMono NL NF CN"),
     local("Maple Mono Normal NL NF CN");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
 }
+
 @font-face {
+  font-display: swap;
   font-family: "Maple Mono NL NF CN";
+  font-style: italic;
+  font-weight: 400;
   src:
     local("Maple Mono NL NF CN Italic"), local("MapleMono NL NF CN Italic"),
     local("Maple Mono Normal NL NF CN Italic");
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
 }
 
 @theme {
@@ -153,6 +175,7 @@ body,
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-dim: var(--text-dim);
+
   /* shadcn "accent" = neutral hover/selected surface, NOT the primary
      hue. Primary is --color-primary (button background). */
   --color-accent: var(--bg-hover);
@@ -173,13 +196,14 @@ body,
   ::after {
     border-color: var(--border);
   }
+
   textarea,
   input,
   select,
   button {
     /* text-size-adjust:100% actually *allows* auto-enlargement (same as
        auto) — only 'none' disables WebKit's form-control ≥16px bump. */
-    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
     text-size-adjust: none;
   }
 }
@@ -213,9 +237,9 @@ body,
 :root {
   /* Follow the VS Code color theme: --vscode-* tokens adapt automatically
      between light and dark, so no separate html.dark overrides are needed. */
-  --bg: var(--vscode-editor-background, #ffffff);
+  --bg: var(--vscode-editor-background, #fff);
   --bg-panel: var(--vscode-sideBar-background, #f5f5f5);
-  --bg-hover: var(--vscode-list-hoverBackground, #eeeeee);
+  --bg-hover: var(--vscode-list-hoverBackground, #eee);
   --bg-selected: var(--vscode-list-activeSelectionBackground, #e8e8e8);
   --border: var(--vscode-panel-border, #e0e0e0);
   --text: var(--vscode-editor-foreground, #1a1a1a);
@@ -228,21 +252,22 @@ body,
     var(--vscode-button-background) 10%,
     var(--vscode-editor-background)
   );
-  --assistant-bg: var(--vscode-editor-background, #ffffff);
+  --assistant-bg: var(--vscode-editor-background, #fff);
   --tool-bg: var(--vscode-editorWidget-background, #f9fafb);
+
   /* Official semantic tokens (VS Code Chat/Agents + toolbar), matching
      the native chat panel instead of ad-hoc list/sidebar colors. */
   --toolbar-hover: var(
     --vscode-toolbar-hoverBackground,
-    rgba(90, 93, 94, 0.31)
+    rgb(90 93 94 / 31%)
   );
   --toolbar-active: var(
     --vscode-toolbar-activeBackground,
-    rgba(99, 102, 103, 0.31)
+    rgb(99 102 103 / 31%)
   );
   --chat-input-bg: var(
     --vscode-agentsChatInput-background,
-    var(--vscode-input-background, rgba(228, 228, 228, 0.04))
+    var(--vscode-input-background, rgb(228 228 228 / 4%))
   );
   --chat-input-fg: var(
     --vscode-agentsChatInput-foreground,
@@ -252,14 +277,15 @@ body,
     --vscode-agentsChatInput-border,
     var(--vscode-input-border, #e0e0e0)
   );
-  --input-bg: var(--vscode-input-background, #ffffff);
+  --input-bg: var(--vscode-input-background, #fff);
   --input-fg: var(--vscode-input-foreground, #1a1a1a);
   --input-border: var(--vscode-input-border, #e0e0e0);
+
   /* Active/highlight surface: bright neutral surface (input-bg lightened
      toward white), no hue — used for the send button and primary dropdown
      entry when lit. Content uses --input-fg; in dark themes the mix stays
      mid-gray so light input-foreground keeps contrast. */
-  --highlight-bg: color-mix(in srgb, var(--input-bg) 18%, #ffffff);
+  --highlight-bg: color-mix(in srgb, var(--input-bg) 18%, #fff);
   --bg-subtle: color-mix(
     in srgb,
     var(--vscode-editor-foreground) 4%,
@@ -279,6 +305,7 @@ body {
 #file-panel {
   display: none !important;
 }
+
 .omp-explorer-section {
   display: none !important;
 }
@@ -295,7 +322,7 @@ html.starfield {
   --bg-panel: #0d1117;
   --bg-hover: #161d2e;
   --bg-selected: #1a2540;
-  --bg-subtle: rgba(217, 155, 38, 0.05);
+  --bg-subtle: rgb(217 155 38 / 5%);
   --border: #1e2d45;
   --text: #e8eeff;
   --text-muted: #8fa3c0;
@@ -305,10 +332,12 @@ html.starfield {
   --user-bg: #0c1a2e;
   --assistant-bg: #08090d;
   --tool-bg: #0a1020;
+
   /* Typography — NASA-punk Orbitron & Share Tech Mono */
   --font-display: "Orbitron", "Noto Sans SC", -apple-system, sans-serif;
   --font-mono: "Share Tech Mono", ui-monospace, monospace;
   --font-mono-font: var(--font-mono);
+
   /* Internal palette */
   --sf-navy: #1b365d;
   --sf-gold: #d99b26;
@@ -317,7 +346,7 @@ html.starfield {
   --sf-red: #c81d25;
   --sf-green: #22c55e;
   --sf-cyan: #38bdf8;
-  --sf-glow: rgba(217, 155, 38, 0.22);
+  --sf-glow: rgb(217 155 38 / 22%);
   --sf-stripe: linear-gradient(
     90deg,
     #1b365d 0% 25%,
@@ -348,39 +377,39 @@ html.starfield .comp-title {
 html.starfield body {
   background-color: var(--bg);
   background-image:
-    radial-gradient(circle, rgba(217, 155, 38, 0.06) 1px, transparent 1px),
-    radial-gradient(circle, rgba(27, 54, 93, 0.18) 1px, transparent 1px);
-  background-size:
-    40px 40px,
-    20px 20px;
+    radial-gradient(circle, rgb(217 155 38 / 6%) 1px, transparent 1px),
+    radial-gradient(circle, rgb(27 54 93 / 18%) 1px, transparent 1px);
   background-position:
     0 0,
     10px 10px;
+  background-size:
+    40px 40px,
+    20px 20px;
 }
 
 /* ── 3. Top 4-color mission stripe ─────────────────────────────────────── */
 html.starfield body::before {
-  content: "";
   position: fixed;
+  z-index: 9999;
   top: 0;
-  left: 0;
   right: 0;
+  left: 0;
   height: 3px;
   background: var(--sf-stripe);
-  z-index: 9999;
+  content: "";
   pointer-events: none;
 }
 
 /* ── 4. Sidebar ──────────────────────────────────────────────────────────── */
 html.starfield .sidebar-container {
-  background: #0b0f18 !important;
-  border-right: 2px solid var(--sf-navy) !important;
-  box-shadow: inset -8px 0 24px rgba(27, 54, 93, 0.12) !important;
   position: relative;
+  border-right: 2px solid var(--sf-navy) !important;
+  background: #0b0f18 !important;
+  box-shadow: inset -8px 0 24px rgb(27 54 93 / 12%) !important;
 }
+
 /* Gold accent bar on inner edge of sidebar */
 html.starfield .sidebar-container::after {
-  content: "";
   position: absolute;
   top: 0;
   right: -1px;
@@ -393,6 +422,7 @@ html.starfield .sidebar-container::after {
     var(--sf-gold) 80%,
     transparent 100%
   );
+  content: "";
   opacity: 0.35;
   pointer-events: none;
 }
@@ -410,26 +440,36 @@ html.starfield ::-webkit-scrollbar {
   width: 3px;
   height: 3px;
 }
+
 html.starfield ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 html.starfield ::-webkit-scrollbar-thumb {
-  background: var(--sf-navy);
   border-radius: 0;
+  background: var(--sf-navy);
 }
+
 html.starfield ::-webkit-scrollbar-thumb:hover {
   background: var(--sf-gold);
 }
 
 /* ── 7. Text selection ──────────────────────────────────────────────────── */
 html.starfield ::selection {
-  background: rgba(217, 155, 38, 0.3);
+  background: rgb(217 155 38 / 30%);
   color: #f0f4ff;
 }
 
 /* ── 8. User message bubble ─────────────────────────────────────────────── */
 html.starfield .sf-user-bubble {
+  position: relative;
+  border: 1px solid rgb(217 155 38 / 35%) !important;
   border-radius: 0 !important;
+  border-left: 3px solid var(--sf-gold) !important;
+  background: linear-gradient(135deg, #0f1e38 0%, #0c1a2e 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(217 155 38 / 12%),
+    0 4px 20px rgb(27 54 93 / 20%) !important;
   clip-path: polygon(
     0 0,
     calc(100% - 10px) 0,
@@ -437,17 +477,10 @@ html.starfield .sf-user-bubble {
     100% 100%,
     0 100%
   ) !important;
-  border: 1px solid rgba(217, 155, 38, 0.35) !important;
-  border-left: 3px solid var(--sf-gold) !important;
-  background: linear-gradient(135deg, #0f1e38 0%, #0c1a2e 100%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(217, 155, 38, 0.12),
-    0 4px 20px rgba(27, 54, 93, 0.2) !important;
-  position: relative;
 }
+
 /* Corner crosshair — top-right */
 html.starfield .sf-user-bubble::before {
-  content: "";
   position: absolute;
   top: 4px;
   right: 4px;
@@ -455,12 +488,13 @@ html.starfield .sf-user-bubble::before {
   height: 8px;
   border-top: 1.5px solid var(--sf-gold);
   border-right: 1.5px solid var(--sf-gold);
+  content: "";
   opacity: 0.6;
   pointer-events: none;
 }
+
 /* Corner crosshair — bottom-left */
 html.starfield .sf-user-bubble::after {
-  content: "";
   position: absolute;
   bottom: 4px;
   left: 6px;
@@ -468,109 +502,117 @@ html.starfield .sf-user-bubble::after {
   height: 8px;
   border-bottom: 1.5px solid var(--sf-gold);
   border-left: 1.5px solid var(--sf-gold);
+  content: "";
   opacity: 0.4;
   pointer-events: none;
 }
 
 /* ── 9. Tool call blocks ────────────────────────────────────────────────── */
 html.starfield .sf-tool-block {
-  border-radius: 0 !important;
-  border: 1px solid rgba(27, 54, 93, 0.8) !important;
-  border-left: 2px solid var(--sf-orange) !important;
-  background: #0a1020 !important;
   position: relative;
   overflow: hidden;
+  border: 1px solid rgb(27 54 93 / 80%) !important;
+  border-radius: 0 !important;
+  border-left: 2px solid var(--sf-orange) !important;
+  background: #0a1020 !important;
 }
+
 html.starfield .sf-tool-block.sf-tool-error {
+  border-color: rgb(200 29 37 / 40%) !important;
   border-left-color: var(--sf-red) !important;
-  border-color: rgba(200, 29, 37, 0.4) !important;
-  background: rgba(200, 29, 37, 0.04) !important;
+  background: rgb(200 29 37 / 4%) !important;
 }
+
 /* Scan-line shimmer on tool header hover */
 html.starfield .sf-tool-block::before {
-  content: "";
   position: absolute;
-  top: 0;
-  left: -100%;
-  right: 0;
-  bottom: 0;
+  inset: 0 0 0 -100%;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(217, 155, 38, 0.04),
+    rgb(217 155 38 / 4%),
     transparent
   );
-  transition: left 0.6s ease;
+  content: "";
   pointer-events: none;
+  transition: left 0.6s ease;
 }
+
 html.starfield .sf-tool-block:hover::before {
   left: 100%;
 }
 
 /* ── 10. Code blocks ────────────────────────────────────────────────────── */
 html.starfield .markdown-code-block {
-  border-radius: 0 !important;
   border: 1px solid var(--sf-navy) !important;
+  border-radius: 0 !important;
   border-left: 3px solid var(--sf-gold) !important;
   background: #06080f !important;
-  box-shadow: inset 0 0 30px rgba(27, 54, 93, 0.12) !important;
+  box-shadow: inset 0 0 30px rgb(27 54 93 / 12%) !important;
 }
+
 html.starfield .markdown-code-header {
+  border-radius: 0 !important;
+  border-bottom: 1px solid rgb(217 155 38 / 30%) !important;
   background: linear-gradient(90deg, var(--sf-navy), #0d1a33) !important;
   color: var(--sf-gold) !important;
-  border-bottom: 1px solid rgba(217, 155, 38, 0.3) !important;
   font-family: var(--font-mono) !important;
   letter-spacing: 0.08em !important;
-  border-radius: 0 !important;
 }
+
 html.starfield .markdown-code-lang {
   color: var(--sf-orange) !important;
   font-weight: 700 !important;
-  text-transform: uppercase !important;
   letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
 }
+
 html.starfield .markdown-code-action {
-  color: var(--sf-gold) !important;
   border-radius: 0 !important;
+  color: var(--sf-gold) !important;
 }
+
 html.starfield .markdown-code-action:hover:not(:disabled) {
-  background: rgba(217, 155, 38, 0.12) !important;
+  background: rgb(217 155 38 / 12%) !important;
   color: #f0b840 !important;
 }
 
 /* ── 11. Inline code ────────────────────────────────────────────────────── */
 html.starfield .markdown-inline-code {
-  background: rgba(27, 54, 93, 0.5) !important;
-  color: var(--sf-gold) !important;
-  border-radius: 0 !important;
-  border: 1px solid rgba(27, 54, 93, 0.7) !important;
   padding: 1px 5px !important;
+  border: 1px solid rgb(27 54 93 / 70%) !important;
+  border-radius: 0 !important;
+  background: rgb(27 54 93 / 50%) !important;
+  color: var(--sf-gold) !important;
   font-weight: 700 !important;
 }
 
 /* ── 12. Blockquote ─────────────────────────────────────────────────────── */
 html.starfield .markdown-body blockquote {
-  border-left: 3px solid var(--sf-orange) !important;
-  background: rgba(224, 90, 43, 0.06) !important;
   border-radius: 0 !important;
+  border-left: 3px solid var(--sf-orange) !important;
+  background: rgb(224 90 43 / 6%) !important;
 }
 
 /* ── 13. Tables ─────────────────────────────────────────────────────────── */
 html.starfield .markdown-body th {
+  border: 1px solid rgb(217 155 38 / 30%) !important;
   background: var(--sf-navy) !important;
   color: #f0f4ff !important;
-  border: 1px solid rgba(217, 155, 38, 0.3) !important;
   font-family: var(--font-mono) !important;
+  font-size: 0.78em !important;
   letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
-  font-size: 0.78em !important;
 }
+
 html.starfield .markdown-body td {
   border-color: #1e2d45 !important;
 }
+
 html.starfield .markdown-body tbody tr:nth-child(even) td {
-  background: rgba(27, 54, 93, 0.15) !important;
+  background: rgb(27 54 93 / 15%) !important;
 }
+
 html.starfield .markdown-body table {
   border: 1px solid var(--sf-navy) !important;
 }
@@ -579,29 +621,32 @@ html.starfield .markdown-body table {
 html.starfield .markdown-body h1,
 html.starfield .markdown-body h2,
 html.starfield .markdown-body h3 {
+  padding-bottom: 4px !important;
+  border-bottom: 1px solid rgb(217 155 38 / 20%) !important;
   color: var(--sf-gold) !important;
   font-family: var(--font-mono) !important;
   letter-spacing: 0.06em !important;
-  border-bottom: 1px solid rgba(217, 155, 38, 0.2) !important;
-  padding-bottom: 4px !important;
 }
+
 html.starfield .markdown-body h1::before {
-  content: "// ";
   color: var(--sf-orange);
+  content: "// ";
 }
+
 html.starfield .markdown-body h2::before {
+  color: rgb(217 155 38 / 60%);
   content: "// ";
-  color: rgba(217, 155, 38, 0.6);
 }
+
 html.starfield .markdown-body h3::before {
+  color: rgb(217 155 38 / 35%);
   content: "// ";
-  color: rgba(217, 155, 38, 0.35);
 }
 
 /* ── 15. HR separator ───────────────────────────────────────────────────── */
 html.starfield .markdown-body hr {
-  border: none !important;
   height: 1px !important;
+  border: none !important;
   background: linear-gradient(
     90deg,
     transparent,
@@ -615,23 +660,23 @@ html.starfield .markdown-body hr {
 
 /* ── 16. Thinking block ─────────────────────────────────────────────────── */
 html.starfield .sf-thinking-block {
-  border-left: 2px solid var(--sf-cyan) !important;
-  background: rgba(56, 189, 248, 0.04) !important;
   border-radius: 0 !important;
+  border-left: 2px solid var(--sf-cyan) !important;
+  background: rgb(56 189 248 / 4%) !important;
 }
 
 /* ── 17. Chat input area ─────────────────────────────────────────────────── */
 html.starfield .sf-chat-input-wrap {
+  position: relative;
   border-top: 1px solid var(--sf-navy) !important;
   background: #0b0f18 !important;
-  position: relative;
 }
+
 html.starfield .sf-chat-input-wrap::before {
-  content: "";
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
+  left: 0;
   height: 1px;
   background: linear-gradient(
     90deg,
@@ -640,9 +685,11 @@ html.starfield .sf-chat-input-wrap::before {
     var(--sf-orange) 60%,
     transparent 100%
   );
+  content: "";
   opacity: 0.5;
   pointer-events: none;
 }
+
 html.starfield .sf-chat-input-box {
   border: 1px solid var(--sf-navy) !important;
   border-radius: 0 !important;
@@ -658,18 +705,19 @@ html.starfield .sf-chat-input-box {
     border-color 0.2s,
     box-shadow 0.2s !important;
 }
+
 html.starfield .sf-chat-input-box:focus-within {
-  border-color: rgba(217, 155, 38, 0.6) !important;
+  border-color: rgb(217 155 38 / 60%) !important;
   box-shadow:
-    0 0 0 1px rgba(217, 155, 38, 0.2),
-    inset 0 0 20px rgba(27, 54, 93, 0.1) !important;
+    0 0 0 1px rgb(217 155 38 / 20%),
+    inset 0 0 20px rgb(27 54 93 / 10%) !important;
 }
 
 /* ── 18. Send button ────────────────────────────────────────────────────── */
 html.starfield .sf-send-btn {
+  border: 1px solid var(--sf-gold) !important;
   border-radius: 0 !important;
   background: var(--sf-navy) !important;
-  border: 1px solid var(--sf-gold) !important;
   clip-path: polygon(
     0 0,
     calc(100% - 6px) 0,
@@ -682,60 +730,65 @@ html.starfield .sf-send-btn {
     background 0.2s,
     color 0.2s !important;
 }
+
 html.starfield .sf-send-btn:hover:not(:disabled) {
   background: var(--sf-gold) !important;
   color: var(--sf-navy) !important;
 }
+
 html.starfield .sf-send-btn:disabled {
   opacity: 0.4 !important;
 }
 
 /* ── 19. Model/tool/control chips in input bar ───────────────────────────── */
 html.starfield .sf-control-chip {
+  border: 1px solid rgb(27 54 93 / 80%) !important;
   border-radius: 0 !important;
-  border: 1px solid rgba(27, 54, 93, 0.8) !important;
-  background: rgba(27, 54, 93, 0.3) !important;
+  background: rgb(27 54 93 / 30%) !important;
   color: var(--sf-gold) !important;
   font-family: var(--font-mono) !important;
-  letter-spacing: 0.04em !important;
   font-size: 10px !important;
+  letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
 }
+
 html.starfield .sf-control-chip:hover {
   border-color: var(--sf-gold) !important;
-  background: rgba(217, 155, 38, 0.1) !important;
+  background: rgb(217 155 38 / 10%) !important;
 }
 
 /* ── 20. Notice / alert shelf ───────────────────────────────────────────── */
 html.starfield .sf-notice {
-  border-left: 3px solid var(--sf-gold) !important;
   border-radius: 0 !important;
-  background: rgba(27, 54, 93, 0.35) !important;
+  border-left: 3px solid var(--sf-gold) !important;
+  background: rgb(27 54 93 / 35%) !important;
   font-family: var(--font-mono) !important;
 }
+
 html.starfield .sf-notice.sf-notice-error {
   border-left-color: var(--sf-red) !important;
-  background: rgba(200, 29, 37, 0.08) !important;
+  background: rgb(200 29 37 / 8%) !important;
 }
+
 html.starfield .sf-notice.sf-notice-success {
   border-left-color: var(--sf-green) !important;
-  background: rgba(34, 197, 94, 0.06) !important;
+  background: rgb(34 197 94 / 6%) !important;
 }
 
 /* ── 21. Mermaid diagram container ─────────────────────────────────────── */
 html.starfield .mermaid-block {
   border: 1px solid var(--sf-navy) !important;
-  background: #06080f !important;
-  border-left: 3px solid var(--sf-cyan) !important;
   border-radius: 0 !important;
+  border-left: 3px solid var(--sf-cyan) !important;
+  background: #06080f !important;
 }
 
 /* ── 22. Session info / stats popover ───────────────────────────────────── */
 html.starfield .session-info-popover {
-  border-radius: 0 !important;
   border: 1px solid var(--sf-navy) !important;
+  border-radius: 0 !important;
   border-top: 2px solid var(--sf-gold) !important;
-  box-shadow: 0 8px 40px rgba(27, 54, 93, 0.5) !important;
+  box-shadow: 0 8px 40px rgb(27 54 93 / 50%) !important;
 }
 
 /* ── 23. Branch navigator ───────────────────────────────────────────────── */
@@ -746,22 +799,24 @@ html.starfield .sf-branch-nav {
 
 /* ── 24. Right Panel & File Viewer (NASA-punk Source Code & Preview) ─────── */
 html.starfield .right-panel-container {
-  background: #06080f !important;
-  border-left: 2px solid var(--sf-navy) !important;
   position: relative;
+  border-left: 2px solid var(--sf-navy) !important;
+  background: #06080f !important;
 }
 
 /* File viewer toolbar */
 html.starfield .file-viewer-toolbar {
-  background: #0b0f18 !important;
   border-bottom: 1px solid var(--sf-navy) !important;
+  background: #0b0f18 !important;
   font-family: var(--font-mono) !important;
 }
+
 html.starfield .file-viewer-path {
   color: var(--sf-gold) !important;
   font-family: var(--font-mono) !important;
   font-weight: 600 !important;
 }
+
 html.starfield .file-viewer-meta {
   color: var(--text-dim) !important;
   font-family: var(--font-mono) !important;
@@ -769,38 +824,42 @@ html.starfield .file-viewer-meta {
 
 /* View mode switcher (Source / Preview / Diff) */
 html.starfield .file-viewer-mode-switch {
-  background: #06080f !important;
+  padding: 1px !important;
   border: 1px solid var(--sf-navy) !important;
   border-radius: 0 !important;
-  padding: 1px !important;
+  background: #06080f !important;
 }
+
 html.starfield .file-viewer-mode-button {
+  padding: 2px 8px !important;
+  border: none !important;
   border-radius: 0 !important;
   font-family: var(--font-mono) !important;
   font-size: 10px !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
-  border: none !important;
-  padding: 2px 8px !important;
 }
+
 html.starfield .file-viewer-mode-button[aria-pressed="true"] {
   background: var(--sf-navy) !important;
+  box-shadow: inset 0 0 8px rgb(217 155 38 / 18%) !important;
   color: var(--sf-gold) !important;
   font-weight: 700 !important;
-  box-shadow: inset 0 0 8px rgba(217, 155, 38, 0.18) !important;
 }
 
 /* Icon buttons in file viewer toolbar (word wrap, copy, download) */
 html.starfield .file-viewer-icon-button {
+  border: 1px solid transparent !important;
   border-radius: 0 !important;
   color: var(--text-muted) !important;
-  border: 1px solid transparent !important;
 }
+
 html.starfield .file-viewer-icon-button:hover {
-  background: rgba(27, 54, 93, 0.4) !important;
+  border-color: rgb(217 155 38 / 30%) !important;
+  background: rgb(27 54 93 / 40%) !important;
   color: var(--sf-gold) !important;
-  border-color: rgba(217, 155, 38, 0.3) !important;
 }
+
 html.starfield .file-viewer-icon-button[aria-pressed="true"] {
   background: var(--sf-navy) !important;
   color: var(--sf-gold) !important;
@@ -810,10 +869,10 @@ html.starfield .file-viewer-icon-button[aria-pressed="true"] {
 html.starfield .file-source-view,
 html.starfield pre.file-source-view,
 html.starfield div.file-source-view {
+  border-radius: 0 !important;
   background: #06080f !important;
   color: #e8eeff !important;
   font-family: var(--font-mono) !important;
-  border-radius: 0 !important;
   font-size: 12.5px !important;
   line-height: 1.6 !important;
 }
@@ -821,12 +880,12 @@ html.starfield div.file-source-view {
 /* Line numbers in source viewer */
 html.starfield .file-source-view span.linenumber,
 html.starfield span.linenumber {
+  padding-right: 10px !important;
+  border-right: 1px solid #1e2d45 !important;
   background: #0b0f18 !important;
   color: #3d5070 !important;
-  border-right: 1px solid #1e2d45 !important;
   font-family: var(--font-mono) !important;
   font-size: 11px !important;
-  padding-right: 10px !important;
 }
 
 /* Custom NASA-punk Syntax Highlighting for source code preview */
@@ -837,17 +896,20 @@ html.starfield .file-source-view span[style*="color: #569cd6"] {
   color: #e05a2b !important; /* Starfield Orange for keywords */
   font-weight: 700 !important;
 }
+
 html.starfield .file-source-view .token.string,
 html.starfield .file-source-view span[style*="color: rgb(163, 21, 21)"],
 html.starfield .file-source-view span[style*="color: rgb(206, 145, 120)"],
 html.starfield .file-source-view span[style*="color: #ce9178"] {
   color: #22c55e !important; /* Tactical Green for strings */
 }
+
 html.starfield .file-source-view .token.function,
 html.starfield .file-source-view span[style*="color: rgb(220, 220, 170)"],
 html.starfield .file-source-view span[style*="color: #dcdcaa"] {
   color: #d99b26 !important; /* Starfield Gold for functions */
 }
+
 html.starfield .file-source-view .token.comment,
 html.starfield .file-source-view span[style*="color: rgb(0, 128, 0)"],
 html.starfield .file-source-view span[style*="color: rgb(106, 153, 85)"],
@@ -855,12 +917,14 @@ html.starfield .file-source-view span[style*="color: #6a9955"] {
   color: #4b5a72 !important; /* Muted Space Slate for comments */
   font-style: italic !important;
 }
+
 html.starfield .file-source-view .token.number,
 html.starfield .file-source-view .token.boolean,
 html.starfield .file-source-view span[style*="color: rgb(181, 206, 168)"],
 html.starfield .file-source-view span[style*="color: #b5cea8"] {
   color: #38bdf8 !important; /* Telemetry Cyan for numbers/booleans */
 }
+
 html.starfield .file-source-view .token.class-name,
 html.starfield .file-source-view .token.type-name,
 html.starfield .file-source-view span[style*="color: rgb(78, 201, 176)"],
@@ -874,28 +938,32 @@ html.starfield .markdown-file-preview {
   background: #06080f !important;
   color: #e8eeff !important;
 }
+
 html.starfield .markdown-file-preview h1,
 html.starfield .markdown-file-preview h2,
 html.starfield .markdown-file-preview h3,
 html.starfield .markdown-file-preview h4 {
+  padding-bottom: 6px !important;
+  border-bottom: 1px solid rgb(217 155 38 / 25%) !important;
   color: var(--sf-gold) !important;
   font-family: var(--font-mono) !important;
-  border-bottom: 1px solid rgba(217, 155, 38, 0.25) !important;
-  padding-bottom: 6px !important;
 }
+
 html.starfield .markdown-file-preview h1::before {
-  content: "// ";
   color: var(--sf-orange);
-}
-html.starfield .markdown-file-preview h2::before {
   content: "// ";
-  color: rgba(217, 155, 38, 0.7);
 }
+
+html.starfield .markdown-file-preview h2::before {
+  color: rgb(217 155 38 / 70%);
+  content: "// ";
+}
+
 html.starfield .markdown-file-preview pre {
-  background: #0a1020 !important;
   border: 1px solid var(--sf-navy) !important;
-  border-left: 3px solid var(--sf-gold) !important;
   border-radius: 0 !important;
+  border-left: 3px solid var(--sf-gold) !important;
+  background: #0a1020 !important;
 }
 
 /* Git Diff View in Right Panel */
@@ -903,6 +971,7 @@ html.starfield .file-diff-view {
   background: #06080f !important;
   font-family: var(--font-mono) !important;
 }
+
 html.starfield .file-diff-line {
   border-radius: 0 !important;
 }
@@ -913,33 +982,33 @@ html.starfield .file-diff-line {
 html.starfield
   [style*="flex: 1"][style*="overflow: hidden"][style*="position: relative"]::after,
 html.starfield div[style*="flex:1"][style*="overflow:hidden"]::after {
-  content: "";
   position: absolute;
   top: 12px;
   right: 12px;
   width: 48px;
   height: 48px;
-  pointer-events: none;
-  opacity: 0.08;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23d99b26' stroke-width='1.5'%3E%3Cline x1='0' y1='0' x2='12' y2='0'/%3E%3Cline x1='0' y1='0' x2='0' y2='12'/%3E%3Cline x1='48' y1='0' x2='36' y2='0'/%3E%3Cline x1='48' y1='0' x2='48' y2='12'/%3E%3Cline x1='0' y1='48' x2='12' y2='48'/%3E%3Cline x1='0' y1='48' x2='0' y2='36'/%3E%3Cline x1='48' y1='48' x2='36' y2='48'/%3E%3Cline x1='48' y1='48' x2='48' y2='36'/%3E%3Ccircle cx='24' cy='24' r='6'/%3E%3Ccircle cx='24' cy='24' r='2'/%3E%3Cline x1='18' y1='24' x2='14' y2='24'/%3E%3Cline x1='30' y1='24' x2='34' y2='24'/%3E%3Cline x1='24' y1='18' x2='24' y2='14'/%3E%3Cline x1='24' y1='30' x2='24' y2='34'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-size: contain;
+  content: "";
+  opacity: 0.08;
+  pointer-events: none;
 }
 
 /* ── 26. Animated scanline overlay on the whole page ─────────────────────── */
 html.starfield body::after {
-  content: "";
   position: fixed;
-  inset: 0;
+  z-index: 9998;
   background: repeating-linear-gradient(
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 0, 0, 0.06) 2px,
-    rgba(0, 0, 0, 0.06) 4px
+    rgb(0 0 0 / 6%) 2px,
+    rgb(0 0 0 / 6%) 4px
   );
+  content: "";
+  inset: 0;
   pointer-events: none;
-  z-index: 9998;
 }
 
 /* ── 27. Keyframes for starfield animations ─────────────────────────────── */
@@ -948,14 +1017,17 @@ html.starfield body::after {
   100% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
 }
+
 @keyframes sf-scan {
   0% {
     transform: translateY(-100%);
   }
+
   100% {
     transform: translateY(100vh);
   }
@@ -963,9 +1035,9 @@ html.starfield body::after {
 
 /* Running agent indicator pulse in starfield */
 html.starfield .sf-running-dot {
+  border-radius: 0 !important;
   animation: sf-pulse-gold 1.2s ease-in-out infinite !important;
   background: var(--sf-gold) !important;
-  border-radius: 0 !important;
 }
 
 /* The chat footer is a single-line priority row. Container queries remove
@@ -1056,9 +1128,11 @@ html.starfield .sf-running-dot {
   animation: none;
   mix-blend-mode: normal;
 }
+
 ::view-transition-old(root) {
   z-index: 1;
 }
+
 ::view-transition-new(root) {
   z-index: 2;
 }
@@ -1069,13 +1143,13 @@ html.starfield .sf-running-dot {
 
 html,
 body {
+  overflow: hidden;
   width: 100%;
   height: 100vh;
   height: 100dvh;
   height: var(--app-viewport-height, 100dvh);
-  margin: 0;
   padding: 0;
-  overflow: hidden;
+  margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family:
@@ -1098,13 +1172,16 @@ body {
   width: 4px;
   height: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
   border-radius: 2px;
+  background: var(--border);
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
 }
@@ -1124,126 +1201,149 @@ code {
 .markdown-body {
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
+  color: var(--text);
   font-size: 14px;
   line-height: 1.7;
-  color: var(--text);
+  overflow-x: hidden;
   word-break: break-word;
 }
+
 .markdown-body p {
   margin: 0 0 8px;
 }
+
 .markdown-body p:last-child {
   margin-bottom: 0;
 }
+
 .markdown-body h1,
 .markdown-body h2,
 .markdown-body h3,
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  font-weight: 600;
   margin: 10px 0 5px;
   color: var(--text);
-  line-height: 1.35;
+  font-weight: 600;
   letter-spacing: 0;
+  line-height: 1.35;
 }
+
 .markdown-body h1 {
   font-size: 1.16em;
 }
+
 .markdown-body h2 {
   font-size: 1.08em;
 }
+
 .markdown-body h3 {
-  font-size: 0.98em;
   color: color-mix(in srgb, var(--text) 88%, var(--text-muted));
+  font-size: 0.98em;
 }
+
 .markdown-body ul,
 .markdown-body ol {
   padding-left: 22px;
   margin: 5px 0 8px;
   list-style-position: outside;
 }
+
 .markdown-body li {
-  margin: 3px 0;
   padding-left: 2px;
+  margin: 3px 0;
 }
+
 .markdown-body ul > li {
   list-style-type: disc;
 }
+
 .markdown-body ol > li {
   list-style-type: decimal;
 }
+
 .markdown-body li > p {
   margin: 0;
 }
+
 .markdown-body li::marker {
   color: color-mix(in srgb, var(--accent) 72%, var(--text-muted));
   font-weight: 600;
 }
+
 .markdown-body strong {
   color: color-mix(in srgb, var(--text) 88%, var(--accent));
   font-weight: 700;
 }
+
 .markdown-body em {
   color: var(--text-muted);
 }
+
 .markdown-body a {
   color: var(--accent);
   text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
+
 .markdown-body a:hover {
   text-decoration-color: var(--accent);
 }
+
 .markdown-body img {
   display: block;
   max-width: 100%;
   height: auto;
-  margin: 8px 0;
   border-radius: 6px;
+  margin: 8px 0;
 }
+
 .markdown-body .markdown-inline-code {
-  background: var(--bg-subtle);
-  border-radius: 5px;
   padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--bg-subtle);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 0.92em;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
 }
+
 .markdown-body .contains-task-list {
   padding-left: 0;
   list-style: none;
 }
+
 .markdown-body .task-list-item {
-  display: block;
   position: relative;
+  display: block;
   padding-left: 25px;
 }
+
 .markdown-body .task-list-item::marker {
   content: "";
 }
+
 .markdown-body .task-list-item > input[type="checkbox"],
 .markdown-body
   .task-list-item
   > p:first-child
   > input[type="checkbox"]:first-child {
-  appearance: none;
   position: absolute;
-  left: 0;
   top: 0.35em;
+  left: 0;
+  display: inline-grid;
   width: 14px;
   height: 14px;
-  margin: 0;
   border: 1px solid var(--border);
   border-radius: 4px;
+  margin: 0;
+  appearance: none;
   background: var(--bg);
-  display: inline-grid;
   place-content: center;
 }
+
 .markdown-body .task-list-item > input[type="checkbox"]:checked,
 .markdown-body
   .task-list-item
@@ -1252,75 +1352,85 @@ code {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: color-mix(in srgb, var(--accent) 10%, var(--bg));
 }
+
 .markdown-body .task-list-item > input[type="checkbox"]:checked::before,
 .markdown-body
   .task-list-item
   > p:first-child
   > input[type="checkbox"]:first-child:checked::before {
-  content: "";
   width: 4px;
   height: 8px;
   border: solid var(--accent);
   border-width: 0 1.5px 1.5px 0;
+  content: "";
   transform: rotate(45deg) translateY(-1px);
 }
+
 .markdown-body blockquote {
+  padding: 6px 11px;
+  border-radius: 0 6px 6px 0;
   border-left: 3px solid
     color-mix(in srgb, var(--border) 75%, var(--text-muted));
-  border-radius: 0 6px 6px 0;
   margin: 6px 0;
-  padding: 6px 11px;
   background: var(--bg-subtle);
   color: var(--text-muted);
 }
+
 .markdown-table-wrap {
   width: 100%;
-  margin: 8px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
   border: 1px solid var(--border);
   border-radius: 7px;
+  margin: 8px 0;
+  overflow: auto hidden;
 }
+
 .markdown-body table {
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 100%;
   font-size: 13px;
 }
+
 .markdown-body th,
 .markdown-body td {
+  padding: 6px 10px;
   border: 0;
   border-bottom: 1px solid var(--border);
-  padding: 6px 10px;
   text-align: left;
   vertical-align: top;
 }
+
 .markdown-body tr:last-child td {
   border-bottom: 0;
 }
+
 .markdown-body th {
   background: var(--bg-panel);
   color: color-mix(in srgb, var(--text) 88%, var(--text-muted));
   font-weight: 650;
 }
+
 .markdown-body tbody tr:nth-child(even) td {
   background: var(--bg-subtle);
 }
+
 .markdown-body hr {
-  border: none;
   height: 1px;
+  border: none;
   margin: 12px 0;
   background: linear-gradient(90deg, transparent, var(--border), transparent);
 }
+
 .markdown-body .katex-display {
-  margin: 0.6em 0;
-  overflow-x: auto;
-  overflow-y: hidden;
   padding: 2px 0;
+  margin: 0.6em 0;
+  overflow: auto hidden;
 }
+
 .markdown-body .katex {
   font-size: 1.05em;
 }
+
 .markdown-user-message p {
   white-space: pre-wrap;
 }
@@ -1328,9 +1438,11 @@ code {
 .markdown-custom-message {
   line-height: 1.32;
 }
+
 .markdown-custom-message p {
   margin: 0;
 }
+
 .markdown-custom-message h1,
 .markdown-custom-message h2,
 .markdown-custom-message h3,
@@ -1340,17 +1452,21 @@ code {
   margin: 4px 0 2px;
   line-height: 1.18;
 }
+
 .markdown-custom-message ul,
 .markdown-custom-message ol {
   margin: 2px 0 3px;
 }
+
 .markdown-custom-message li {
   margin: 0;
 }
+
 .markdown-custom-message blockquote {
-  margin: 3px 0;
   padding: 4px 8px;
+  margin: 3px 0;
 }
+
 .markdown-custom-message .markdown-table-wrap,
 .markdown-custom-message .markdown-code-block {
   margin: 4px 0;
@@ -1359,9 +1475,11 @@ code {
 .markdown-compaction-message {
   line-height: 1.5;
 }
+
 .markdown-compaction-message p {
   margin: 0 0 7px;
 }
+
 .markdown-compaction-message h1,
 .markdown-compaction-message h2,
 .markdown-compaction-message h3,
@@ -1371,96 +1489,109 @@ code {
   margin: 8px 0 3px;
   line-height: 1.25;
 }
+
 .markdown-compaction-message ul,
 .markdown-compaction-message ol {
   margin: 4px 0 8px;
 }
+
 .markdown-compaction-message li {
   margin: 2px 0;
 }
+
 .markdown-compaction-message .markdown-table-wrap,
 .markdown-compaction-message .markdown-code-block {
   margin: 6px 0;
 }
 
 .compaction-file-details {
-  margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
+  margin-top: 10px;
   color: var(--text-muted);
   font-size: 12px;
 }
+
 .compaction-file-details summary {
   cursor: pointer;
   font-weight: 600;
   line-height: 1.4;
 }
+
 .compaction-file-section {
   margin-top: 8px;
 }
+
 .compaction-file-title {
   margin-bottom: 4px;
   color: var(--text);
   font-size: 11px;
   font-weight: 650;
 }
+
 .compaction-file-list {
-  max-height: 180px;
-  margin: 0;
-  padding: 7px 8px;
   overflow: auto;
+  max-height: 180px;
+  padding: 7px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
+  margin: 0;
   background: var(--bg-panel);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.45;
   list-style: none;
 }
+
 .compaction-file-list li {
   overflow-wrap: anywhere;
 }
+
 .compaction-file-list li + li {
   margin-top: 3px;
 }
 
 .markdown-code-block {
   position: relative;
+  overflow: hidden;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  margin: 6px 0;
   border: 1px solid var(--border);
   border-radius: 7px;
-  overflow: hidden;
+  margin: 6px 0;
   background: var(--bg);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 42%, transparent);
 }
+
 .markdown-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 5px 10px;
-  background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
   color: var(--text-dim);
   font-size: 11px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   gap: 8px;
 }
+
 .markdown-code-lang {
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-weight: 650;
 }
+
 .markdown-code-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
+
 .markdown-code-action {
+  padding: 2px 7px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  padding: 2px 7px;
   background: var(--bg);
   color: var(--text-muted);
   cursor: pointer;
@@ -1468,15 +1599,18 @@ code {
   font-size: 11px;
   line-height: 1.25;
 }
+
 .markdown-code-action:hover:not(:disabled) {
-  color: var(--text);
   border-color: color-mix(in srgb, var(--border) 70%, var(--text-muted));
+  color: var(--text);
 }
+
 .markdown-code-action:disabled {
   color: var(--text-dim);
   cursor: not-allowed;
   opacity: 0.75;
 }
+
 .markdown-code-action.is-active {
   background: var(--bg-selected);
   color: var(--text);
@@ -1484,16 +1618,19 @@ code {
 
 .mermaid-block {
   padding: 12px;
-  overflow-x: auto;
   background: color-mix(in srgb, var(--bg) 92%, var(--bg-panel));
+  overflow-x: auto;
 }
+
 .mermaid-block svg {
   display: block;
   max-width: none;
 }
+
 .mermaid-block-loading {
   min-height: 120px;
 }
+
 .mermaid-block-error {
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -1507,9 +1644,11 @@ code {
   cursor: zoom-in;
   text-align: left;
 }
+
 .mermaid-preview-button:hover {
   opacity: 0.85;
 }
+
 .mermaid-preview-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
@@ -1520,32 +1659,36 @@ code {
   max-width: none;
   height: 100dvh;
   max-height: none;
-  margin: 0;
   padding: 0;
   border: 0;
+  margin: 0;
   background: var(--bg);
   color: var(--text);
 }
+
 .mermaid-zoom-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.35);
+  background: rgb(0 0 0 / 35%);
 }
+
 .mermaid-zoom-layout {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
 }
+
 .mermaid-zoom-toolbar {
   display: flex;
-  align-items: center;
-  gap: 10px;
   min-height: 40px;
+  align-items: center;
   padding: 7px 10px;
-  background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  gap: 10px;
 }
+
 .mermaid-zoom-title {
-  min-width: 0;
   overflow: hidden;
+  min-width: 0;
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1553,28 +1696,31 @@ code {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .mermaid-zoom-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
   margin-left: auto;
+  gap: 6px;
 }
+
 .mermaid-zoom-stepper {
   display: flex;
-  align-items: center;
-  height: 24px;
   overflow: hidden;
+  height: 24px;
+  align-items: center;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--bg);
 }
+
 .mermaid-zoom-stepper button,
 .mermaid-zoom-icon-button {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1582,32 +1728,39 @@ code {
   cursor: pointer;
   touch-action: manipulation;
 }
+
 .mermaid-zoom-stepper button {
   height: 22px;
 }
+
 .mermaid-zoom-stepper button + .mermaid-zoom-value,
 .mermaid-zoom-value + button {
   border-left: 1px solid var(--border);
 }
+
 .mermaid-zoom-icon-button {
   flex: 0 0 24px;
   border: 1px solid var(--border);
   border-radius: 5px;
 }
+
 .mermaid-zoom-stepper button:hover:not(:disabled),
 .mermaid-zoom-icon-button:hover {
   background: var(--bg-hover);
   color: var(--text);
 }
+
 .mermaid-zoom-stepper button:disabled {
-  opacity: 0.35;
   cursor: default;
+  opacity: 0.35;
 }
+
 .mermaid-zoom-stepper button:focus-visible,
 .mermaid-zoom-icon-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
 .mermaid-zoom-value {
   min-width: 48px;
   height: 22px;
@@ -1618,30 +1771,33 @@ code {
   text-align: center;
   user-select: none;
 }
+
 .mermaid-zoom-viewport {
+  overflow: auto;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
   padding: 24px;
   background: var(--bg);
   -webkit-overflow-scrolling: touch;
 }
+
 .mermaid-zoom-canvas {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: var(--bg-panel);
   margin: 0 auto;
+  background: var(--bg-panel);
   transition: width 0.15s ease;
 }
+
 .mermaid-zoom-canvas svg {
   display: block;
   width: 100% !important;
-  height: auto;
   max-width: none !important;
+  height: auto;
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .mermaid-zoom-toolbar {
     padding-inline: 8px;
   }
@@ -1662,17 +1818,17 @@ code {
 }
 
 .file-viewer-path {
-  flex: 1 1 auto;
-  min-width: 48px;
   overflow: hidden;
+  min-width: 48px;
+  flex: 1 1 auto;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .file-viewer-meta {
-  flex: 0 1 auto;
-  min-width: 0;
   overflow: hidden;
+  min-width: 0;
+  flex: 0 1 auto;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1680,30 +1836,30 @@ code {
 .file-viewer-live-indicator {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
   flex: 0 0 7px;
+  border-radius: 50%;
 }
 
 .file-viewer-controls {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
 }
 
 .file-viewer-actions {
   display: flex;
-  align-items: center;
   height: 24px;
-  gap: 4px;
   flex-shrink: 0;
+  align-items: center;
   order: -1;
+  gap: 4px;
 }
 
 .file-viewer-mode-switch {
   display: flex;
-  height: 24px;
   overflow: hidden;
+  height: 24px;
   border: 1px solid var(--border);
   border-radius: 5px;
 }
@@ -1713,11 +1869,11 @@ code {
   padding: 0 8px;
   border: 0;
   border-left: 1px solid var(--border);
+  cursor: pointer;
   font: inherit;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
-  cursor: pointer;
   white-space: nowrap;
 }
 
@@ -1731,13 +1887,13 @@ code {
 
 .file-viewer-icon-button {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
-  padding: 0;
   box-sizing: border-box;
   flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: transparent;
@@ -1773,8 +1929,7 @@ code {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-
-@media (max-width: 380px) {
+@media (width <= 380px) {
   .file-viewer-toolbar {
     gap: 6px !important;
     padding-inline: 8px !important;
@@ -1789,35 +1944,41 @@ code {
 .markdown-file-preview h1 {
   font-size: 1.8em;
 }
+
 .markdown-file-preview h2 {
   font-size: 1.4em;
 }
+
 .markdown-file-preview h3 {
   font-size: 1.15em;
 }
+
 .markdown-file-preview p {
   margin: 0 0 12px;
 }
+
 .markdown-file-preview pre {
-  background: var(--bg-panel);
+  padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 12px 16px;
-  overflow-x: auto;
+  margin: 12px 0;
+  background: var(--bg-panel);
   font-family: var(--font-mono);
   font-size: 13px;
-  margin: 12px 0;
+  overflow-x: auto;
 }
+
 .markdown-file-preview code {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  background: var(--bg-panel);
   padding: 1px 5px;
   border-radius: 3px;
+  background: var(--bg-panel);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }
+
 .markdown-file-preview pre code {
-  background: none;
   padding: 0;
+  background: none;
 }
 
 /* syntax highlighter line numbers */
@@ -1832,6 +1993,7 @@ span.linenumber {
     opacity: 0;
     transform: scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -1841,8 +2003,9 @@ span.linenumber {
 @keyframes drop-icon-float {
   0%,
   100% {
-    transform: translateY(0px);
+    transform: translateY(0);
   }
+
   50% {
     transform: translateY(-6px);
   }
@@ -1854,6 +2017,7 @@ span.linenumber {
     opacity: 0.5;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.06);
@@ -1862,12 +2026,13 @@ span.linenumber {
 
 @keyframes drop-ripple {
   0% {
-    transform: scale(0);
     opacity: 0.6;
+    transform: scale(0);
   }
+
   100% {
-    transform: scale(1);
     opacity: 0;
+    transform: scale(1);
   }
 }
 
@@ -1876,6 +2041,7 @@ span.linenumber {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.3;
   }
@@ -1885,6 +2051,7 @@ span.linenumber {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -1895,6 +2062,7 @@ span.linenumber {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -1902,36 +2070,38 @@ span.linenumber {
 
 @keyframes notice-shelf-in {
   from {
-    opacity: 0;
     height: 0;
-    max-height: 0;
     min-height: 0;
+    max-height: 0;
     margin-bottom: 0;
+    opacity: 0;
     transform: translateY(-6px) scale(0.995);
   }
+
   to {
-    opacity: 1;
     height: 60px;
-    max-height: 60px;
     min-height: 60px;
+    max-height: 60px;
+    opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
 
 @keyframes notice-shelf-out {
   from {
-    opacity: 1;
     height: 60px;
-    max-height: 60px;
     min-height: 60px;
+    max-height: 60px;
+    opacity: 1;
     transform: translateY(0) scale(1);
   }
+
   to {
-    opacity: 0;
     height: 0;
-    max-height: 0;
     min-height: 0;
+    max-height: 0;
     margin-bottom: 0;
+    opacity: 0;
     transform: translateY(-5px) scale(0.995);
   }
 }
@@ -1944,27 +2114,30 @@ span.linenumber {
 
 @keyframes saved-pop {
   0% {
+    box-shadow: 0 0 0 0 rgb(74 222 128 / 55%);
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
   }
+
   40% {
+    box-shadow: 0 0 0 6px rgb(74 222 128 / 25%);
     transform: scale(1.08);
-    box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.25);
   }
+
   100% {
+    box-shadow: 0 0 0 0 rgb(74 222 128 / 0%);
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
   }
 }
 
 @keyframes saved-check-draw {
   from {
-    stroke-dashoffset: 18;
     opacity: 0;
+    stroke-dashoffset: 18;
   }
+
   to {
-    stroke-dashoffset: 0;
     opacity: 1;
+    stroke-dashoffset: 0;
   }
 }
 
@@ -1973,28 +2146,31 @@ span.linenumber {
   position: relative;
   z-index: 220;
   width: 12px;
-  margin: 0 -6px;
   flex: 0 0 12px;
+  margin: 0 -6px;
   cursor: col-resize;
-  touch-action: none;
   outline: none;
+  touch-action: none;
 }
+
 .panel-resize-handle::after {
-  content: "";
   position: absolute;
   top: 0;
   bottom: 0;
   left: 5px;
   width: 2px;
-  pointer-events: none;
   background: transparent;
+  content: "";
+  pointer-events: none;
   transition: background 0.12s ease;
 }
+
 .panel-resize-handle:hover::after,
 .panel-resize-handle:focus-visible::after,
 .panel-resize-handle.is-resizing::after {
   background: color-mix(in srgb, var(--text-muted) 70%, var(--border));
 }
+
 .right-panel-overlay-backdrop {
   display: none;
 }
@@ -2007,20 +2183,24 @@ span.linenumber {
     width 0.2s ease,
     min-width 0.2s ease;
 }
+
 .sidebar-container.sidebar-open {
   width: var(--sidebar-width, 260px);
   min-width: var(--sidebar-width, 260px);
 }
+
 .sidebar-container.sidebar-closed {
   width: 0;
   min-width: 0;
   border-right: none !important;
   visibility: hidden;
 }
+
 .sidebar-container > * {
   width: var(--sidebar-width, 260px);
   min-width: var(--sidebar-width, 260px);
 }
+
 .sidebar-container.sidebar-resizing,
 .sidebar-container.sidebar-resizing > * {
   transition: none !important;
@@ -2029,24 +2209,28 @@ span.linenumber {
 /* Right file panel: participate in the split layout at all widths. */
 .right-panel-container {
   overflow: hidden;
+  flex-shrink: 0;
   transition:
     width 0.2s ease,
     min-width 0.2s ease;
-  flex-shrink: 0;
 }
+
 .right-panel-container.right-panel-open {
   width: var(--right-panel-width, clamp(360px, 42vw, 640px));
   min-width: 300px;
 }
+
 .right-panel-container.right-panel-closed {
   width: 0;
   min-width: 0;
   border-left: none !important;
 }
+
 .right-panel-container > * {
   width: var(--right-panel-width, clamp(360px, 42vw, 640px));
   min-width: 300px;
 }
+
 .right-panel-container.right-panel-resizing,
 .right-panel-container.right-panel-resizing > * {
   transition: none !important;

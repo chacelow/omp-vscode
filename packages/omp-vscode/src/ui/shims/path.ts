@@ -1,9 +1,6 @@
 // Browser shim for node:path — minimal POSIX-ish helpers for the webview.
 export function join(...parts: string[]): string {
-  return parts
-    .filter(Boolean)
-    .join("/")
-    .replace(/\/+/g, "/");
+  return parts.filter(Boolean).join("/").replace(/\/+/g, "/");
 }
 
 export function resolve(...parts: string[]): string {

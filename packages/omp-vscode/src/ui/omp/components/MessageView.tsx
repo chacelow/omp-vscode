@@ -40,7 +40,12 @@ import {
 import { useI18n } from "@/hooks/useI18n";
 import { usePreferences } from "@/hooks/usePreferences";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
-import { ToolLine, TodoCard, isLineStyleTool, isTodoTool } from "./chat/ToolLine";
+import {
+  ToolLine,
+  TodoCard,
+  isLineStyleTool,
+  isTodoTool,
+} from "./chat/ToolLine";
 import {
   getAssistantErrorMessage,
   isEmptyThinkingBlock,
@@ -108,7 +113,6 @@ export interface AssistantHoverMeta {
   durationSec?: number;
   tps?: number;
 }
-
 
 interface Props {
   message: AgentMessage;
@@ -718,13 +722,17 @@ function AssistantMessageView({
   // Publish own stats to a shared meta panel on hover. Values are computed
   // lazily inside the callback so we don't re-subscribe every render.
   const publishMeta = onHoverMeta
-    ? () => onHoverMeta({
-        input: message.usage?.input,
-        output: message.usage?.output,
-        cacheRead: message.usage?.cacheRead,
-        durationSec: engineDurationMs !== undefined ? engineDurationMs / 1000 : durationHover ?? undefined,
-        tps: tps ?? completedTps ?? undefined,
-      })
+    ? () =>
+        onHoverMeta({
+          input: message.usage?.input,
+          output: message.usage?.output,
+          cacheRead: message.usage?.cacheRead,
+          durationSec:
+            engineDurationMs !== undefined
+              ? engineDurationMs / 1000
+              : (durationHover ?? undefined),
+          tps: tps ?? completedTps ?? undefined,
+        })
     : undefined;
   const clearMeta = onHoverMeta ? () => onHoverMeta(null) : undefined;
 
@@ -843,15 +851,32 @@ function AssistantMessageView({
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {(() => {
           const rendered: ReactNode[] = [];
-          const todoItems = blockItems.filter(({ block: candidate }) => candidate.type === "toolCall" && isTodoTool(candidate));
-          const firstTodoId = todoItems[0]?.block.type === "toolCall" ? todoItems[0].block.toolCallId : null;
-          const latestTodo = [...todoItems].reverse().find(({ block: candidate }) => candidate.type === "toolCall" && (toolResults?.has(candidate.toolCallId) || Array.isArray(candidate.input.list))) ?? todoItems[0];
+          const todoItems = blockItems.filter(
+            ({ block: candidate }) =>
+              candidate.type === "toolCall" && isTodoTool(candidate)
+          );
+          const firstTodoId =
+            todoItems[0]?.block.type === "toolCall"
+              ? todoItems[0].block.toolCallId
+              : null;
+          const latestTodo =
+            [...todoItems]
+              .reverse()
+              .find(
+                ({ block: candidate }) =>
+                  candidate.type === "toolCall" &&
+                  (toolResults?.has(candidate.toolCallId) ||
+                    Array.isArray(candidate.input.list))
+              ) ?? todoItems[0];
           let index = 0;
           while (index < blockItems.length) {
             const item = blockItems[index];
             const { block, originalIndex } = item;
             if (block.type === "toolCall" && isTodoTool(block)) {
-              if (block.toolCallId === firstTodoId && latestTodo?.block.type === "toolCall") {
+              if (
+                block.toolCallId === firstTodoId &&
+                latestTodo?.block.type === "toolCall"
+              ) {
                 rendered.push(
                   <TodoCard
                     key={`${entryId ?? "stream"}-todo`}
@@ -886,7 +911,9 @@ function AssistantMessageView({
                 isStreaming={isStreaming}
                 streamingDuration={
                   streamingDurations.get(originalIndex) ??
-                  (block.type === "thinking" ? thinkingDurationFromFile : undefined)
+                  (block.type === "thinking"
+                    ? thinkingDurationFromFile
+                    : undefined)
                 }
                 toolCallDurations={toolCallDurations}
                 cwd={cwd}
@@ -926,7 +953,7 @@ function AssistantMessageView({
           Error: {providerError}
         </div>
       )}
-      {(!isStreaming && (time || canFork)) ? (
+      {!isStreaming && (time || canFork) ? (
         <div
           data-omp-mount
           className="assistant-message-meta group/meta mt-1 flex min-w-0 flex-nowrap items-center justify-end gap-2 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums"

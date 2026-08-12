@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useTheme } from "@/hooks/useTheme";
 
-const LANG_OPTIONS: { id: "en" | "zh-CN"; label: string; sub: string; flag: string }[] = [
+const LANG_OPTIONS: {
+  id: "en" | "zh-CN";
+  label: string;
+  sub: string;
+  flag: string;
+}[] = [
   { id: "en", label: "English", sub: "English", flag: "🇺🇸" },
   { id: "zh-CN", label: "中文", sub: "Chinese (Simplified)", flag: "🇨🇳" },
 ];
@@ -107,7 +112,11 @@ export function LanguagePicker() {
           stroke="currentColor"
           strokeWidth="1.8"
           strokeLinecap="round"
-          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}
+          style={{
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.15s",
+            flexShrink: 0,
+          }}
           aria-hidden="true"
         >
           <polyline points="2 3.5 5 6.5 8 3.5" />
@@ -130,7 +139,9 @@ export function LanguagePicker() {
             boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
             borderRadius: isStarfield ? 0 : 8,
             overflow: "hidden",
-            borderTop: isStarfield ? "2px solid #d99b26" : "1px solid var(--border)",
+            borderTop: isStarfield
+              ? "2px solid #d99b26"
+              : "1px solid var(--border)",
           }}
         >
           {isStarfield && (
@@ -179,7 +190,8 @@ export function LanguagePicker() {
                   transition: "background 0.1s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+                  if (!isActive)
+                    e.currentTarget.style.background = "var(--bg-hover)";
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) e.currentTarget.style.background = "none";
@@ -191,8 +203,11 @@ export function LanguagePicker() {
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
-                      color: isStarfield && isActive ? "#d99b26" : "var(--text)",
-                      fontFamily: isStarfield ? "var(--font-mono, monospace)" : "inherit",
+                      color:
+                        isStarfield && isActive ? "#d99b26" : "var(--text)",
+                      fontFamily: isStarfield
+                        ? "var(--font-mono, monospace)"
+                        : "inherit",
                     }}
                   >
                     {opt.label}
@@ -201,7 +216,9 @@ export function LanguagePicker() {
                     style={{
                       fontSize: 10,
                       color: "var(--text-dim)",
-                      fontFamily: isStarfield ? "var(--font-mono, monospace)" : "inherit",
+                      fontFamily: isStarfield
+                        ? "var(--font-mono, monospace)"
+                        : "inherit",
                     }}
                   >
                     {opt.sub}

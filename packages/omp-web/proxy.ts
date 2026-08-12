@@ -24,13 +24,16 @@ export function proxy(request: NextRequest) {
     if (!isApiRequest) {
       return new NextResponse("Untrusted request", { status: 403 });
     }
-    return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Untrusted API request" },
+      { status: 403 }
+    );
   }
 
   const password = process.env.PI_WEB_PASSWORD;
   if (
-    isWebPasswordEnabled(password)
-    && !isValidBasicAuthorization(request.headers.get("authorization"), password)
+    isWebPasswordEnabled(password) &&
+    !isValidBasicAuthorization(request.headers.get("authorization"), password)
   ) {
     return new NextResponse("Authentication required", {
       status: 401,

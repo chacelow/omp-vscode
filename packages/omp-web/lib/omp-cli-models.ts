@@ -4,14 +4,15 @@ import yaml from "yaml";
 
 export function syncOmpCliModelsYaml(
   agentDir: string,
-  customProviders: Record<string, Record<string, unknown>>,
+  customProviders: Record<string, Record<string, unknown>>
 ): void {
   const modelsYamlPath = join(agentDir, "models.yml");
   let existing: Record<string, unknown> = {};
   if (existsSync(modelsYamlPath)) {
     try {
       const parsed = yaml.parse(readFileSync(modelsYamlPath, "utf8"));
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) existing = parsed as Record<string, unknown>;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+        existing = parsed as Record<string, unknown>;
     } catch {
       // overwrite an invalid legacy file with the current web configuration
     }

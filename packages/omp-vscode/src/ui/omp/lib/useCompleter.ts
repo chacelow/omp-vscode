@@ -22,7 +22,9 @@ export interface CompleterState<T> {
 }
 
 /** Shared state machine for token completers in the composer. */
-export function useCompleter<T>(options: UseCompleterOptions<T> = {}): CompleterState<T> {
+export function useCompleter<T>(
+  options: UseCompleterOptions<T> = {}
+): CompleterState<T> {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItemsState] = useState<readonly T[]>([]);
@@ -30,7 +32,8 @@ export function useCompleter<T>(options: UseCompleterOptions<T> = {}): Completer
   const [insertRange, setInsertRange] = useState<CompleterRange | null>(null);
 
   useEffect(() => {
-    if (activeIndex >= items.length) setActiveIndex(Math.max(0, items.length - 1));
+    if (activeIndex >= items.length)
+      setActiveIndex(Math.max(0, items.length - 1));
   }, [activeIndex, items.length]);
 
   const close = useCallback(() => {
@@ -46,20 +49,28 @@ export function useCompleter<T>(options: UseCompleterOptions<T> = {}): Completer
     setActiveIndex(0);
   }, []);
 
-  const openAt = useCallback((range: CompleterRange, nextQuery: string) => {
-    setOpen(true);
-    setQuery(nextQuery);
-    setInsertRange(range);
-    setActiveIndex(0);
-    const fetched = options.fetch?.(nextQuery);
-    if (fetched) {
-      void Promise.resolve(fetched).then(setItemsState);
-    }
-  }, [options.fetch]);
+  const openAt = useCallback(
+    (range: CompleterRange, nextQuery: string) => {
+      setOpen(true);
+      setQuery(nextQuery);
+      setInsertRange(range);
+      setActiveIndex(0);
+      const fetched = options.fetch?.(nextQuery);
+      if (fetched) {
+        void Promise.resolve(fetched).then(setItemsState);
+      }
+    },
+    [options.fetch]
+  );
 
-  const moveActive = useCallback((delta: number) => {
-    setActiveIndex((index) => Math.max(0, Math.min(items.length - 1, index + delta)));
-  }, [items.length]);
+  const moveActive = useCallback(
+    (delta: number) => {
+      setActiveIndex((index) =>
+        Math.max(0, Math.min(items.length - 1, index + delta))
+      );
+    },
+    [items.length]
+  );
 
   const accept = useCallback((): T | undefined => {
     if (!insertRange) return undefined;
@@ -68,5 +79,16 @@ export function useCompleter<T>(options: UseCompleterOptions<T> = {}): Completer
     return item;
   }, [activeIndex, insertRange, items, options.accept]);
 
-  return { open, query, items, activeIndex, insertRange, openAt, close, setItems, moveActive, accept };
+  return {
+    open,
+    query,
+    items,
+    activeIndex,
+    insertRange,
+    openAt,
+    close,
+    setItems,
+    moveActive,
+    accept,
+  };
 }

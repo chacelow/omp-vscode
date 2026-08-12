@@ -21,10 +21,7 @@ export interface SkillInstallInfo {
 }
 
 export type SkillUpdateState =
-  | "up-to-date"
-  | "update-available"
-  | "unsupported"
-  | "error";
+  "up-to-date" | "update-available" | "unsupported" | "error";
 
 export interface SkillUpdateResult {
   package: string;

@@ -18,7 +18,11 @@ test("rejects an existing path that escapes an allowed root through a symlink", 
   fs.mkdirSync(outside);
   fs.writeFileSync(path.join(outside, "secret.txt"), "secret");
   const link = path.join(allowed, "link");
-  fs.symlinkSync(outside, link, process.platform === "win32" ? "junction" : "dir");
+  fs.symlinkSync(
+    outside,
+    link,
+    process.platform === "win32" ? "junction" : "dir"
+  );
   const target = path.join(link, "secret.txt");
   const roots = new Set([allowed]);
 

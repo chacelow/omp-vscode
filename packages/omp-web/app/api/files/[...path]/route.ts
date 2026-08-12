@@ -26,18 +26,40 @@ import {
   parseUploadConflictStrategy,
   validateUploadFileNames,
 } from "@/lib/file-upload";
-import { parseFormDataWithinLimit, RequestBodyTooLargeError } from "@/lib/bounded-form-data";
+import {
+  parseFormDataWithinLimit,
+  RequestBodyTooLargeError,
+} from "@/lib/bounded-form-data";
 
 const IGNORED_NAMES = new Set([
-  "node_modules", ".git", ".next", "dist", "build", "__pycache__",
-  ".turbo", ".cache", "coverage", ".pytest_cache", ".mypy_cache",
-  "target", "vendor", ".DS_Store", ".git",
+  "node_modules",
+  ".git",
+  ".next",
+  "dist",
+  "build",
+  "__pycache__",
+  ".turbo",
+  ".cache",
+  "coverage",
+  ".pytest_cache",
+  ".mypy_cache",
+  "target",
+  "vendor",
+  ".DS_Store",
+  ".git",
 ]);
 
 const IGNORED_SUFFIXES = [".pyc"];
 
-const FILE_REQUEST_TYPES = ["list", "read", "download", "meta", "preview", "watch"] as const;
-type FileRequestType = typeof FILE_REQUEST_TYPES[number];
+const FILE_REQUEST_TYPES = [
+  "list",
+  "read",
+  "download",
+  "meta",
+  "preview",
+  "watch",
+] as const;
+type FileRequestType = (typeof FILE_REQUEST_TYPES)[number];
 const FILE_REQUEST_TYPE_SET = new Set<string>(FILE_REQUEST_TYPES);
 const MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_UPLOAD_TOTAL_BYTES = 100 * 1024 * 1024;
@@ -45,24 +67,59 @@ const MAX_UPLOAD_TOTAL_BYTES = 100 * 1024 * 1024;
 const MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_TOTAL_BYTES + 1024 * 1024;
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
-  ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
-  mjs: "javascript", cjs: "javascript", py: "python", rb: "ruby",
-  go: "go", rs: "rust", java: "java", kt: "kotlin", swift: "swift",
-  c: "c", cpp: "cpp", h: "c", hpp: "cpp", cs: "csharp",
-  html: "html", htm: "html", css: "css", scss: "css", less: "css",
-  json: "json", jsonl: "json", yaml: "yaml", yml: "yaml",
-  toml: "toml", xml: "xml", md: "markdown", mdx: "markdown",
-  sh: "bash", bash: "bash", zsh: "bash", fish: "bash",
-  sql: "sql", graphql: "graphql", gql: "graphql",
-  dockerfile: "dockerfile", tf: "hcl", hcl: "hcl",
-  env: "bash", gitignore: "bash", txt: "text",
-  pdf: "pdf", docx: "word",
+  ts: "typescript",
+  tsx: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  py: "python",
+  rb: "ruby",
+  go: "go",
+  rs: "rust",
+  java: "java",
+  kt: "kotlin",
+  swift: "swift",
+  c: "c",
+  cpp: "cpp",
+  h: "c",
+  hpp: "cpp",
+  cs: "csharp",
+  html: "html",
+  htm: "html",
+  css: "css",
+  scss: "css",
+  less: "css",
+  json: "json",
+  jsonl: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  toml: "toml",
+  xml: "xml",
+  md: "markdown",
+  mdx: "markdown",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  fish: "bash",
+  sql: "sql",
+  graphql: "graphql",
+  gql: "graphql",
+  dockerfile: "dockerfile",
+  tf: "hcl",
+  hcl: "hcl",
+  env: "bash",
+  gitignore: "bash",
+  txt: "text",
+  pdf: "pdf",
+  docx: "word",
 };
 
 function getLanguage(filePath: string): string {
   const base = path.basename(filePath).toLowerCase();
   // Special full-name matches
-  if (base === "dockerfile" || base.startsWith("dockerfile.")) return "dockerfile";
+  if (base === "dockerfile" || base.startsWith("dockerfile."))
+    return "dockerfile";
   if (base === ".env" || base.startsWith(".env.")) return "bash";
   if (base === "makefile" || base === "gnumakefile") return "makefile";
   const ext = base.split(".").pop() ?? "";
@@ -80,23 +137,35 @@ function parseFileRequestType(value: string): FileRequestType | null {
   return FILE_REQUEST_TYPE_SET.has(value) ? (value as FileRequestType) : null;
 }
 
-async function getUploadDirectory(segments: string[]): Promise<
-  { directory: string } | { response: NextResponse }
-> {
+async function getUploadDirectory(
+  segments: string[]
+): Promise<{ directory: string } | { response: NextResponse }> {
   const directory = filePathFromSegments(segments);
   const allowedRoots = await getAllowedFileRoots();
   if (!isFilePathAllowed(directory, allowedRoots)) {
-    return { response: NextResponse.json({ error: "Access denied" }, { status: 403 }) };
+    return {
+      response: NextResponse.json({ error: "Access denied" }, { status: 403 }),
+    };
   }
 
   let stat: fs.Stats;
   try {
     stat = fs.statSync(directory);
   } catch {
-    return { response: NextResponse.json({ error: "Upload directory not found" }, { status: 404 }) };
+    return {
+      response: NextResponse.json(
+        { error: "Upload directory not found" },
+        { status: 404 }
+      ),
+    };
   }
   if (!stat.isDirectory()) {
-    return { response: NextResponse.json({ error: "Upload target is not a directory" }, { status: 400 }) };
+    return {
+      response: NextResponse.json(
+        { error: "Upload target is not a directory" },
+        { status: 400 }
+      ),
+    };
   }
 
   // A browsable directory can be a symlink. Resolve both sides before writes
@@ -111,14 +180,17 @@ async function getUploadDirectory(segments: string[]): Promise<
     }
   }
   if (!isFilePathAllowed(realDirectory, realRoots)) {
-    return { response: NextResponse.json({ error: "Access denied" }, { status: 403 }) };
+    return {
+      response: NextResponse.json({ error: "Access denied" }, { status: 403 }),
+    };
   }
 
   return { directory: realDirectory };
 }
 
 function parseUploadFileNames(value: unknown): string[] | null {
-  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) return null;
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string"))
+    return null;
   return value;
 }
 
@@ -127,7 +199,10 @@ export async function POST(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   if (!isApiRequestAllowed(request)) {
-    return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Untrusted API request" },
+      { status: 403 }
+    );
   }
 
   try {
@@ -138,10 +213,15 @@ export async function POST(
     const type = request.nextUrl.searchParams.get("type") ?? "upload";
 
     if (type === "upload-check") {
-      const body = await request.json().catch(() => null) as { fileNames?: unknown } | null;
+      const body = (await request.json().catch(() => null)) as {
+        fileNames?: unknown;
+      } | null;
       const fileNames = parseUploadFileNames(body?.fileNames);
       if (!fileNames) {
-        return NextResponse.json({ error: "fileNames must be an array of strings" }, { status: 400 });
+        return NextResponse.json(
+          { error: "fileNames must be an array of strings" },
+          { status: 400 }
+        );
       }
       const validationError = validateUploadFileNames(fileNames);
       if (validationError) {
@@ -151,29 +231,54 @@ export async function POST(
     }
 
     if (type !== "upload") {
-      return NextResponse.json({ error: "Invalid upload request type" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid upload request type" },
+        { status: 400 }
+      );
     }
 
-    const strategy = parseUploadConflictStrategy(request.nextUrl.searchParams.get("conflict"));
+    const strategy = parseUploadConflictStrategy(
+      request.nextUrl.searchParams.get("conflict")
+    );
     if (!strategy) {
-      return NextResponse.json({ error: "Invalid conflict strategy" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid conflict strategy" },
+        { status: 400 }
+      );
     }
 
     let formData: FormData;
     try {
-      formData = await parseFormDataWithinLimit(request, MAX_UPLOAD_REQUEST_BYTES);
+      formData = await parseFormDataWithinLimit(
+        request,
+        MAX_UPLOAD_REQUEST_BYTES
+      );
     } catch (error) {
       if (error instanceof RequestBodyTooLargeError) {
-        return NextResponse.json({ error: "Uploads must total 100MB or less" }, { status: 413 });
+        return NextResponse.json(
+          { error: "Uploads must total 100MB or less" },
+          { status: 413 }
+        );
       }
       throw error;
     }
-    const files = formData.getAll("files").filter((entry): entry is File => typeof entry !== "string");
+    const files = formData
+      .getAll("files")
+      .filter((entry): entry is File => typeof entry !== "string");
     if (files.some((file) => file.size > MAX_UPLOAD_FILE_BYTES)) {
-      return NextResponse.json({ error: "Each upload must be 25MB or smaller" }, { status: 413 });
+      return NextResponse.json(
+        { error: "Each upload must be 25MB or smaller" },
+        { status: 413 }
+      );
     }
-    if (files.reduce((total, file) => total + file.size, 0) > MAX_UPLOAD_TOTAL_BYTES) {
-      return NextResponse.json({ error: "Uploads must total 100MB or less" }, { status: 413 });
+    if (
+      files.reduce((total, file) => total + file.size, 0) >
+      MAX_UPLOAD_TOTAL_BYTES
+    ) {
+      return NextResponse.json(
+        { error: "Uploads must total 100MB or less" },
+        { status: 413 }
+      );
     }
     const fileNames = files.map((file) => file.name);
     const validationError = validateUploadFileNames(fileNames);
@@ -183,11 +288,14 @@ export async function POST(
 
     const inspection = inspectUploadTargets(directory, fileNames);
     if (strategy === "error" && inspection.conflicts.length > 0) {
-      return NextResponse.json({
-        error: "One or more files already exist",
-        conflicts: inspection.conflicts,
-        nonReplaceable: inspection.nonReplaceable,
-      }, { status: 409 });
+      return NextResponse.json(
+        {
+          error: "One or more files already exist",
+          conflicts: inspection.conflicts,
+          nonReplaceable: inspection.nonReplaceable,
+        },
+        { status: 409 }
+      );
     }
 
     const conflictSet = new Set(inspection.conflicts);
@@ -203,7 +311,10 @@ export async function POST(
         continue;
       }
       if (conflictSet.has(file.name) && nonReplaceableSet.has(file.name)) {
-        errors.push({ name: file.name, error: "Cannot replace a directory or symbolic link" });
+        errors.push({
+          name: file.name,
+          error: "Cannot replace a directory or symbolic link",
+        });
         continue;
       }
 
@@ -211,7 +322,10 @@ export async function POST(
       try {
         bytes = Buffer.from(await file.arrayBuffer());
       } catch (error) {
-        errors.push({ name: file.name, error: error instanceof Error ? error.message : String(error) });
+        errors.push({
+          name: file.name,
+          error: error instanceof Error ? error.message : String(error),
+        });
         continue;
       }
 
@@ -219,7 +333,10 @@ export async function POST(
         try {
           fs.unlinkSync(destination);
         } catch (error) {
-          errors.push({ name: file.name, error: error instanceof Error ? error.message : String(error) });
+          errors.push({
+            name: file.name,
+            error: error instanceof Error ? error.message : String(error),
+          });
           continue;
         }
       }
@@ -228,20 +345,29 @@ export async function POST(
         fs.writeFileSync(destination, bytes, { flag: "wx" });
         uploaded.push(file.name);
       } catch (error) {
-        errors.push({ name: file.name, error: error instanceof Error ? error.message : String(error) });
+        errors.push({
+          name: file.name,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
     return NextResponse.json(
       { uploaded, skipped, errors },
-      { status: errors.length > 0 ? 207 : 200 },
+      { status: errors.length > 0 ? 207 : 200 }
     );
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
 
-function createFileBodyStream(filePath: string, range?: { start: number; end: number }): ReadableStream<Uint8Array> {
+function createFileBodyStream(
+  filePath: string,
+  range?: { start: number; end: number }
+): ReadableStream<Uint8Array> {
   const fileStream = fs.createReadStream(filePath, range);
   let closed = false;
 
@@ -283,19 +409,27 @@ function createFileBodyStream(filePath: string, range?: { start: number; end: nu
 }
 
 function encodeHeaderValue(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) =>
-    `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
   );
 }
 
 function getContentDisposition(filePath: string, asDownload = false): string {
   const disposition = asDownload ? "attachment" : "inline";
   const fileName = path.basename(filePath);
-  const fallback = fileName.replace(/[^\x20-\x7E]|["\\;\r\n]/g, "_") || "download";
+  const fallback =
+    fileName.replace(/[^\x20-\x7E]|["\\;\r\n]/g, "_") || "download";
   return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeHeaderValue(fileName)}`;
 }
 
-function streamFile(filePath: string, stat: fs.Stats, contentType: string, rangeHeader: string | null, asDownload = false): Response {
+function streamFile(
+  filePath: string,
+  stat: fs.Stats,
+  contentType: string,
+  rangeHeader: string | null,
+  asDownload = false
+): Response {
   const headers = {
     "Content-Type": contentType,
     "Cache-Control": "no-cache",
@@ -331,7 +465,13 @@ function streamFile(filePath: string, stat: fs.Stats, contentType: string, range
     end = stat.size - 1;
   }
 
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= stat.size) {
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    start < 0 ||
+    end < start ||
+    start >= stat.size
+  ) {
     return new Response(null, {
       status: 416,
       headers: {
@@ -421,7 +561,10 @@ export async function GET(
     const rawType = request.nextUrl.searchParams.get("type") ?? "list";
     const type = parseFileRequestType(rawType);
     if (!type) {
-      return NextResponse.json({ error: "Invalid file request type" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid file request type" },
+        { status: 400 }
+      );
     }
     const sessionId = request.nextUrl.searchParams.get("sessionId");
 
@@ -430,7 +573,7 @@ export async function GET(
     const allowedBySessionReference =
       !allowedByRoot &&
       type !== "list" &&
-      await isFilePathReferencedBySession(filePath, sessionId);
+      (await isFilePathReferencedBySession(filePath, sessionId));
     if (!allowedByRoot && !allowedBySessionReference) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -442,7 +585,10 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (!allowedBySessionReference && !isExistingFilePathAllowed(filePath, allowedRoots)) {
+    if (
+      !allowedBySessionReference &&
+      !isExistingFilePathAllowed(filePath, allowedRoots)
+    ) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -453,20 +599,41 @@ export async function GET(
       const imageMime = getImageMime(filePath);
       if (imageMime) {
         if (stat.size > IMAGE_PREVIEW_MAX_BYTES) {
-          return NextResponse.json({ error: "Image too large (>10MB)" }, { status: 413 });
+          return NextResponse.json(
+            { error: "Image too large (>10MB)" },
+            { status: 413 }
+          );
         }
-        return streamFile(filePath, stat, imageMime, request.headers.get("range"));
+        return streamFile(
+          filePath,
+          stat,
+          imageMime,
+          request.headers.get("range")
+        );
       }
       const audioMime = getAudioMime(filePath);
       if (audioMime) {
-        return streamFile(filePath, stat, audioMime, request.headers.get("range"));
+        return streamFile(
+          filePath,
+          stat,
+          audioMime,
+          request.headers.get("range")
+        );
       }
       const documentMime = getDocumentMime(filePath);
       if (documentMime) {
-        return streamFile(filePath, stat, documentMime, request.headers.get("range"));
+        return streamFile(
+          filePath,
+          stat,
+          documentMime,
+          request.headers.get("range")
+        );
       }
       if (stat.size > TEXT_PREVIEW_MAX_BYTES) {
-        return NextResponse.json({ error: "File too large for preview (>256KB)" }, { status: 413 });
+        return NextResponse.json(
+          { error: "File too large for preview (>256KB)" },
+          { status: 413 }
+        );
       }
       const content = fs.readFileSync(filePath, "utf-8");
       const language = getLanguage(filePath);
@@ -477,8 +644,18 @@ export async function GET(
       if (!stat.isFile()) {
         return NextResponse.json({ error: "Not a file" }, { status: 400 });
       }
-      const mime = getImageMime(filePath) || getAudioMime(filePath) || getDocumentMime(filePath) || "application/octet-stream";
-      return streamFile(filePath, stat, mime, request.headers.get("range"), true);
+      const mime =
+        getImageMime(filePath) ||
+        getAudioMime(filePath) ||
+        getDocumentMime(filePath) ||
+        "application/octet-stream";
+      return streamFile(
+        filePath,
+        stat,
+        mime,
+        request.headers.get("range"),
+        true
+      );
     }
 
     if (type === "meta") {
@@ -501,10 +678,16 @@ export async function GET(
         return NextResponse.json({ error: "Not a file" }, { status: 400 });
       }
       if (getFileExt(filePath) !== "docx") {
-        return NextResponse.json({ error: "Preview not available for this file type" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Preview not available for this file type" },
+          { status: 400 }
+        );
       }
       if (stat.size > DOCX_PREVIEW_MAX_BYTES) {
-        return NextResponse.json({ error: "DOCX too large for preview (>10MB)" }, { status: 413 });
+        return NextResponse.json(
+          { error: "DOCX too large for preview (>10MB)" },
+          { status: 413 }
+        );
       }
 
       const mammoth = await import("mammoth");
@@ -520,7 +703,8 @@ export async function GET(
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-cache",
-          "Content-Security-Policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+          "Content-Security-Policy":
+            "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
           "Referrer-Policy": "no-referrer",
           "X-Content-Type-Options": "nosniff",
         },
@@ -561,7 +745,11 @@ export async function GET(
               }
             });
             watcher.on("error", () => {
-              try { controller.close(); } catch { /* ignore */ }
+              try {
+                controller.close();
+              } catch {
+                /* ignore */
+              }
             });
           } catch {
             send("error", { message: "Failed to watch file" });
@@ -569,7 +757,11 @@ export async function GET(
           }
         },
         cancel() {
-          try { watcher?.close(); } catch { /* ignore */ }
+          try {
+            watcher?.close();
+          } catch {
+            /* ignore */
+          }
         },
       });
       return new Response(stream, {
@@ -591,7 +783,11 @@ export async function GET(
     // filesystems without directory type information use the stat fallback.
     const dirents = fs.readdirSync(filePath, { withFileTypes: true });
     const entries = dirents
-      .filter((d) => !IGNORED_NAMES.has(d.name) && !IGNORED_SUFFIXES.some((s) => d.name.endsWith(s)))
+      .filter(
+        (d) =>
+          !IGNORED_NAMES.has(d.name) &&
+          !IGNORED_SUFFIXES.some((s) => d.name.endsWith(s))
+      )
       .flatMap((d) => {
         const isDir = resolveDirentIsDirectory(d, path.join(filePath, d.name));
         return isDir === null

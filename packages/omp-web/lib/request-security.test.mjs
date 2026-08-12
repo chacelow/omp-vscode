@@ -7,18 +7,28 @@ async function loadSubject() {
 
 test("allows same-origin and non-browser API requests", async () => {
   const { isApiRequestAllowed } = await loadSubject();
-  assert.equal(isApiRequestAllowed(new Request("http://localhost:30141/api/test", {
-    method: "POST",
-    headers: {
-      host: "localhost:30141",
-      origin: "http://localhost:30141",
-      "sec-fetch-site": "same-origin",
-    },
-  })), true);
-  assert.equal(isApiRequestAllowed(new Request("http://localhost:30141/api/test", {
-    method: "POST",
-    headers: { host: "localhost:30141" },
-  })), true);
+  assert.equal(
+    isApiRequestAllowed(
+      new Request("http://localhost:30141/api/test", {
+        method: "POST",
+        headers: {
+          host: "localhost:30141",
+          origin: "http://localhost:30141",
+          "sec-fetch-site": "same-origin",
+        },
+      })
+    ),
+    true
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request("http://localhost:30141/api/test", {
+        method: "POST",
+        headers: { host: "localhost:30141" },
+      })
+    ),
+    true
+  );
 });
 
 test("allows LAN same-origin requests when Next.js uses an internal localhost URL", async () => {
@@ -57,7 +67,8 @@ test("allows IPv6 and an explicitly configured hostname", async () => {
 });
 
 test("rejects cross-origin browser API requests", async () => {
-  const { isApiRequestAllowed, shouldCheckApiRequestOrigin } = await loadSubject();
+  const { isApiRequestAllowed, shouldCheckApiRequestOrigin } =
+    await loadSubject();
   const post = new Request("http://localhost:30141/api/test", {
     method: "POST",
     headers: {
@@ -77,7 +88,8 @@ test("rejects cross-origin browser API requests", async () => {
 
 test("does not globally trust opaque iframe or alternate loopback origins", async () => {
   const { isApiRequestAllowed } = await loadSubject();
-  const previewUrl = "http://localhost:30141/api/files/tmp/test.docx?type=preview";
+  const previewUrl =
+    "http://localhost:30141/api/files/tmp/test.docx?type=preview";
   const opaqueIframe = new Request(previewUrl, {
     headers: {
       host: "localhost:30141",
@@ -109,35 +121,64 @@ test("allows only user-initiated session export document navigations from a PWA"
     "sec-fetch-user": "?1",
   };
 
-  assert.equal(isApiRequestAllowed(new Request(
-    "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
-    { headers: navigationHeaders },
-  )), true);
-  assert.equal(isApiRequestAllowed(new Request(
-    "http://127.0.0.1:30141/api/sessions",
-    { headers: navigationHeaders },
-  )), false);
-  assert.equal(isApiRequestAllowed(new Request(
-    "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
-    { headers: { ...navigationHeaders, "sec-fetch-dest": "empty" } },
-  )), false);
-  assert.equal(isApiRequestAllowed(new Request(
-    "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
-    {
-      headers: {
-        ...navigationHeaders,
-        "sec-fetch-user": "",
-      },
-    },
-  )), false);
-  assert.equal(isApiRequestAllowed(new Request(
-    "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
-    { method: "POST", headers: navigationHeaders },
-  )), false);
-  assert.equal(isApiRequestAllowed(new Request(
-    "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
-    { headers: { ...navigationHeaders, host: "attacker.example:30141" } },
-  )), false);
+  assert.equal(
+    isApiRequestAllowed(
+      new Request(
+        "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
+        { headers: navigationHeaders }
+      )
+    ),
+    true
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request("http://127.0.0.1:30141/api/sessions", {
+        headers: navigationHeaders,
+      })
+    ),
+    false
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request(
+        "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
+        { headers: { ...navigationHeaders, "sec-fetch-dest": "empty" } }
+      )
+    ),
+    false
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request(
+        "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
+        {
+          headers: {
+            ...navigationHeaders,
+            "sec-fetch-user": "",
+          },
+        }
+      )
+    ),
+    false
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request(
+        "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
+        { method: "POST", headers: navigationHeaders }
+      )
+    ),
+    false
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request(
+        "http://127.0.0.1:30141/api/sessions/session-id/export?inline=1",
+        { headers: { ...navigationHeaders, host: "attacker.example:30141" } }
+      )
+    ),
+    false
+  );
 });
 
 test("rejects an origin that does not match the external request host", async () => {
@@ -169,24 +210,52 @@ test("rejects DNS rebinding even when browser headers say same-origin", async ()
 
 test("rejects missing, malformed, and unconfigured Host headers", async () => {
   const { isApiRequestAllowed } = await loadSubject();
-  assert.equal(isApiRequestAllowed(new Request("http://localhost:30141/api/test")), false);
-  assert.equal(isApiRequestAllowed(new Request("http://localhost:30141/api/test", {
-    headers: { host: "localhost@attacker.example:30141" },
-  })), false);
-  assert.equal(isApiRequestAllowed(new Request("http://localhost:30141/api/test", {
-    headers: { host: "pi-web.internal:30141" },
-  })), false);
+  assert.equal(
+    isApiRequestAllowed(new Request("http://localhost:30141/api/test")),
+    false
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request("http://localhost:30141/api/test", {
+        headers: { host: "localhost@attacker.example:30141" },
+      })
+    ),
+    false
+  );
+  assert.equal(
+    isApiRequestAllowed(
+      new Request("http://localhost:30141/api/test", {
+        headers: { host: "pi-web.internal:30141" },
+      })
+    ),
+    false
+  );
 });
 
 test("recognizes JSON request content types", async () => {
   const { hasJsonContentType } = await loadSubject();
-  assert.equal(hasJsonContentType(new Request("http://localhost", {
-    headers: { "content-type": "application/json; charset=utf-8" },
-  })), true);
-  assert.equal(hasJsonContentType(new Request("http://localhost", {
-    headers: { "content-type": "application/problem+json" },
-  })), true);
-  assert.equal(hasJsonContentType(new Request("http://localhost", {
-    headers: { "content-type": "text/plain" },
-  })), false);
+  assert.equal(
+    hasJsonContentType(
+      new Request("http://localhost", {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      })
+    ),
+    true
+  );
+  assert.equal(
+    hasJsonContentType(
+      new Request("http://localhost", {
+        headers: { "content-type": "application/problem+json" },
+      })
+    ),
+    true
+  );
+  assert.equal(
+    hasJsonContentType(
+      new Request("http://localhost", {
+        headers: { "content-type": "text/plain" },
+      })
+    ),
+    false
+  );
 });

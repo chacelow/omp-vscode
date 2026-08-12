@@ -38,7 +38,9 @@ test("follows directory symlinks and skips dangling symlinks", async (t) => {
     fs.symlinkSync("missing", path.join(root, "dangling-link"), "file");
   } catch (error) {
     if (error?.code === "EPERM") {
-      t.skip("Creating symbolic links requires additional privileges on this platform");
+      t.skip(
+        "Creating symbolic links requires additional privileges on this platform"
+      );
       return;
     }
     throw error;
@@ -47,10 +49,10 @@ test("follows directory symlinks and skips dangling symlinks", async (t) => {
   const symlink = { isDirectory: () => false, isFile: () => false };
   assert.equal(
     resolveDirentIsDirectory(symlink, path.join(root, "directory-link")),
-    true,
+    true
   );
   assert.equal(
     resolveDirentIsDirectory(symlink, path.join(root, "dangling-link")),
-    null,
+    null
   );
 });

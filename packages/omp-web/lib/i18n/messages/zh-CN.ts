@@ -144,7 +144,8 @@ export const zhCNLocale: LocalePlugin = {
     "files.noFiles": "未找到文件",
     "files.explorer": "文件浏览器",
     "files.changedCount": "{count} 个文件",
-    "files.changeStats": "{count} 个变更文件，新增 {additions} 行，删除 {deletions} 行",
+    "files.changeStats":
+      "{count} 个变更文件，新增 {additions} 行，删除 {deletions} 行",
     "files.conflictSummary": "已有 {count} 个文件：{files}",
     "files.cannotReplace": "无法替换：{files}",
     "files.replace": "替换",
@@ -287,7 +288,8 @@ export const zhCNLocale: LocalePlugin = {
     "trust.trusting": "正在信任...",
     "trust.cancel": "取消",
     "trust.dialogTitle": "信任此项目？",
-    "trust.dialogBody": "项目资源可以运行本地代码。请仅信任你了解其内容的项目。",
+    "trust.dialogBody":
+      "项目资源可以运行本地代码。请仅信任你了解其内容的项目。",
     "trust.skillsNotLoaded": "此项目尚未受信任，项目技能未加载。",
     "trust.pluginsNotLoaded": "此项目尚未受信任，项目插件未加载。",
     "trust.projectScopeUnavailable": "项目资源未加载时，无法安装到项目范围。",

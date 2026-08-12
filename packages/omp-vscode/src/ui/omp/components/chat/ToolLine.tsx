@@ -2,12 +2,23 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { Ban, Check, CheckCircle2, ChevronDown, ChevronRight, Circle, CircleDot, Copy, ExternalLink, FileText, Folder, ListTodo, LockKeyhole, Search } from "lucide-react";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../ui/popover";
+  Ban,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  CircleDot,
+  Copy,
+  ExternalLink,
+  FileText,
+  Folder,
+  ListTodo,
+  LockKeyhole,
+  Search,
+} from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { resolveLocalFileHref } from "@/lib/file-links";
@@ -66,7 +77,12 @@ export function isBashTool(block: ToolCallContent): boolean {
 
 /** True when the block modifies files (edit / write / delete / move / create). */
 export function isChangeTool(block: ToolCallContent): boolean {
-  if (block.toolKind === "edit" || block.toolKind === "delete" || block.toolKind === "move") return true;
+  if (
+    block.toolKind === "edit" ||
+    block.toolKind === "delete" ||
+    block.toolKind === "move"
+  )
+    return true;
   const name = (block.toolName || "").toLowerCase();
   return (
     name === "edit" ||
@@ -130,24 +146,32 @@ function readInputPath(block: ToolCallContent): string {
 }
 
 function readGrepPattern(block: ToolCallContent): string {
-  return readStringField(block.input, "pattern") || readStringField(block.input, "query");
+  return (
+    readStringField(block.input, "pattern") ||
+    readStringField(block.input, "query")
+  );
 }
 
 /** Extract the structured file list from an omp glob tool result. Matches
  *  omp's GlobToolDetails.files (see reference glob.ts buildResult()). */
 function readGlobFiles(details: unknown): string[] | null {
-  if (!details || typeof details !== "object" || !("files" in details)) return null;
+  if (!details || typeof details !== "object" || !("files" in details))
+    return null;
   const files = (details as { files: unknown }).files;
   if (!Array.isArray(files)) return null;
   return files.filter((file): file is string => typeof file === "string");
 }
 
 function readWebQuery(block: ToolCallContent): string {
-  return readStringField(block.input, "query") || readStringField(block.input, "q");
+  return (
+    readStringField(block.input, "query") || readStringField(block.input, "q")
+  );
 }
 
 function readFetchUrl(block: ToolCallContent): string {
-  return readStringField(block.input, "url") || readStringField(block.input, "href");
+  return (
+    readStringField(block.input, "url") || readStringField(block.input, "href")
+  );
 }
 
 function readBashCommand(block: ToolCallContent): string {
@@ -162,7 +186,9 @@ function readBashCommand(block: ToolCallContent): string {
 
 function readBashIntent(block: ToolCallContent): string | undefined {
   const intent = block.input.i;
-  return typeof intent === "string" && intent.trim() ? intent.trim() : undefined;
+  return typeof intent === "string" && intent.trim()
+    ? intent.trim()
+    : undefined;
 }
 
 function readGrepPath(block: ToolCallContent): string {
@@ -173,7 +199,10 @@ function readGrepPath(block: ToolCallContent): string {
 function resultLines(result: ToolResultMessage | undefined): string[] {
   const text = getResultText(result);
   if (!text) return [];
-  return text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 interface FileMatchGroup {
@@ -193,10 +222,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Read grep's structured result. ACP rawOutput wraps tool details once. */
-function grepResultSummary(result: ToolResultMessage | undefined): GrepResultSummary | null {
+function grepResultSummary(
+  result: ToolResultMessage | undefined
+): GrepResultSummary | null {
   if (!result || !isRecord(result.details)) return null;
   const rawDetails = result.details;
-  const details = isRecord(rawDetails.details) ? rawDetails.details : rawDetails;
+  const details = isRecord(rawDetails.details)
+    ? rawDetails.details
+    : rawDetails;
   const fileGroups: FileMatchGroup[] = [];
   const fileMatches = details.fileMatches;
 
@@ -217,11 +250,20 @@ function grepResultSummary(result: ToolResultMessage | undefined): GrepResultSum
     return null;
   }
 
-  const groupedMatchCount = fileGroups.reduce((sum, group) => sum + group.matches, 0);
+  const groupedMatchCount = fileGroups.reduce(
+    (sum, group) => sum + group.matches,
+    0
+  );
   return {
     fileGroups,
-    fileCount: typeof details.fileCount === "number" ? details.fileCount : fileGroups.length,
-    matchCount: typeof details.matchCount === "number" ? details.matchCount : groupedMatchCount,
+    fileCount:
+      typeof details.fileCount === "number"
+        ? details.fileCount
+        : fileGroups.length,
+    matchCount:
+      typeof details.matchCount === "number"
+        ? details.matchCount
+        : groupedMatchCount,
   };
 }
 
@@ -232,7 +274,6 @@ function splitPath(path: string): { dir: string; base: string } {
   if (lastSlash < 0) return { dir: "", base: clean };
   return { dir: clean.slice(0, lastSlash), base: clean.slice(lastSlash + 1) };
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* Base line primitive                                                        */
@@ -252,7 +293,13 @@ interface ToolLineBaseProps {
   icon?: ReactNode;
 }
 
-function StatusDot({ isError, isPending }: { isError?: boolean; isPending?: boolean }) {
+function StatusDot({
+  isError,
+  isPending,
+}: {
+  isError?: boolean;
+  isPending?: boolean;
+}) {
   if (isPending) {
     return (
       <span
@@ -335,7 +382,7 @@ function ToolLineBase({
       onClick={onPrimaryClick}
       title={primaryTitle}
       className={cn(
-        "min-w-0 truncate border-none bg-transparent p-0 text-left font-mono text-[11px] underline-offset-2 cursor-pointer",
+        "min-w-0 cursor-pointer truncate border-none bg-transparent p-0 text-left font-mono text-[11px] underline-offset-2",
         isError ? "text-[var(--text-dim)]" : "text-[var(--text-muted)]",
         "hover:text-[var(--text)] hover:underline"
       )}
@@ -400,7 +447,10 @@ function ToolLineBase({
   // area continuous: the transparent PopoverContent extends right up to the
   // row, so moving the pointer down never crosses dead space.
   return (
-    <Popover open={open} onOpenChange={(next) => (next ? setOpen(true) : scheduleClose())}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => (next ? setOpen(true) : scheduleClose())}
+    >
       <PopoverTrigger asChild>{row}</PopoverTrigger>
       <PopoverContent
         align="start"
@@ -431,7 +481,12 @@ function basename(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
-function ReadLine({ block, result, duration, onOpenFile }: {
+function ReadLine({
+  block,
+  result,
+  duration,
+  onOpenFile,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -442,12 +497,19 @@ function ReadLine({ block, result, duration, onOpenFile }: {
   const isPending = !result;
   const name = basename(path) || "(no path)";
   const isDirectory = name.endsWith("/") || path.endsWith("/");
-  const entries = useMemo(() => (isDirectory ? resultLines(result) : []), [isDirectory, result]);
+  const entries = useMemo(
+    () => (isDirectory ? resultLines(result) : []),
+    [isDirectory, result]
+  );
 
   const hover = path ? (
     <div className="p-3">
-      <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">Full path</div>
-      <div className="mb-2 break-all font-mono text-[11px] text-[var(--text-muted)]">{path}</div>
+      <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">
+        Full path
+      </div>
+      <div className="mb-2 font-mono text-[11px] break-all text-[var(--text-muted)]">
+        {path}
+      </div>
       {isDirectory && entries.length > 0 && (
         <>
           <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">
@@ -458,7 +520,13 @@ function ReadLine({ block, result, duration, onOpenFile }: {
               <button
                 key={`${entry}-${index}`}
                 type="button"
-                onClick={() => onOpenFile?.(entry.startsWith("/") ? entry : `${path.replace(/\/$/, "")}/${entry}`)}
+                onClick={() =>
+                  onOpenFile?.(
+                    entry.startsWith("/")
+                      ? entry
+                      : `${path.replace(/\/$/, "")}/${entry}`
+                  )
+                }
                 className="block w-full truncate rounded px-1.5 py-0.5 text-left font-mono text-[11px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
               >
                 {entry}
@@ -473,10 +541,18 @@ function ReadLine({ block, result, duration, onOpenFile }: {
   return (
     <ToolLineBase
       verb={isDirectory ? "Listed" : "Read"}
-      icon={isDirectory ? <Folder size={11} className="shrink-0 text-[var(--text-dim)]" /> : <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />}
+      icon={
+        isDirectory ? (
+          <Folder size={11} className="shrink-0 text-[var(--text-dim)]" />
+        ) : (
+          <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
+        )
+      }
       primary={name}
       primaryTitle={path}
-      onPrimaryClick={path && !isDirectory ? () => onOpenFile?.(path) : undefined}
+      onPrimaryClick={
+        path && !isDirectory ? () => onOpenFile?.(path) : undefined
+      }
       duration={duration}
       isError={isError}
       isPending={isPending}
@@ -485,7 +561,13 @@ function ReadLine({ block, result, duration, onOpenFile }: {
   );
 }
 
-function GrepLine({ block, result, duration, cwd, onOpenFile }: {
+function GrepLine({
+  block,
+  result,
+  duration,
+  cwd,
+  onOpenFile,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -507,51 +589,59 @@ function GrepLine({ block, result, duration, cwd, onOpenFile }: {
       ? `in ${scope}`
       : "no matches";
 
-  const hover = fileGroups.length > 0 ? (
-    <div className="p-3">
-      <div className="mb-1 flex items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
-        <Search size={10} />
-        <span className="truncate">{pattern || "(pattern)"}</span>
-        {scope && <span className="text-[var(--text-dim)]">· in {scope}</span>}
-      </div>
-      <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-        {fileGroups.slice(0, 100).map((entry) => {
-          const { dir, base } = splitPath(entry.path);
-          const resolvedPath = resolveLocalFileHref(entry.path, cwd);
-          const openPath = resolvedPath
-            ? (entry.firstLine ? `${resolvedPath}:${entry.firstLine}` : resolvedPath)
-            : null;
-          return (
-            <button
-              key={entry.path}
-              type="button"
-              disabled={!openPath}
-              onClick={() => openPath && onOpenFile?.(openPath)}
-              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default"
-            >
-              <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
-              <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
-                {base}
-              </span>
-              {dir && (
-                <span className="min-w-0 truncate font-mono text-[10px] text-[var(--text-dim)]">
-                  {dir}
+  const hover =
+    fileGroups.length > 0 ? (
+      <div className="p-3">
+        <div className="mb-1 flex items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
+          <Search size={10} />
+          <span className="truncate">{pattern || "(pattern)"}</span>
+          {scope && (
+            <span className="text-[var(--text-dim)]">· in {scope}</span>
+          )}
+        </div>
+        <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
+          {fileGroups.slice(0, 100).map((entry) => {
+            const { dir, base } = splitPath(entry.path);
+            const resolvedPath = resolveLocalFileHref(entry.path, cwd);
+            const openPath = resolvedPath
+              ? entry.firstLine
+                ? `${resolvedPath}:${entry.firstLine}`
+                : resolvedPath
+              : null;
+            return (
+              <button
+                key={entry.path}
+                type="button"
+                disabled={!openPath}
+                onClick={() => openPath && onOpenFile?.(openPath)}
+                className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default"
+              >
+                <FileText
+                  size={11}
+                  className="shrink-0 text-[var(--text-dim)]"
+                />
+                <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
+                  {base}
                 </span>
-              )}
-              <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
-                {entry.matches} {entry.matches === 1 ? "match" : "matches"}
-              </span>
-            </button>
-          );
-        })}
-        {fileGroups.length > 100 && (
-          <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
-            +{fileGroups.length - 100} more files…
-          </div>
-        )}
+                {dir && (
+                  <span className="min-w-0 truncate font-mono text-[10px] text-[var(--text-dim)]">
+                    {dir}
+                  </span>
+                )}
+                <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
+                  {entry.matches} {entry.matches === 1 ? "match" : "matches"}
+                </span>
+              </button>
+            );
+          })}
+          {fileGroups.length > 100 && (
+            <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
+              +{fileGroups.length - 100} more files…
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  ) : null;
+    ) : null;
 
   return (
     <ToolLineBase
@@ -568,7 +658,12 @@ function GrepLine({ block, result, duration, cwd, onOpenFile }: {
   );
 }
 
-function GlobLine({ block, result, duration, onOpenFile }: {
+function GlobLine({
+  block,
+  result,
+  duration,
+  onOpenFile,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -596,41 +691,45 @@ function GlobLine({ block, result, duration, onOpenFile }: {
   const isError = result?.isError === true;
   const isPending = !result;
 
-  const hover = files.length > 0 ? (
-    <div className="p-3">
-      <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">
-        {files.length} {files.length === 1 ? "file" : "files"}
-      </div>
-      <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-        {files.slice(0, 200).map((file, index) => {
-          const { dir, base } = splitPath(file);
-          return (
-            <button
-              key={`${file}-${index}`}
-              type="button"
-              onClick={() => onOpenFile?.(file)}
-              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)]"
-            >
-              <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
-              <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
-                {base}
-              </span>
-              {dir && (
-                <span className="min-w-0 truncate font-mono text-[10px] text-[var(--text-dim)]">
-                  {dir}
+  const hover =
+    files.length > 0 ? (
+      <div className="p-3">
+        <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">
+          {files.length} {files.length === 1 ? "file" : "files"}
+        </div>
+        <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
+          {files.slice(0, 200).map((file, index) => {
+            const { dir, base } = splitPath(file);
+            return (
+              <button
+                key={`${file}-${index}`}
+                type="button"
+                onClick={() => onOpenFile?.(file)}
+                className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)]"
+              >
+                <FileText
+                  size={11}
+                  className="shrink-0 text-[var(--text-dim)]"
+                />
+                <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
+                  {base}
                 </span>
-              )}
-            </button>
-          );
-        })}
-        {files.length > 200 && (
-          <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
-            +{files.length - 200} more…
-          </div>
-        )}
+                {dir && (
+                  <span className="min-w-0 truncate font-mono text-[10px] text-[var(--text-dim)]">
+                    {dir}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          {files.length > 200 && (
+            <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
+              +{files.length - 200} more…
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  ) : null;
+    ) : null;
 
   return (
     <ToolLineBase
@@ -638,7 +737,11 @@ function GlobLine({ block, result, duration, onOpenFile }: {
       icon={<Search size={11} className="shrink-0 text-[var(--text-dim)]" />}
       primary={scope || "…"}
       primaryTitle={scope}
-      hint={files.length > 0 ? `${files.length} ${files.length === 1 ? "file" : "files"}` : "no matches"}
+      hint={
+        files.length > 0
+          ? `${files.length} ${files.length === 1 ? "file" : "files"}`
+          : "no matches"
+      }
       duration={duration}
       isError={isError}
       isPending={isPending}
@@ -647,7 +750,11 @@ function GlobLine({ block, result, duration, onOpenFile }: {
   );
 }
 
-function FetchLine({ block, result, duration }: {
+function FetchLine({
+  block,
+  result,
+  duration,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -677,7 +784,7 @@ function FetchLine({ block, result, duration }: {
         </a>
       </div>
       {text && (
-        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[10px] text-[var(--text-muted)]">
+        <pre className="max-h-64 overflow-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[10px] break-words whitespace-pre-wrap text-[var(--text-muted)]">
           {text.length > 4000 ? `${text.slice(0, 4000)}\n\n…truncated` : text}
         </pre>
       )}
@@ -687,7 +794,9 @@ function FetchLine({ block, result, duration }: {
   return (
     <ToolLineBase
       verb="Fetched"
-      icon={<ExternalLink size={11} className="shrink-0 text-[var(--text-dim)]" />}
+      icon={
+        <ExternalLink size={11} className="shrink-0 text-[var(--text-dim)]" />
+      }
       primary={host || "(url)"}
       primaryTitle={url}
       duration={duration}
@@ -698,7 +807,11 @@ function FetchLine({ block, result, duration }: {
   );
 }
 
-function WebSearchLine({ block, result, duration }: {
+function WebSearchLine({
+  block,
+  result,
+  duration,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -709,12 +822,20 @@ function WebSearchLine({ block, result, duration }: {
 
   const entries = useMemo(() => {
     const text = getResultText(result);
-    if (!text) return [] as Array<{ title: string; url: string; snippet?: string }>;
+    if (!text)
+      return [] as Array<{ title: string; url: string; snippet?: string }>;
     // Match Markdown-style bullets first: "- [Title](https://...) snippet"
     const items: Array<{ title: string; url: string; snippet?: string }> = [];
-    const markdown = text.matchAll(/^[-*]\s*\[(?<title>[^\]]+)\]\((?<url>https?:\/\/[^)\s]+)\)\s*(?<snippet>.*)$/gm);
+    const markdown = text.matchAll(
+      /^[-*]\s*\[(?<title>[^\]]+)\]\((?<url>https?:\/\/[^)\s]+)\)\s*(?<snippet>.*)$/gm
+    );
     for (const match of markdown) {
-      if (match.groups) items.push({ title: match.groups.title, url: match.groups.url, snippet: match.groups.snippet.trim() || undefined });
+      if (match.groups)
+        items.push({
+          title: match.groups.title,
+          url: match.groups.url,
+          snippet: match.groups.snippet.trim() || undefined,
+        });
     }
     if (items.length > 0) return items;
     // Fall back to bare URLs.
@@ -724,39 +845,47 @@ function WebSearchLine({ block, result, duration }: {
     return items;
   }, [result]);
 
-  const hover = entries.length > 0 ? (
-    <div className="p-3">
-      <div className="mb-1 flex items-center gap-1 font-mono text-[10px] text-[var(--text-dim)]">
-        <Search size={10} />
-        <span className="truncate">{query || "(query)"}</span>
-      </div>
-      <div className="max-h-80 space-y-1 overflow-y-auto">
-        {entries.slice(0, 50).map((entry, index) => (
-          <a
-            key={`${entry.url}-${index}`}
-            href={entry.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1.5 hover:border-[var(--accent)]"
-          >
-            <div className="flex items-center gap-1 truncate text-[11px] text-[var(--text)]">
-              <ExternalLink size={10} className="shrink-0 text-[var(--text-dim)]" />
-              <span className="truncate">{entry.title || entry.url}</span>
+  const hover =
+    entries.length > 0 ? (
+      <div className="p-3">
+        <div className="mb-1 flex items-center gap-1 font-mono text-[10px] text-[var(--text-dim)]">
+          <Search size={10} />
+          <span className="truncate">{query || "(query)"}</span>
+        </div>
+        <div className="max-h-80 space-y-1 overflow-y-auto">
+          {entries.slice(0, 50).map((entry, index) => (
+            <a
+              key={`${entry.url}-${index}`}
+              href={entry.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1.5 hover:border-[var(--accent)]"
+            >
+              <div className="flex items-center gap-1 truncate text-[11px] text-[var(--text)]">
+                <ExternalLink
+                  size={10}
+                  className="shrink-0 text-[var(--text-dim)]"
+                />
+                <span className="truncate">{entry.title || entry.url}</span>
+              </div>
+              <div className="truncate font-mono text-[10px] text-[var(--text-dim)]">
+                {entry.url}
+              </div>
+              {entry.snippet && (
+                <div className="mt-0.5 line-clamp-2 text-[10px] text-[var(--text-muted)]">
+                  {entry.snippet}
+                </div>
+              )}
+            </a>
+          ))}
+          {entries.length > 50 && (
+            <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
+              +{entries.length - 50} more…
             </div>
-            <div className="truncate font-mono text-[10px] text-[var(--text-dim)]">{entry.url}</div>
-            {entry.snippet && (
-              <div className="mt-0.5 line-clamp-2 text-[10px] text-[var(--text-muted)]">{entry.snippet}</div>
-            )}
-          </a>
-        ))}
-        {entries.length > 50 && (
-          <div className="px-1.5 py-1 font-mono text-[10px] text-[var(--text-dim)]">
-            +{entries.length - 50} more…
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  ) : null;
+    ) : null;
 
   return (
     <ToolLineBase
@@ -764,7 +893,11 @@ function WebSearchLine({ block, result, duration }: {
       icon={<Search size={11} className="shrink-0 text-[var(--text-dim)]" />}
       primary={query || "(query)"}
       primaryTitle={query}
-      hint={entries.length > 0 ? `${entries.length} ${entries.length === 1 ? "result" : "results"}` : undefined}
+      hint={
+        entries.length > 0
+          ? `${entries.length} ${entries.length === 1 ? "result" : "results"}`
+          : undefined
+      }
       duration={duration}
       isError={isError}
       isPending={isPending}
@@ -773,7 +906,11 @@ function WebSearchLine({ block, result, duration }: {
   );
 }
 
-function BashLine({ block, result, duration }: {
+function BashLine({
+  block,
+  result,
+  duration,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -803,7 +940,11 @@ function BashLine({ block, result, duration }: {
           }}
           className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-dim)] hover:border-[var(--accent)] hover:text-[var(--text)]"
         >
-          {copied ? <Check size={10} className="text-[var(--success)]" /> : <Copy size={10} />}
+          {copied ? (
+            <Check size={10} className="text-[var(--success)]" />
+          ) : (
+            <Copy size={10} />
+          )}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
@@ -812,7 +953,9 @@ function BashLine({ block, result, duration }: {
       </pre>
       {text && (
         <>
-          <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">Output</div>
+          <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">
+            Output
+          </div>
           <pre className="max-h-64 overflow-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[10px] text-[var(--text-muted)]">
             {text.length > 6000 ? `${text.slice(0, 6000)}\n\n…truncated` : text}
           </pre>
@@ -834,7 +977,6 @@ function BashLine({ block, result, duration }: {
   );
 }
 
-
 /** Verb chosen from tool kind/name. Falls back to a generic "Changed". */
 function changeVerb(block: ToolCallContent): string {
   if (block.toolKind === "delete") return "Deleted";
@@ -846,14 +988,27 @@ function changeVerb(block: ToolCallContent): string {
   return "Edited";
 }
 
-function readMovePaths(block: ToolCallContent): { from: string; to: string } | null {
-  const from = readStringField(block.input, "from") || readStringField(block.input, "source") || readStringField(block.input, "src");
-  const to = readStringField(block.input, "to") || readStringField(block.input, "destination") || readStringField(block.input, "dest");
+function readMovePaths(
+  block: ToolCallContent
+): { from: string; to: string } | null {
+  const from =
+    readStringField(block.input, "from") ||
+    readStringField(block.input, "source") ||
+    readStringField(block.input, "src");
+  const to =
+    readStringField(block.input, "to") ||
+    readStringField(block.input, "destination") ||
+    readStringField(block.input, "dest");
   if (!from || !to) return null;
   return { from, to };
 }
 
-function ChangeLine({ block, result, duration, onOpenFile }: {
+function ChangeLine({
+  block,
+  result,
+  duration,
+  onOpenFile,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
@@ -866,7 +1021,9 @@ function ChangeLine({ block, result, duration, onOpenFile }: {
   // Move/rename: show `from → to` inline.
   if (verb === "Moved") {
     const paths = readMovePaths(block);
-    const primary = paths ? `${basename(paths.from)} → ${basename(paths.to)}` : readInputPath(block);
+    const primary = paths
+      ? `${basename(paths.from)} → ${basename(paths.to)}`
+      : readInputPath(block);
     const hover = paths ? (
       <div className="p-3 font-mono text-[10px] text-[var(--text-muted)]">
         <div className="mb-1 text-[var(--text-dim)]">From</div>
@@ -878,7 +1035,9 @@ function ChangeLine({ block, result, duration, onOpenFile }: {
     return (
       <ToolLineBase
         verb="Moved"
-        icon={<FileText size={11} className="shrink-0 text-[var(--text-dim)]" />}
+        icon={
+          <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
+        }
         primary={primary || "(path)"}
         primaryTitle={paths ? `${paths.from} → ${paths.to}` : primary}
         onPrimaryClick={paths ? () => onOpenFile?.(paths.to) : undefined}
@@ -894,8 +1053,12 @@ function ChangeLine({ block, result, duration, onOpenFile }: {
   const base = path ? basename(path) : "(path)";
   const hover = path ? (
     <div className="p-3">
-      <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">Full path</div>
-      <div className="break-all font-mono text-[11px] text-[var(--text-muted)]">{path}</div>
+      <div className="mb-1 font-mono text-[10px] text-[var(--text-dim)]">
+        Full path
+      </div>
+      <div className="font-mono text-[11px] break-all text-[var(--text-muted)]">
+        {path}
+      </div>
     </div>
   ) : null;
   return (
@@ -912,7 +1075,8 @@ function ChangeLine({ block, result, duration, onOpenFile }: {
     />
   );
 }
-type TodoStatus = "pending" | "in_progress" | "completed" | "abandoned" | "blocked";
+type TodoStatus =
+  "pending" | "in_progress" | "completed" | "abandoned" | "blocked";
 
 interface TodoTask {
   content: string;
@@ -930,8 +1094,17 @@ function parseTodoPhases(value: unknown): TodoPhase[] {
   const phases: TodoPhase[] = [];
   for (const phase of value) {
     if (!isRecord(phase)) continue;
-    const name = typeof phase.name === "string" ? phase.name : typeof phase.phase === "string" ? phase.phase : "Tasks";
-    const rawTasks = Array.isArray(phase.tasks) ? phase.tasks : Array.isArray(phase.items) ? phase.items : [];
+    const name =
+      typeof phase.name === "string"
+        ? phase.name
+        : typeof phase.phase === "string"
+          ? phase.phase
+          : "Tasks";
+    const rawTasks = Array.isArray(phase.tasks)
+      ? phase.tasks
+      : Array.isArray(phase.items)
+        ? phase.items
+        : [];
     const tasks: TodoTask[] = [];
     for (const task of rawTasks) {
       if (typeof task === "string") {
@@ -940,17 +1113,32 @@ function parseTodoPhases(value: unknown): TodoPhase[] {
       }
       if (!isRecord(task) || typeof task.content !== "string") continue;
       const rawStatus = task.status;
-      const status: TodoStatus = rawStatus === "in_progress" || rawStatus === "completed" || rawStatus === "abandoned" || rawStatus === "blocked" ? rawStatus : "pending";
-      tasks.push({ content: task.content, status, blocker: typeof task.blocker === "string" ? task.blocker : undefined });
+      const status: TodoStatus =
+        rawStatus === "in_progress" ||
+        rawStatus === "completed" ||
+        rawStatus === "abandoned" ||
+        rawStatus === "blocked"
+          ? rawStatus
+          : "pending";
+      tasks.push({
+        content: task.content,
+        status,
+        blocker: typeof task.blocker === "string" ? task.blocker : undefined,
+      });
     }
     if (tasks.length > 0) phases.push({ name, tasks });
   }
   return phases;
 }
 
-function readTodoPhases(block: ToolCallContent, result: ToolResultMessage | undefined): TodoPhase[] {
+function readTodoPhases(
+  block: ToolCallContent,
+  result: ToolResultMessage | undefined
+): TodoPhase[] {
   if (isRecord(result?.details)) {
-    const details = isRecord(result.details.details) ? result.details.details : result.details;
+    const details = isRecord(result.details.details)
+      ? result.details.details
+      : result.details;
     const phases = parseTodoPhases(details.phases);
     if (phases.length > 0) return phases;
   }
@@ -958,62 +1146,148 @@ function readTodoPhases(block: ToolCallContent, result: ToolResultMessage | unde
   if (initialized.length > 0) return initialized;
 
   const op = typeof block.input.op === "string" ? block.input.op : "update";
-  const phase = typeof block.input.phase === "string" ? block.input.phase : "Tasks";
-  const status: TodoStatus = op === "done" ? "completed" : op === "drop" ? "abandoned" : op === "block" ? "blocked" : op === "start" ? "in_progress" : "pending";
-  const items = Array.isArray(block.input.items) ? block.input.items.filter((item): item is string => typeof item === "string") : [];
+  const phase =
+    typeof block.input.phase === "string" ? block.input.phase : "Tasks";
+  const status: TodoStatus =
+    op === "done"
+      ? "completed"
+      : op === "drop"
+        ? "abandoned"
+        : op === "block"
+          ? "blocked"
+          : op === "start"
+            ? "in_progress"
+            : "pending";
+  const items = Array.isArray(block.input.items)
+    ? block.input.items.filter(
+        (item): item is string => typeof item === "string"
+      )
+    : [];
   const task = typeof block.input.task === "string" ? [block.input.task] : [];
-  const tasks = [...task, ...items].map((content) => ({ content, status, blocker: status === "blocked" && typeof block.input.reason === "string" ? block.input.reason : undefined }));
+  const tasks = [...task, ...items].map((content) => ({
+    content,
+    status,
+    blocker:
+      status === "blocked" && typeof block.input.reason === "string"
+        ? block.input.reason
+        : undefined,
+  }));
   return tasks.length > 0 ? [{ name: phase, tasks }] : [];
 }
 
-function readCompletedTodoKeys(result: ToolResultMessage | undefined): Set<string> {
+function readCompletedTodoKeys(
+  result: ToolResultMessage | undefined
+): Set<string> {
   if (!isRecord(result?.details)) return new Set();
-  const details = isRecord(result.details.details) ? result.details.details : result.details;
+  const details = isRecord(result.details.details)
+    ? result.details.details
+    : result.details;
   if (!Array.isArray(details.completedTasks)) return new Set();
-  return new Set(details.completedTasks.flatMap((task) => isRecord(task) && typeof task.content === "string" ? [task.content] : []));
+  return new Set(
+    details.completedTasks.flatMap((task) =>
+      isRecord(task) && typeof task.content === "string" ? [task.content] : []
+    )
+  );
 }
 
 function TodoStatusIcon({ status }: { status: TodoStatus }) {
-  if (status === "completed") return <CheckCircle2 size={13} className="text-[var(--success)]" />;
-  if (status === "in_progress") return <CircleDot size={13} className="text-[var(--accent)]" />;
-  if (status === "blocked") return <LockKeyhole size={12} className="text-[var(--warning)]" />;
-  if (status === "abandoned") return <Ban size={12} className="text-[var(--text-dim)]" />;
+  if (status === "completed")
+    return <CheckCircle2 size={13} className="text-[var(--success)]" />;
+  if (status === "in_progress")
+    return <CircleDot size={13} className="text-[var(--accent)]" />;
+  if (status === "blocked")
+    return <LockKeyhole size={12} className="text-[var(--warning)]" />;
+  if (status === "abandoned")
+    return <Ban size={12} className="text-[var(--text-dim)]" />;
   return <Circle size={12} className="text-[var(--text-dim)]" />;
 }
 
-export function TodoCard({ block, result }: { block: ToolCallContent; result?: ToolResultMessage }) {
+export function TodoCard({
+  block,
+  result,
+}: {
+  block: ToolCallContent;
+  result?: ToolResultMessage;
+}) {
   const phases = readTodoPhases(block, result);
   const tasks = phases.flatMap((phase) => phase.tasks);
   const newlyCompleted = readCompletedTodoKeys(result);
-  const closed = tasks.filter((task) => task.status === "completed" || task.status === "abandoned").length;
+  const closed = tasks.filter(
+    (task) => task.status === "completed" || task.status === "abandoned"
+  ).length;
   const blocked = tasks.filter((task) => task.status === "blocked").length;
-  const activePhaseIndex = phases.findIndex((phase) => phase.tasks.some((task) => task.status === "pending" || task.status === "in_progress"));
-  const progress = tasks.length > 0 ? Math.round((closed / tasks.length) * 100) : 0;
+  const activePhaseIndex = phases.findIndex((phase) =>
+    phase.tasks.some(
+      (task) => task.status === "pending" || task.status === "in_progress"
+    )
+  );
+  const progress =
+    tasks.length > 0 ? Math.round((closed / tasks.length) * 100) : 0;
   const isError = result?.isError === true;
 
   return (
     <section
-      className={cn("overflow-hidden rounded-lg border bg-[var(--tool-bg)]", isError ? "border-[var(--destructive)]/30 opacity-60" : "border-[color-mix(in_srgb,var(--border)_60%,transparent)]")}
+      className={cn(
+        "overflow-hidden rounded-lg border bg-[var(--tool-bg)]",
+        isError
+          ? "border-[var(--destructive)]/30 opacity-60"
+          : "border-[color-mix(in_srgb,var(--border)_60%,transparent)]"
+      )}
       aria-label="Task progress"
     >
       <header className="flex min-w-0 items-center gap-2 px-3 py-2">
         <ListTodo size={14} className="shrink-0 text-[var(--text-muted)]" />
-        <span className="shrink-0 text-[12px] font-semibold text-[var(--text)]">Tasks</span>
-        <div className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-[var(--border)]/45" aria-hidden>
-          <motion.div className="h-full rounded-full bg-[var(--accent)]" animate={{ width: `${progress}%` }} transition={{ duration: 0.25, ease: "easeOut" }} />
+        <span className="shrink-0 text-[12px] font-semibold text-[var(--text)]">
+          Tasks
+        </span>
+        <div
+          className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-[var(--border)]/45"
+          aria-hidden
+        >
+          <motion.div
+            className="h-full rounded-full bg-[var(--accent)]"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          />
         </div>
-        <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">{closed}/{tasks.length}</span>
-        {blocked > 0 ? <span className="shrink-0 font-mono text-[10px] text-[var(--warning)]">{blocked} blocked</span> : null}
+        <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
+          {closed}/{tasks.length}
+        </span>
+        {blocked > 0 ? (
+          <span className="shrink-0 font-mono text-[10px] text-[var(--warning)]">
+            {blocked} blocked
+          </span>
+        ) : null}
       </header>
       <div className="border-t border-[var(--border)]/45 bg-[var(--bg-subtle)] px-3 py-2">
         {phases.map((phase, phaseIndex) => {
-          const phaseClosed = phase.tasks.filter((task) => task.status === "completed" || task.status === "abandoned").length;
+          const phaseClosed = phase.tasks.filter(
+            (task) => task.status === "completed" || task.status === "abandoned"
+          ).length;
           const isActive = phaseIndex === activePhaseIndex;
           return (
-            <section key={`${phase.name}-${phaseIndex}`} className={cn("min-w-0 py-1.5", phaseIndex > 0 && "mt-1 border-t border-[var(--border)]/35 pt-2.5")}>
+            <section
+              key={`${phase.name}-${phaseIndex}`}
+              className={cn(
+                "min-w-0 py-1.5",
+                phaseIndex > 0 &&
+                  "mt-1 border-t border-[var(--border)]/35 pt-2.5"
+              )}
+            >
               <div className="mb-1.5 flex min-w-0 items-center gap-2">
-                <span className={cn("min-w-0 flex-1 truncate text-[11px] font-semibold", isActive ? "text-[var(--accent)]" : "text-[var(--text-muted)]")}>{phase.name}</span>
-                <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">{phaseClosed}/{phase.tasks.length}</span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-[11px] font-semibold",
+                    isActive
+                      ? "text-[var(--accent)]"
+                      : "text-[var(--text-muted)]"
+                  )}
+                >
+                  {phase.name}
+                </span>
+                <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
+                  {phaseClosed}/{phase.tasks.length}
+                </span>
               </div>
               <ul className="grid gap-1">
                 <AnimatePresence initial={false} mode="popLayout">
@@ -1032,10 +1306,26 @@ export function TodoCard({ block, result }: { block: ToolCallContent; result?: T
                           <motion.span
                             key={task.status}
                             className="absolute inset-0 flex items-center justify-center"
-                            initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                            exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-                            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                            initial={{
+                              opacity: 0,
+                              scale: 0.25,
+                              filter: "blur(4px)",
+                            }}
+                            animate={{
+                              opacity: 1,
+                              scale: 1,
+                              filter: "blur(0px)",
+                            }}
+                            exit={{
+                              opacity: 0,
+                              scale: 0.25,
+                              filter: "blur(4px)",
+                            }}
+                            transition={{
+                              type: "spring",
+                              duration: 0.3,
+                              bounce: 0,
+                            }}
                           >
                             <TodoStatusIcon status={task.status} />
                           </motion.span>
@@ -1043,24 +1333,49 @@ export function TodoCard({ block, result }: { block: ToolCallContent; result?: T
                       </span>
                       <motion.span
                         className="min-w-0 break-words"
-                        animate={{ opacity: task.status === "completed" || task.status === "abandoned" ? 0.55 : 1 }}
+                        animate={{
+                          opacity:
+                            task.status === "completed" ||
+                            task.status === "abandoned"
+                              ? 0.55
+                              : 1,
+                        }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                       >
                         <span className="relative inline-grid">
-                          <span className={task.status === "abandoned" || task.status === "completed" && !newlyCompleted.has(task.content) ? "line-through" : undefined}>{task.content}</span>
-                          {task.status === "completed" && newlyCompleted.has(task.content) ? (
+                          <span
+                            className={
+                              task.status === "abandoned" ||
+                              (task.status === "completed" &&
+                                !newlyCompleted.has(task.content))
+                                ? "line-through"
+                                : undefined
+                            }
+                          >
+                            {task.content}
+                          </span>
+                          {task.status === "completed" &&
+                          newlyCompleted.has(task.content) ? (
                             <motion.span
                               aria-hidden
                               className="absolute inset-0 overflow-hidden whitespace-nowrap text-[var(--success)] line-through"
                               initial={{ clipPath: "inset(0 100% 0 0)" }}
                               animate={{ clipPath: "inset(0 0% 0 0)" }}
-                              transition={{ duration: 0.6, delay: 0.1, ease: "linear" }}
+                              transition={{
+                                duration: 0.6,
+                                delay: 0.1,
+                                ease: "linear",
+                              }}
                             >
                               {task.content}
                             </motion.span>
                           ) : null}
                         </span>
-                        {task.status === "blocked" && task.blocker ? <span className="ml-1 text-[var(--warning)]">— {task.blocker}</span> : null}
+                        {task.status === "blocked" && task.blocker ? (
+                          <span className="ml-1 text-[var(--warning)]">
+                            — {task.blocker}
+                          </span>
+                        ) : null}
                       </motion.span>
                     </motion.li>
                   ))}
@@ -1096,29 +1411,71 @@ export function ToolLine({
     return <TodoCard block={block} result={result} />;
   }
   if (name === "read" || block.toolKind === "read") {
-    return <ReadLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+    return (
+      <ReadLine
+        block={block}
+        result={result}
+        duration={duration}
+        onOpenFile={onOpenFile}
+      />
+    );
   }
   if (name === "grep" || name === "grepped") {
-    return <GrepLine block={block} result={result} duration={duration} cwd={cwd} onOpenFile={onOpenFile} />;
+    return (
+      <GrepLine
+        block={block}
+        result={result}
+        duration={duration}
+        cwd={cwd}
+        onOpenFile={onOpenFile}
+      />
+    );
   }
   if (name === "glob") {
-    return <GlobLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+    return (
+      <GlobLine
+        block={block}
+        result={result}
+        duration={duration}
+        onOpenFile={onOpenFile}
+      />
+    );
   }
   if (name === "web_search" || name === "websearch") {
     return <WebSearchLine block={block} result={result} duration={duration} />;
   }
-  if (name === "fetch" || name === "web_fetch" || name === "webfetch" || block.toolKind === "fetch") {
+  if (
+    name === "fetch" ||
+    name === "web_fetch" ||
+    name === "webfetch" ||
+    block.toolKind === "fetch"
+  ) {
     return <FetchLine block={block} result={result} duration={duration} />;
   }
   if (isBashTool(block)) {
     return <BashLine block={block} result={result} duration={duration} />;
   }
   if (isChangeTool(block)) {
-    return <ChangeLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+    return (
+      <ChangeLine
+        block={block}
+        result={result}
+        duration={duration}
+        onOpenFile={onOpenFile}
+      />
+    );
   }
   // Search kind without a known name: reuse grep line as a reasonable default.
   if (block.toolKind === "search") {
-    return <GrepLine block={block} result={result} duration={duration} cwd={cwd} onOpenFile={onOpenFile} />;
+    return (
+      <GrepLine
+        block={block}
+        result={result}
+        duration={duration}
+        cwd={cwd}
+        onOpenFile={onOpenFile}
+      />
+    );
   }
   return null;
 }
@@ -1164,34 +1521,70 @@ export function ExploringGroup({
   const summaryParts: string[] = [];
   if (variant === "bash") {
     label = live ? "Running" : "Ran";
-    summaryParts.push(`${blocks.length} ${blocks.length === 1 ? "command" : "commands"}`);
+    summaryParts.push(
+      `${blocks.length} ${blocks.length === 1 ? "command" : "commands"}`
+    );
   } else if (variant === "changes") {
-    const edits = blocks.filter((block) => changeVerb(block) === "Edited" || changeVerb(block) === "Wrote").length;
-    const deletes = blocks.filter((block) => changeVerb(block) === "Deleted").length;
-    const moves = blocks.filter((block) => changeVerb(block) === "Moved").length;
+    const edits = blocks.filter(
+      (block) => changeVerb(block) === "Edited" || changeVerb(block) === "Wrote"
+    ).length;
+    const deletes = blocks.filter(
+      (block) => changeVerb(block) === "Deleted"
+    ).length;
+    const moves = blocks.filter(
+      (block) => changeVerb(block) === "Moved"
+    ).length;
     // Choose the dominant verb for the header label; "Changed" acts as the
     // umbrella when several kinds are mixed.
-    if (deletes > 0 && edits === 0 && moves === 0) label = live ? "Deleting" : "Deleted";
-    else if (moves > 0 && edits === 0 && deletes === 0) label = live ? "Moving" : "Moved";
-    else if (edits > 0 && deletes === 0 && moves === 0) label = live ? "Editing" : "Edited";
+    if (deletes > 0 && edits === 0 && moves === 0)
+      label = live ? "Deleting" : "Deleted";
+    else if (moves > 0 && edits === 0 && deletes === 0)
+      label = live ? "Moving" : "Moved";
+    else if (edits > 0 && deletes === 0 && moves === 0)
+      label = live ? "Editing" : "Edited";
     else label = live ? "Changing" : "Changed";
-    if (edits > 0) summaryParts.push(`${edits} ${edits === 1 ? "file" : "files"}`);
-    if (deletes > 0) summaryParts.push(`${deletes} ${deletes === 1 ? "deleted" : "deletions"}`);
-    if (moves > 0) summaryParts.push(`${moves} ${moves === 1 ? "move" : "moves"}`);
+    if (edits > 0)
+      summaryParts.push(`${edits} ${edits === 1 ? "file" : "files"}`);
+    if (deletes > 0)
+      summaryParts.push(
+        `${deletes} ${deletes === 1 ? "deleted" : "deletions"}`
+      );
+    if (moves > 0)
+      summaryParts.push(`${moves} ${moves === 1 ? "move" : "moves"}`);
   } else {
     label = live ? "Exploring" : "Explored";
     const searches = blocks.filter((block) => {
       const name = (block.toolName || "").toLowerCase();
-      return name === "grep" || name === "glob" || name === "web_search" || name === "websearch" || block.toolKind === "search";
+      return (
+        name === "grep" ||
+        name === "glob" ||
+        name === "web_search" ||
+        name === "websearch" ||
+        block.toolKind === "search"
+      );
     }).length;
-    const reads = blocks.filter((block) => (block.toolName || "").toLowerCase() === "read" || block.toolKind === "read").length;
+    const reads = blocks.filter(
+      (block) =>
+        (block.toolName || "").toLowerCase() === "read" ||
+        block.toolKind === "read"
+    ).length;
     const fetches = blocks.filter((block) => {
       const name = (block.toolName || "").toLowerCase();
-      return name === "fetch" || name === "web_fetch" || name === "webfetch" || block.toolKind === "fetch";
+      return (
+        name === "fetch" ||
+        name === "web_fetch" ||
+        name === "webfetch" ||
+        block.toolKind === "fetch"
+      );
     }).length;
-    if (searches > 0) summaryParts.push(`${searches} ${searches === 1 ? "search" : "searches"}`);
-    if (reads > 0) summaryParts.push(`${reads} ${reads === 1 ? "file" : "files"}`);
-    if (fetches > 0) summaryParts.push(`${fetches} ${fetches === 1 ? "fetch" : "fetches"}`);
+    if (searches > 0)
+      summaryParts.push(
+        `${searches} ${searches === 1 ? "search" : "searches"}`
+      );
+    if (reads > 0)
+      summaryParts.push(`${reads} ${reads === 1 ? "file" : "files"}`);
+    if (fetches > 0)
+      summaryParts.push(`${fetches} ${fetches === 1 ? "fetch" : "fetches"}`);
   }
   if (failed > 0) summaryParts.push(`${failed} failed`);
 

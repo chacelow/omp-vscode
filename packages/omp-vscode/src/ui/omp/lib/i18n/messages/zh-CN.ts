@@ -148,7 +148,8 @@ export const zhCNLocale: LocalePlugin = {
     "files.noFiles": "未找到文件",
     "files.explorer": "文件浏览器",
     "files.changedCount": "{count} 个文件",
-    "files.changeStats": "{count} 个变更文件，新增 {additions} 行，删除 {deletions} 行",
+    "files.changeStats":
+      "{count} 个变更文件，新增 {additions} 行，删除 {deletions} 行",
     "files.conflictSummary": "已有 {count} 个文件：{files}",
     "files.cannotReplace": "无法替换：{files}",
     "files.replace": "替换",
@@ -292,7 +293,8 @@ export const zhCNLocale: LocalePlugin = {
     "trust.trusting": "正在信任...",
     "trust.cancel": "取消",
     "trust.dialogTitle": "信任此项目？",
-    "trust.dialogBody": "项目资源可以运行本地代码。请仅信任你了解其内容的项目。",
+    "trust.dialogBody":
+      "项目资源可以运行本地代码。请仅信任你了解其内容的项目。",
     "trust.skillsNotLoaded": "此项目尚未受信任，项目技能未加载。",
     "trust.pluginsNotLoaded": "此项目尚未受信任，项目插件未加载。",
     "trust.projectScopeUnavailable": "项目资源未加载时，无法安装到项目范围。",
@@ -475,13 +477,14 @@ export const zhCNLocale: LocalePlugin = {
     "settings.emptyTab": "此标签页暂无设置。",
     "settings.boolean.enabled": "已启用",
     "settings.boolean.disabled": "已禁用",
-    "settings.appearance.tuiNote": "这些设置面向 TUI（终端里的 `omp`）：主题配色、状态栏格式、Nerd Font 字符、内联图片协议。VS Code webview 使用 VS Code 自身主题，所以大多数在这里没有可见效果 —— 但仍会持久化到 ~/.omp/agent/config.yml，并与 CLI 共享。",
+    "settings.appearance.tuiNote":
+      "这些设置面向 TUI（终端里的 `omp`）：主题配色、状态栏格式、Nerd Font 字符、内联图片协议。VS Code webview 使用 VS Code 自身主题，所以大多数在这里没有可见效果 —— 但仍会持久化到 ~/.omp/agent/config.yml，并与 CLI 共享。",
 
     // ---- MCP tab --------------------------------------------------------
     "mcp.title": "MCP 服务器",
     "mcp.section.user": "用户级服务器",
     "mcp.section.project": "项目级服务器",
-    "mcp.empty": "未配置任何 MCP 服务器。点击下方\"添加 MCP 服务器\"来安装。",
+    "mcp.empty": '未配置任何 MCP 服务器。点击下方"添加 MCP 服务器"来安装。',
     "mcp.action.test": "测试",
     "mcp.action.remove": "删除",
     "mcp.action.add": "添加 MCP 服务器",
@@ -490,7 +493,7 @@ export const zhCNLocale: LocalePlugin = {
     "mcp.state.success": "成功",
     "mcp.state.failed": "失败",
     "mcp.transport.unknown": "（未知传输方式）",
-    "mcp.confirmRemove": "确定删除 MCP 服务器 \"{name}\" 吗？",
+    "mcp.confirmRemove": '确定删除 MCP 服务器 "{name}" 吗？',
 
     // ---- Agents tab -----------------------------------------------------
     "agents.title": "代理",
@@ -520,7 +523,8 @@ export const zhCNLocale: LocalePlugin = {
     "usage.action.reload": "刷新",
     "usage.fetchedAgo": "（{duration} 前）",
     "usage.savedResets": "{count} 次可用的限流重置 —— 用 /usage reset 消耗",
-    "usage.savedResets.plural": "{count} 次可用的限流重置 —— 用 /usage reset 消耗",
+    "usage.savedResets.plural":
+      "{count} 次可用的限流重置 —— 用 /usage reset 消耗",
     "usage.expiresIn": "{duration}后过期（{date}）",
     "usage.expired": "已过期（{date}）",
     "usage.noLimits": "未上报任何限额",
@@ -538,7 +542,8 @@ export const zhCNLocale: LocalePlugin = {
     "auth.action.apiKey": "保存 API 密钥",
     "auth.action.signOut": "退出登录",
     "auth.action.apiKeyPlaceholder": "sk-…",
-    "auth.oauthNotAvailable": "VS Code 扩展中不支持 OAuth —— 请在终端里运行 `omp auth login {provider}`。",
+    "auth.oauthNotAvailable":
+      "VS Code 扩展中不支持 OAuth —— 请在终端里运行 `omp auth login {provider}`。",
     "auth.chip.oauth": "OAuth",
     "auth.chip.apiKey": "API 密钥",
     "auth.chip.local": "本地",
@@ -582,29 +587,38 @@ export const zhCNLocale: LocalePlugin = {
     "settings.autoResume.label": "自动恢复",
     "settings.autoResume.description": "自动恢复当前目录中最近的会话",
     "settings.power.sleepPrevention.label": "防止休眠",
-    "settings.power.sleepPrevention.description": "在活跃会话期间防止 macOS 休眠。各级别会累加——会添加所有较低级别的标志。",
+    "settings.power.sleepPrevention.description":
+      "在活跃会话期间防止 macOS 休眠。各级别会累加——会添加所有较低级别的标志。",
     "settings.power.sleepPrevention.option.off.label": "关闭",
     "settings.power.sleepPrevention.option.off.description": "不阻止任何休眠",
     "settings.power.sleepPrevention.option.idle.label": "防止空闲休眠",
-    "settings.power.sleepPrevention.option.idle.description": "会话打开期间保持系统唤醒（caffeinate -i）",
+    "settings.power.sleepPrevention.option.idle.description":
+      "会话打开期间保持系统唤醒（caffeinate -i）",
     "settings.power.sleepPrevention.option.display.label": "防止显示器休眠",
-    "settings.power.sleepPrevention.option.display.description": "同时防止显示器因空闲而休眠（caffeinate -i -d）",
+    "settings.power.sleepPrevention.option.display.description":
+      "同时防止显示器因空闲而休眠（caffeinate -i -d）",
     "settings.power.sleepPrevention.option.system.label": "防止系统休眠",
-    "settings.power.sleepPrevention.option.system.description": "同时阻止接通电源时的所有系统休眠，并声明用户处于活动状态（caffeinate -i -d -s -u）",
+    "settings.power.sleepPrevention.option.system.description":
+      "同时阻止接通电源时的所有系统休眠，并声明用户处于活动状态（caffeinate -i -d -s -u）",
     "settings.advisor.enabled.label": "启用 Advisor",
-    "settings.advisor.enabled.description": "配对第二个模型（分配给“advisor”角色），被动审查每个轮次并注入备注。",
+    "settings.advisor.enabled.description":
+      "配对第二个模型（分配给“advisor”角色），被动审查每个轮次并注入备注。",
     "settings.advisor.subagents.label": "为子 Agent 启用 Advisor",
-    "settings.advisor.subagents.description": "同时在生成的 task/eval 子 Agent 上启用 Advisor。",
+    "settings.advisor.subagents.description":
+      "同时在生成的 task/eval 子 Agent 上启用 Advisor。",
     "settings.advisor.syncBacklog.label": "Advisor 同步积压",
-    "settings.advisor.syncBacklog.description": "如果 Advisor 落后达到此轮次数，最多暂停主 Agent 30 秒。关闭将禁用追赶延迟。",
+    "settings.advisor.syncBacklog.description":
+      "如果 Advisor 落后达到此轮次数，最多暂停主 Agent 30 秒。关闭将禁用追赶延迟。",
     "settings.advisor.syncBacklog.option.off.label": "关闭",
     "settings.advisor.syncBacklog.option.1.label": "1",
     "settings.advisor.syncBacklog.option.3.label": "3",
     "settings.advisor.syncBacklog.option.5.label": "5",
     "settings.advisor.immuneTurns.label": "Advisor 免打断轮次",
-    "settings.advisor.immuneTurns.description": "Advisor 的关注事项或阻塞项打断后，在接下来的这么多主轮次中，以非打断方式路由后续关注事项/阻塞项。",
+    "settings.advisor.immuneTurns.description":
+      "Advisor 的关注事项或阻塞项打断后，在接下来的这么多主轮次中，以非打断方式路由后续关注事项/阻塞项。",
     "settings.advisor.immuneTurns.option.0.label": "0 轮",
-    "settings.advisor.immuneTurns.option.0.description": "允许每个关注事项/阻塞项打断。",
+    "settings.advisor.immuneTurns.option.0.description":
+      "允许每个关注事项/阻塞项打断。",
     "settings.advisor.immuneTurns.option.1.label": "1 轮",
     "settings.advisor.immuneTurns.option.2.label": "2 轮",
     "settings.advisor.immuneTurns.option.3.label": "3 轮",
@@ -612,13 +626,16 @@ export const zhCNLocale: LocalePlugin = {
     "settings.advisor.immuneTurns.option.4.label": "4 轮",
     "settings.advisor.immuneTurns.option.5.label": "5 轮",
     "settings.prewalk.enabled.label": "启用 Prewalk",
-    "settings.prewalk.enabled.description": "在计划引导的待办列表生成后的首次编辑/写入时，先使用当前活跃模型，再切换到快速/低成本模型（默认是“smol”角色）——强模型会规划、提交待办事项并在交接前开始实现。可通过 `--prewalk` / `--no-prewalk` 为每个会话覆盖。",
+    "settings.prewalk.enabled.description":
+      "在计划引导的待办列表生成后的首次编辑/写入时，先使用当前活跃模型，再切换到快速/低成本模型（默认是“smol”角色）——强模型会规划、提交待办事项并在交接前开始实现。可通过 `--prewalk` / `--no-prewalk` 为每个会话覆盖。",
     "settings.modelRoleStorage.label": "模型角色存储",
     "settings.modelRoleStorage.description": "模型选择器角色分配的保存位置",
     "settings.modelRoleStorage.option.global.label": "全局",
-    "settings.modelRoleStorage.option.global.description": "将角色模型保存在活跃配置档案的配置中（当前行为）",
+    "settings.modelRoleStorage.option.global.description":
+      "将角色模型保存在活跃配置档案的配置中（当前行为）",
     "settings.modelRoleStorage.option.project.label": "按项目",
-    "settings.modelRoleStorage.option.project.description": "将项目角色模型保存在 `.omp/config.yml` 中；缺少的项目角色使用全局默认值",
+    "settings.modelRoleStorage.option.project.description":
+      "将项目角色模型保存在 `.omp/config.yml` 中；缺少的项目角色使用全局默认值",
     "settings.modelRoles.label": "模型角色",
     "settings.modelRoles.description": "为模型角色分配模型和思考深度",
     "settings.theme.dark.label": "深色主题",
@@ -626,7 +643,8 @@ export const zhCNLocale: LocalePlugin = {
     "settings.theme.light.label": "浅色主题",
     "settings.theme.light.description": "终端使用浅色背景时的主题",
     "settings.symbolPreset.label": "符号预设",
-    "settings.symbolPreset.description": "图标和符号的字形集（Unicode、Nerd Font 或 ASCII）",
+    "settings.symbolPreset.description":
+      "图标和符号的字形集（Unicode、Nerd Font 或 ASCII）",
     "settings.symbolPreset.option.unicode.label": "Unicode",
     "settings.symbolPreset.option.unicode.description": "标准符号（默认）",
     "settings.symbolPreset.option.nerd.label": "Nerd Font",
@@ -638,15 +656,18 @@ export const zhCNLocale: LocalePlugin = {
     "settings.statusLine.preset.label": "状态栏预设",
     "settings.statusLine.preset.description": "预设状态栏配置",
     "settings.statusLine.preset.option.default.label": "默认",
-    "settings.statusLine.preset.option.default.description": "模型、路径、git、上下文、Token、费用",
+    "settings.statusLine.preset.option.default.description":
+      "模型、路径、git、上下文、Token、费用",
     "settings.statusLine.preset.option.minimal.label": "极简",
     "settings.statusLine.preset.option.minimal.description": "仅路径和 git",
     "settings.statusLine.preset.option.compact.label": "紧凑",
-    "settings.statusLine.preset.option.compact.description": "模型、git、费用、上下文",
+    "settings.statusLine.preset.option.compact.description":
+      "模型、git、费用、上下文",
     "settings.statusLine.preset.option.full.label": "完整",
     "settings.statusLine.preset.option.full.description": "所有区段，包括时间",
     "settings.statusLine.preset.option.nerd.label": "Nerd",
-    "settings.statusLine.preset.option.nerd.description": "使用 Nerd Font 图标显示最多信息",
+    "settings.statusLine.preset.option.nerd.description":
+      "使用 Nerd Font 图标显示最多信息",
     "settings.statusLine.preset.option.ascii.label": "ASCII",
     "settings.statusLine.preset.option.ascii.description": "不使用特殊字符",
     "settings.statusLine.preset.option.custom.label": "自定义",
@@ -654,9 +675,11 @@ export const zhCNLocale: LocalePlugin = {
     "settings.statusLine.separator.label": "状态栏分隔符",
     "settings.statusLine.separator.description": "区段之间的分隔符样式",
     "settings.statusLine.separator.option.powerline.label": "Powerline",
-    "settings.statusLine.separator.option.powerline.description": "实心箭头（Nerd Font）",
+    "settings.statusLine.separator.option.powerline.description":
+      "实心箭头（Nerd Font）",
     "settings.statusLine.separator.option.powerline-thin.label": "细尖括号",
-    "settings.statusLine.separator.option.powerline-thin.description": "细箭头（Nerd Font）",
+    "settings.statusLine.separator.option.powerline-thin.description":
+      "细箭头（Nerd Font）",
     "settings.statusLine.separator.option.slash.label": "斜杠",
     "settings.statusLine.separator.option.slash.description": "正斜杠",
     "settings.statusLine.separator.option.pipe.label": "竖线",
@@ -668,57 +691,75 @@ export const zhCNLocale: LocalePlugin = {
     "settings.statusLine.separator.option.ascii.label": "ASCII",
     "settings.statusLine.separator.option.ascii.description": "大于号",
     "settings.statusLine.sessionAccent.label": "会话强调色",
-    "settings.statusLine.sessionAccent.description": "编辑器边框和状态栏间隙使用会话名称颜色",
+    "settings.statusLine.sessionAccent.description":
+      "编辑器边框和状态栏间隙使用会话名称颜色",
     "settings.statusLine.transparent.label": "透明状态栏",
-    "settings.statusLine.transparent.description": "状态栏使用终端默认背景而非主题的 `statusLineBg`。Powerline 端帽将被移除，因为它们需要对比色填充才能与周围终端衔接。",
+    "settings.statusLine.transparent.description":
+      "状态栏使用终端默认背景而非主题的 `statusLineBg`。Powerline 端帽将被移除，因为它们需要对比色填充才能与周围终端衔接。",
     "settings.statusLine.compactThinkingLevel.label": "紧凑思考深度",
-    "settings.statusLine.compactThinkingLevel.description": "将思考深度作为单个图标显示在模型名称上，而非单独显示 ` · <level>` 后缀。",
+    "settings.statusLine.compactThinkingLevel.description":
+      "将思考深度作为单个图标显示在模型名称上，而非单独显示 ` · <level>` 后缀。",
     "settings.terminal.showImages.label": "显示行内图片",
     "settings.terminal.showImages.description": "在终端中行内渲染图片",
     "settings.images.autoResize.label": "自动调整图片大小",
-    "settings.images.autoResize.description": "将大图片调整为最大 2000x2000，以提高模型兼容性",
+    "settings.images.autoResize.description":
+      "将大图片调整为最大 2000x2000，以提高模型兼容性",
     "settings.images.blockImages.label": "阻止图片",
     "settings.images.blockImages.description": "阻止将图片发送给 LLM 提供商",
     "settings.defaultThinkingLevel.label": "思考深度",
     "settings.defaultThinkingLevel.description": "支持思考的模型的推理深度",
     "settings.defaultThinkingLevel.option.auto.label": "自动",
-    "settings.defaultThinkingLevel.option.auto.description": "每个轮次自动选择思考强度",
+    "settings.defaultThinkingLevel.option.auto.description":
+      "每个轮次自动选择思考强度",
     "settings.defaultThinkingLevel.option.off.label": "关闭",
     "settings.defaultThinkingLevel.option.off.description": "不进行推理",
     "settings.defaultThinkingLevel.option.minimal.label": "极低",
-    "settings.defaultThinkingLevel.option.minimal.description": "非常简短的推理（约 1k Token）",
+    "settings.defaultThinkingLevel.option.minimal.description":
+      "非常简短的推理（约 1k Token）",
     "settings.defaultThinkingLevel.option.low.label": "低",
-    "settings.defaultThinkingLevel.option.low.description": "轻度推理（约 2k Token）",
+    "settings.defaultThinkingLevel.option.low.description":
+      "轻度推理（约 2k Token）",
     "settings.defaultThinkingLevel.option.medium.label": "中",
-    "settings.defaultThinkingLevel.option.medium.description": "中等推理（约 8k Token）",
+    "settings.defaultThinkingLevel.option.medium.description":
+      "中等推理（约 8k Token）",
     "settings.defaultThinkingLevel.option.high.label": "高",
-    "settings.defaultThinkingLevel.option.high.description": "深度推理（约 16k Token）",
+    "settings.defaultThinkingLevel.option.high.description":
+      "深度推理（约 16k Token）",
     "settings.defaultThinkingLevel.option.xhigh.label": "xhigh",
-    "settings.defaultThinkingLevel.option.xhigh.description": "扩展推理（约 32k Token）",
+    "settings.defaultThinkingLevel.option.xhigh.description":
+      "扩展推理（约 32k Token）",
     "settings.defaultThinkingLevel.option.max.label": "最高",
-    "settings.defaultThinkingLevel.option.max.description": "模型支持的最高推理强度",
+    "settings.defaultThinkingLevel.option.max.description":
+      "模型支持的最高推理强度",
     "settings.hideThinkingBlock.label": "隐藏思考块",
     "settings.hideThinkingBlock.description": "在助手回复中隐藏思考块",
     "settings.proseOnlyThinking.label": "仅文本思考",
-    "settings.proseOnlyThinking.description": "从思考摘要中省略代码块，并以省略号替代",
+    "settings.proseOnlyThinking.description":
+      "从思考摘要中省略代码块，并以省略号替代",
     "settings.omitThinking.label": "省略思考摘要",
-    "settings.omitThinking.description": "指示上游 Provider 在回复中完全省略思考摘要（如支持）",
+    "settings.omitThinking.description":
+      "指示上游 Provider 在回复中完全省略思考摘要（如支持）",
     "settings.personality.label": "个性",
     "settings.personality.description": "渲染到系统提示词个性块中的沟通风格",
     "settings.personality.option.default.label": "默认",
-    "settings.personality.option.default.description": "简洁、证据优先的工程师；回复密集且行动导向",
+    "settings.personality.option.default.description":
+      "简洁、证据优先的工程师；回复密集且行动导向",
     "settings.personality.option.friendly.label": "友好",
-    "settings.personality.option.friendly.description": "温暖、鼓励的协作者，专注于推进进展和士气",
+    "settings.personality.option.friendly.description":
+      "温暖、鼓励的协作者，专注于推进进展和士气",
     "settings.personality.option.pragmatic.label": "务实",
-    "settings.personality.option.pragmatic.description": "直接、高效的工程师，专注于清晰与严谨",
+    "settings.personality.option.pragmatic.description":
+      "直接、高效的工程师，专注于清晰与严谨",
     "settings.personality.option.none.label": "无",
     "settings.personality.option.none.description": "完全省略个性块",
     "settings.textVerbosity.label": "文本详细程度",
-    "settings.textVerbosity.description": "OpenAI Responses 和 Codex 回复的详细程度（低、中或高）",
+    "settings.textVerbosity.description":
+      "OpenAI Responses 和 Codex 回复的详细程度（低、中或高）",
     "settings.textVerbosity.option.low.label": "低",
     "settings.textVerbosity.option.low.description": "偏好简洁回复",
     "settings.textVerbosity.option.medium.label": "中",
-    "settings.textVerbosity.option.medium.description": "兼顾简洁与细节（默认）",
+    "settings.textVerbosity.option.medium.description":
+      "兼顾简洁与细节（默认）",
     "settings.textVerbosity.option.high.label": "高",
     "settings.textVerbosity.option.high.description": "偏好详细回复",
     "settings.steeringMode.label": "引导模式",
@@ -734,7 +775,8 @@ export const zhCNLocale: LocalePlugin = {
     "settings.interruptMode.option.immediate.label": "立即",
     "settings.interruptMode.option.wait.label": "等待",
     "settings.doubleEscapeAction.label": "双击 Escape 操作",
-    "settings.doubleEscapeAction.description": "编辑器为空时连按两次 Escape 的操作",
+    "settings.doubleEscapeAction.description":
+      "编辑器为空时连按两次 Escape 的操作",
     "settings.doubleEscapeAction.option.branch.label": "分支",
     "settings.doubleEscapeAction.option.tree.label": "树",
     "settings.doubleEscapeAction.option.none.label": "无",
@@ -746,37 +788,49 @@ export const zhCNLocale: LocalePlugin = {
     "settings.treeFilterMode.option.labeled-only.label": "仅已标记",
     "settings.treeFilterMode.option.all.label": "全部",
     "settings.emojiAutocomplete.label": "Emoji 自动补全",
-    "settings.emojiAutocomplete.description": "根据 `:name:` 短代码推荐 Emoji，并展开如 `:D` 或 `:-)` 等文本表情",
+    "settings.emojiAutocomplete.description":
+      "根据 `:name:` 短代码推荐 Emoji，并展开如 `:D` 或 `:-)` 等文本表情",
     "settings.startup.quiet.label": "静默启动",
     "settings.startup.quiet.description": "跳过欢迎界面和启动状态消息",
     "settings.startup.setupWizard.label": "设置向导",
-    "settings.startup.setupWizard.description": "每个设置版本显示一次新添加的引导步骤",
+    "settings.startup.setupWizard.description":
+      "每个设置版本显示一次新添加的引导步骤",
     "settings.startup.checkUpdate.label": "检查更新",
     "settings.startup.checkUpdate.description": "启动时检查 omp 更新",
     "settings.startup.changelogMode.label": "启动更新日志",
-    "settings.startup.changelogMode.description": "选择以摘要、完整详情或隐藏方式显示更新说明",
+    "settings.startup.changelogMode.description":
+      "选择以摘要、完整详情或隐藏方式显示更新说明",
     "settings.startup.changelogMode.option.summary.label": "摘要",
-    "settings.startup.changelogMode.option.summary.description": "显示发布和变更数量，并提供 /changelog 提示",
+    "settings.startup.changelogMode.option.summary.description":
+      "显示发布和变更数量，并提供 /changelog 提示",
     "settings.startup.changelogMode.option.expanded.label": "展开",
-    "settings.startup.changelogMode.option.expanded.description": "完整显示最近的发布说明",
+    "settings.startup.changelogMode.option.expanded.description":
+      "完整显示最近的发布说明",
     "settings.startup.changelogMode.option.hidden.label": "隐藏",
-    "settings.startup.changelogMode.option.hidden.description": "启动时不显示发布说明",
+    "settings.startup.changelogMode.option.hidden.description":
+      "启动时不显示发布说明",
     "settings.marketplace.autoUpdate.label": "市场自动更新",
     "settings.marketplace.autoUpdate.description": "启动时检查插件更新",
     "settings.marketplace.autoUpdate.option.off.label": "关闭",
     "settings.marketplace.autoUpdate.option.off.description": "不检查插件更新",
     "settings.marketplace.autoUpdate.option.notify.label": "通知",
-    "settings.marketplace.autoUpdate.option.notify.description": "启动时检查，并在有可用更新时通知",
+    "settings.marketplace.autoUpdate.option.notify.description":
+      "启动时检查，并在有可用更新时通知",
     "settings.marketplace.autoUpdate.option.auto.label": "自动",
-    "settings.marketplace.autoUpdate.option.auto.description": "启动时检查并自动安装更新",
+    "settings.marketplace.autoUpdate.option.auto.description":
+      "启动时检查并自动安装更新",
     "settings.magicKeywords.enabled.label": "魔法关键词",
-    "settings.magicKeywords.enabled.description": "为独立出现的 ultrathink、orchestrate 和 workflowz 关键词启用隐藏提示",
+    "settings.magicKeywords.enabled.description":
+      "为独立出现的 ultrathink、orchestrate 和 workflowz 关键词启用隐藏提示",
     "settings.magicKeywords.ultrathink.label": "Ultrathink 关键词",
-    "settings.magicKeywords.ultrathink.description": "允许独立出现的 ultrathink 请求最高自动思考深度，并附加其隐藏提示",
+    "settings.magicKeywords.ultrathink.description":
+      "允许独立出现的 ultrathink 请求最高自动思考深度，并附加其隐藏提示",
     "settings.magicKeywords.orchestrate.label": "Orchestrate 关键词",
-    "settings.magicKeywords.orchestrate.description": "允许独立出现的 orchestrate 附加其隐藏的多 Agent 编排提示",
+    "settings.magicKeywords.orchestrate.description":
+      "允许独立出现的 orchestrate 附加其隐藏的多 Agent 编排提示",
     "settings.magicKeywords.workflow.label": "Workflow 关键词",
-    "settings.magicKeywords.workflow.description": "允许独立出现的 workflowz 附加其隐藏的 eval 工作流提示",
+    "settings.magicKeywords.workflow.description":
+      "允许独立出现的 workflowz 附加其隐藏的 eval 工作流提示",
     "settings.completion.notify.label": "完成通知",
     "settings.completion.notify.description": "Agent 完成一个轮次时通知",
     "settings.completion.notify.option.on.label": "开启",
@@ -790,194 +844,282 @@ export const zhCNLocale: LocalePlugin = {
     "settings.ask.notify.option.on.label": "开启",
     "settings.ask.notify.option.off.label": "关闭",
     "settings.recap.enabled.label": "空闲摘要",
-    "settings.recap.enabled.description": "终端空闲后生成当前状态的简短 LLM 摘要",
+    "settings.recap.enabled.description":
+      "终端空闲后生成当前状态的简短 LLM 摘要",
     "settings.share.store.label": "分享存储",
     "settings.share.store.description": "/share 将加密的会话 blob 上传到的位置",
     "settings.share.store.option.blob.label": "加密 Blob",
-    "settings.share.store.option.blob.description": "上传到分享服务器（无需 GitHub 账户；避免 gist API 速率限制）",
+    "settings.share.store.option.blob.description":
+      "上传到分享服务器（无需 GitHub 账户；避免 gist API 速率限制）",
     "settings.share.store.option.gist.label": "GitHub Gist",
-    "settings.share.store.option.gist.description": "推送到私密 gist（需要已认证的 gh），失败时回退到分享服务器",
+    "settings.share.store.option.gist.description":
+      "推送到私密 gist（需要已认证的 gh），失败时回退到分享服务器",
     "settings.share.redactSecrets.label": "分享时脱敏密钥",
-    "settings.share.redactSecrets.description": "上传前对 /share 快照运行密钥混淆器（使用 secrets.* 配置）",
+    "settings.share.redactSecrets.description":
+      "上传前对 /share 快照运行密钥混淆器（使用 secrets.* 配置）",
     "settings.stt.enabled.label": "语音转文本",
     "settings.stt.enabled.description": "启用通过麦克风进行语音转文本输入",
     "settings.stt.modelName.label": "语音模型",
-    "settings.stt.modelName.description": "本地设备端语音模型。Parakeet TDT v3（sherpa-onnx）是当前最佳默认模型；Whisper base/small/large-v3-turbo 系列（transformers.js）以模型体积换取多语言覆盖。首次使用时下载。",
+    "settings.stt.modelName.description":
+      "本地设备端语音模型。Parakeet TDT v3（sherpa-onnx）是当前最佳默认模型；Whisper base/small/large-v3-turbo 系列（transformers.js）以模型体积换取多语言覆盖。首次使用时下载。",
     "settings.stt.submitTrigger.label": "语音转文本提交触发方式",
-    "settings.stt.submitTrigger.description": "选择何时自动提交语音听写：从不、松开时（2 个及以上词）、松开时且句子完整，或说出“提交”时。",
+    "settings.stt.submitTrigger.description":
+      "选择何时自动提交语音听写：从不、松开时（2 个及以上词）、松开时且句子完整，或说出“提交”时。",
     "settings.stt.submitTrigger.option.never.label": "从不",
-    "settings.stt.submitTrigger.option.never.description": "永不自动提交；插入听写内容并保留在编辑器中。",
+    "settings.stt.submitTrigger.option.never.description":
+      "永不自动提交；插入听写内容并保留在编辑器中。",
     "settings.stt.submitTrigger.option.release.label": "松开时",
-    "settings.stt.submitTrigger.option.release.description": "松开时，若话语包含 2 个及以上词则提交，以避免误发送。",
-    "settings.stt.submitTrigger.option.release-complete.label": "松开时且句子完整",
-    "settings.stt.submitTrigger.option.release-complete.description": "松开时，若话语以句末标点（. ? ! 等）结束则提交。",
+    "settings.stt.submitTrigger.option.release.description":
+      "松开时，若话语包含 2 个及以上词则提交，以避免误发送。",
+    "settings.stt.submitTrigger.option.release-complete.label":
+      "松开时且句子完整",
+    "settings.stt.submitTrigger.option.release-complete.description":
+      "松开时，若话语以句末标点（. ? ! 等）结束则提交。",
     "settings.stt.submitTrigger.option.say-submit.label": "说出“提交”时",
-    "settings.stt.submitTrigger.option.say-submit.description": "若话语以包含“submit”的词结束则提交（提交前会移除该词）。",
+    "settings.stt.submitTrigger.option.say-submit.description":
+      "若话语以包含“submit”的词结束则提交（提交前会移除该词）。",
     "settings.contextPromotion.enabled.label": "自动提升上下文",
-    "settings.contextPromotion.enabled.description": "上下文溢出时提升至上下文更大的模型，而不是压缩",
+    "settings.contextPromotion.enabled.description":
+      "上下文溢出时提升至上下文更大的模型，而不是压缩",
     "settings.compaction.enabled.label": "自动压缩",
     "settings.compaction.enabled.description": "上下文过大时自动压缩",
     "settings.compaction.midTurnEnabled.label": "轮次中压缩",
-    "settings.compaction.midTurnEnabled.description": "在下一次 Provider 请求前，于安全的轮次中工具循环边界检查阈值",
+    "settings.compaction.midTurnEnabled.description":
+      "在下一次 Provider 请求前，于安全的轮次中工具循环边界检查阈值",
     "settings.compaction.strategy.label": "压缩策略",
-    "settings.compaction.strategy.description": "选择原地维护完整上下文、自动交接、外科式清理（丢弃重内容）、snapcompact（将历史归档为密集图像），或禁用自动维护（关闭）",
+    "settings.compaction.strategy.description":
+      "选择原地维护完整上下文、自动交接、外科式清理（丢弃重内容）、snapcompact（将历史归档为密集图像），或禁用自动维护（关闭）",
     "settings.compaction.strategy.option.context-full.label": "完整上下文",
-    "settings.compaction.strategy.option.context-full.description": "原地总结并保留当前会话",
+    "settings.compaction.strategy.option.context-full.description":
+      "原地总结并保留当前会话",
     "settings.compaction.strategy.option.handoff.label": "交接",
-    "settings.compaction.strategy.option.handoff.description": "生成交接内容并在新会话中继续",
+    "settings.compaction.strategy.option.handoff.description":
+      "生成交接内容并在新会话中继续",
     "settings.compaction.strategy.option.shake.label": "清理",
-    "settings.compaction.strategy.option.shake.description": "原地丢弃重内容（工具结果 + 大型块）；可通过 artifact 恢复",
+    "settings.compaction.strategy.option.shake.description":
+      "原地丢弃重内容（工具结果 + 大型块）；可通过 artifact 恢复",
     "settings.compaction.strategy.option.snapcompact.label": "Snapcompact",
-    "settings.compaction.strategy.option.snapcompact.description": "将历史归档为模型重新读取的密集位图；不调用 LLM",
+    "settings.compaction.strategy.option.snapcompact.description":
+      "将历史归档为模型重新读取的密集位图；不调用 LLM",
     "settings.compaction.strategy.option.off.label": "关闭",
-    "settings.compaction.strategy.option.off.description": "禁用自动上下文维护（与关闭自动压缩的行为相同）",
+    "settings.compaction.strategy.option.off.description":
+      "禁用自动上下文维护（与关闭自动压缩的行为相同）",
     "settings.compaction.autoContinue.label": "自动继续",
     "settings.compaction.autoContinue.description": "压缩后自动继续",
     "settings.compaction.idleEnabled.label": "空闲压缩",
-    "settings.compaction.idleEnabled.description": "空闲时 Token 数超过阈值则压缩上下文",
+    "settings.compaction.idleEnabled.description":
+      "空闲时 Token 数超过阈值则压缩上下文",
     "settings.snapcompact.systemPrompt.label": "Snapcompact 系统提示词",
-    "settings.snapcompact.systemPrompt.description": "实验性：将选定的系统提示词文本渲染为密集 PNG 图像并附加到首条用户消息（仅视觉模型）。节省 Token；图像化文本将失去提示词缓存。",
+    "settings.snapcompact.systemPrompt.description":
+      "实验性：将选定的系统提示词文本渲染为密集 PNG 图像并附加到首条用户消息（仅视觉模型）。节省 Token；图像化文本将失去提示词缓存。",
     "settings.snapcompact.systemPrompt.option.none.label": "无",
-    "settings.snapcompact.systemPrompt.option.none.description": "将系统提示词保留为文本。",
+    "settings.snapcompact.systemPrompt.option.none.description":
+      "将系统提示词保留为文本。",
     "settings.snapcompact.systemPrompt.option.agents-md.label": "AGENTS.md",
-    "settings.snapcompact.systemPrompt.option.agents-md.description": "仅在节省 Token 时，将已加载的上下文文件指令移至图像。",
+    "settings.snapcompact.systemPrompt.option.agents-md.description":
+      "仅在节省 Token 时，将已加载的上下文文件指令移至图像。",
     "settings.snapcompact.systemPrompt.option.all.label": "全部",
-    "settings.snapcompact.systemPrompt.option.all.description": "仅在节省 Token 时，将完整系统提示词移至图像。",
+    "settings.snapcompact.systemPrompt.option.all.description":
+      "仅在节省 Token 时，将完整系统提示词移至图像。",
     "settings.snapcompact.toolResults.label": "Snapcompact 工具结果",
-    "settings.snapcompact.toolResults.description": "实验性：将较大的历史工具结果渲染为密集 PNG 图像而非文本（仅视觉模型）。可节省累积的读取/搜索输出 Token。",
+    "settings.snapcompact.toolResults.description":
+      "实验性：将较大的历史工具结果渲染为密集 PNG 图像而非文本（仅视觉模型）。可节省累积的读取/搜索输出 Token。",
     "settings.snapcompact.shape.label": "Snapcompact 形状",
-    "settings.snapcompact.shape.description": "Snapcompact 使用的文本帧形状（用于压缩归档和内联图像化）。自动会选择针对当前模型调优的形状。",
+    "settings.snapcompact.shape.description":
+      "Snapcompact 使用的文本帧形状（用于压缩归档和内联图像化）。自动会选择针对当前模型调优的形状。",
     "settings.snapcompact.shape.option.auto.label": "自动",
-    "settings.snapcompact.shape.option.auto.description": "选择针对当前模型调优的形状；回退至其 Provider 系列。",
+    "settings.snapcompact.shape.option.auto.description":
+      "选择针对当前模型调优的形状；回退至其 Provider 系列。",
     "settings.snapcompact.shape.option.8x8r-bw.label": "8x8 重复，黑色",
-    "settings.snapcompact.shape.option.8x8r-bw.description": "unscii 方形单元，黑色墨迹，每行打印两次，副本位于浅色高亮带上。",
+    "settings.snapcompact.shape.option.8x8r-bw.description":
+      "unscii 方形单元，黑色墨迹，每行打印两次，副本位于浅色高亮带上。",
     "settings.snapcompact.shape.option.8x8r-sent.label": "8x8 重复，句子色调",
-    "settings.snapcompact.shape.option.8x8r-sent.description": "重复网格，墨迹在句子边界循环使用六种色调。",
+    "settings.snapcompact.shape.option.8x8r-sent.description":
+      "重复网格，墨迹在句子边界循环使用六种色调。",
     "settings.snapcompact.shape.option.8x8u-bw.label": "8x8，黑色",
-    "settings.snapcompact.shape.option.8x8u-bw.description": "普通 unscii 方形单元，单次打印行，黑色墨迹。",
+    "settings.snapcompact.shape.option.8x8u-bw.description":
+      "普通 unscii 方形单元，单次打印行，黑色墨迹。",
     "settings.snapcompact.shape.option.8x8u-sent.label": "8x8，句子色调",
-    "settings.snapcompact.shape.option.8x8u-sent.description": "普通 unscii 方形单元，使用句子色调墨迹。",
+    "settings.snapcompact.shape.option.8x8u-sent.description":
+      "普通 unscii 方形单元，使用句子色调墨迹。",
     "settings.snapcompact.shape.option.6x6u-bw.label": "6x6 密集，黑色",
-    "settings.snapcompact.shape.option.6x6u-bw.description": "压缩至 6x6 的 unscii——最密集且可读的单元，帧数最少——使用黑色墨迹。",
+    "settings.snapcompact.shape.option.6x6u-bw.description":
+      "压缩至 6x6 的 unscii——最密集且可读的单元，帧数最少——使用黑色墨迹。",
     "settings.snapcompact.shape.option.6x6u-sent.label": "6x6 密集，句子色调",
-    "settings.snapcompact.shape.option.6x6u-sent.description": "最密集的单元，使用句子色调墨迹。",
+    "settings.snapcompact.shape.option.6x6u-sent.description":
+      "最密集的单元，使用句子色调墨迹。",
     "settings.snapcompact.shape.option.5x8-bw.label": "5x8 旧版，黑色",
-    "settings.snapcompact.shape.option.5x8-bw.description": "2576px 帧上的原始 X.org 5x8 字形，黑色墨迹。",
+    "settings.snapcompact.shape.option.5x8-bw.description":
+      "2576px 帧上的原始 X.org 5x8 字形，黑色墨迹。",
     "settings.snapcompact.shape.option.5x8-sent.label": "5x8 旧版，句子色调",
-    "settings.snapcompact.shape.option.5x8-sent.description": "原始 snapcompact 形状（形状表之前的会话使用此形状渲染）。",
+    "settings.snapcompact.shape.option.5x8-sent.description":
+      "原始 snapcompact 形状（形状表之前的会话使用此形状渲染）。",
     "settings.snapcompact.shape.option.6x12-dim.label": "6x12，弱化停用词",
-    "settings.snapcompact.shape.option.6x12-dim.description": "X.org 6x12 字形，黑色墨迹，虚词弱化为灰色。",
+    "settings.snapcompact.shape.option.6x12-dim.description":
+      "X.org 6x12 字形，黑色墨迹，虚词弱化为灰色。",
     "settings.snapcompact.shape.option.8x13-bw.label": "8x13，黑色",
-    "settings.snapcompact.shape.option.8x13-bw.description": "X.org 8x13 字形，黑色墨迹。",
-    "settings.snapcompact.shape.option.8on16-bw.label": "16px 间距上的 8x13，黑色",
-    "settings.snapcompact.shape.option.8on16-bw.description": "8x16 单元上的 8x13 字形（额外行距），黑色墨迹。",
-    "settings.snapcompact.shape.option.8on22-bw.label": "22px 间距上的 8x13（行距），黑色",
-    "settings.snapcompact.shape.option.8on22-bw.description": "8x22 单元上的 8x13 字形——额外行距以避免行间拥挤。OpenAI/Google 的默认设置。",
-    "settings.snapcompact.shape.option.11on16-bw.label": "11px 字符间距上的 8x13，黑色",
-    "settings.snapcompact.shape.option.11on16-bw.description": "11x16 单元上的 8x13 字形——额外字间距以避免字符粘连。Anthropic 的默认设置。",
+    "settings.snapcompact.shape.option.8x13-bw.description":
+      "X.org 8x13 字形，黑色墨迹。",
+    "settings.snapcompact.shape.option.8on16-bw.label":
+      "16px 间距上的 8x13，黑色",
+    "settings.snapcompact.shape.option.8on16-bw.description":
+      "8x16 单元上的 8x13 字形（额外行距），黑色墨迹。",
+    "settings.snapcompact.shape.option.8on22-bw.label":
+      "22px 间距上的 8x13（行距），黑色",
+    "settings.snapcompact.shape.option.8on22-bw.description":
+      "8x22 单元上的 8x13 字形——额外行距以避免行间拥挤。OpenAI/Google 的默认设置。",
+    "settings.snapcompact.shape.option.11on16-bw.label":
+      "11px 字符间距上的 8x13，黑色",
+    "settings.snapcompact.shape.option.11on16-bw.description":
+      "11x16 单元上的 8x13 字形——额外字间距以避免字符粘连。Anthropic 的默认设置。",
     "settings.snapcompact.shape.option.silver16-bw.label": "Silver 16，CJK",
-    "settings.snapcompact.shape.option.silver16-bw.description": "用于 CJK 及其他非拉丁文本的 16px 网格嵌入式 Silver TrueType 字体。",
+    "settings.snapcompact.shape.option.silver16-bw.description":
+      "用于 CJK 及其他非拉丁文本的 16px 网格嵌入式 Silver TrueType 字体。",
     "settings.snapcompact.shape.option.doc-8on16-bw.label": "文档 8on16，黑色",
-    "settings.snapcompact.shape.option.doc-8on16-bw.description": "16px 间距上的 8x13 字形，黑色墨迹，采用双栏自动换行报纸布局。",
-    "settings.snapcompact.shape.option.doc-8on16-sent.label": "文档 8on16，句子色调",
-    "settings.snapcompact.shape.option.doc-8on16-sent.description": "双栏文档布局，使用句子色调墨迹。",
-    "settings.snapcompact.shape.option.doc-8on16-sent-dim.label": "文档 8on16，句子色调 + 弱化停用词",
-    "settings.snapcompact.shape.option.doc-8on16-sent-dim.description": "双栏文档布局，句子色调墨迹，虚词弱化为灰色。",
+    "settings.snapcompact.shape.option.doc-8on16-bw.description":
+      "16px 间距上的 8x13 字形，黑色墨迹，采用双栏自动换行报纸布局。",
+    "settings.snapcompact.shape.option.doc-8on16-sent.label":
+      "文档 8on16，句子色调",
+    "settings.snapcompact.shape.option.doc-8on16-sent.description":
+      "双栏文档布局，使用句子色调墨迹。",
+    "settings.snapcompact.shape.option.doc-8on16-sent-dim.label":
+      "文档 8on16，句子色调 + 弱化停用词",
+    "settings.snapcompact.shape.option.doc-8on16-sent-dim.description":
+      "双栏文档布局，句子色调墨迹，虚词弱化为灰色。",
     "settings.branchSummary.enabled.label": "分支摘要",
     "settings.branchSummary.enabled.description": "离开分支时提示进行总结",
     "settings.memory.backend.label": "记忆后端",
-    "settings.memory.backend.description": "关闭、本地摘要管道、Mnemopi SQLite 或 Hindsight 远程记忆",
+    "settings.memory.backend.description":
+      "关闭、本地摘要管道、Mnemopi SQLite 或 Hindsight 远程记忆",
     "settings.memory.backend.option.off.label": "关闭",
     "settings.memory.backend.option.off.description": "不运行记忆子系统",
     "settings.memory.backend.option.local.label": "本地",
-    "settings.memory.backend.option.local.description": "本地滚动摘要管道（memory_summary.md）",
+    "settings.memory.backend.option.local.description":
+      "本地滚动摘要管道（memory_summary.md）",
     "settings.memory.backend.option.hindsight.label": "Hindsight",
-    "settings.memory.backend.option.hindsight.description": "向量化 Hindsight 远程记忆服务",
+    "settings.memory.backend.option.hindsight.description":
+      "向量化 Hindsight 远程记忆服务",
     "settings.memory.backend.option.mnemopi.label": "Mnemopi",
-    "settings.memory.backend.option.mnemopi.description": "支持可选嵌入的本地 SQLite 回忆/保留后端",
+    "settings.memory.backend.option.mnemopi.description":
+      "支持可选嵌入的本地 SQLite 回忆/保留后端",
     "settings.autolearn.enabled.label": "自动学习（实验性）",
-    "settings.autolearn.enabled.description": "Agent 停止后，提示其将经验记录到记忆中，并创建/增强隔离管理的技能",
+    "settings.autolearn.enabled.description":
+      "Agent 停止后，提示其将经验记录到记忆中，并创建/增强隔离管理的技能",
     "settings.mnemopi.scoping.label": "Mnemopi 作用域",
-    "settings.mnemopi.scoping.description": "global = 一个共享记忆库；per-project = 每个 cwd 一个隔离记忆库；per-project-tagged = 写入项目本地记忆库，同时可回忆全局内容",
+    "settings.mnemopi.scoping.description":
+      "global = 一个共享记忆库；per-project = 每个 cwd 一个隔离记忆库；per-project-tagged = 写入项目本地记忆库，同时可回忆全局内容",
     "settings.mnemopi.scoping.option.global.label": "全局",
-    "settings.mnemopi.scoping.option.global.description": "所有项目共用一个 Mnemopi 记忆库",
+    "settings.mnemopi.scoping.option.global.description":
+      "所有项目共用一个 Mnemopi 记忆库",
     "settings.mnemopi.scoping.option.per-project.label": "每个项目",
-    "settings.mnemopi.scoping.option.per-project.description": "按 cwd 基名划分的项目本地 Mnemopi 记忆库",
-    "settings.mnemopi.scoping.option.per-project-tagged.label": "每个项目（带标签）",
-    "settings.mnemopi.scoping.option.per-project-tagged.description": "写入项目本地记忆库，但合并项目和共享的回忆结果",
+    "settings.mnemopi.scoping.option.per-project.description":
+      "按 cwd 基名划分的项目本地 Mnemopi 记忆库",
+    "settings.mnemopi.scoping.option.per-project-tagged.label":
+      "每个项目（带标签）",
+    "settings.mnemopi.scoping.option.per-project-tagged.description":
+      "写入项目本地记忆库，但合并项目和共享的回忆结果",
     "settings.mnemopi.embeddingVariant.label": "嵌入变体",
-    "settings.mnemopi.embeddingVariant.description": "本地嵌入模型系列。en = 更强的英文模型；multilingual = 跨语言模型。更改此项会在下次启动时重建现有记忆嵌入。",
-    "settings.mnemopi.embeddingVariant.option.en.label": "英文（bge-base-en-v1.5）",
-    "settings.mnemopi.embeddingVariant.option.en.description": "BAAI/bge-base-en-v1.5（768d），仅英文",
-    "settings.mnemopi.embeddingVariant.option.multilingual.label": "多语言（multilingual-e5-large）",
-    "settings.mnemopi.embeddingVariant.option.multilingual.description": "intfloat/multilingual-e5-large（1024d），跨语言回忆",
+    "settings.mnemopi.embeddingVariant.description":
+      "本地嵌入模型系列。en = 更强的英文模型；multilingual = 跨语言模型。更改此项会在下次启动时重建现有记忆嵌入。",
+    "settings.mnemopi.embeddingVariant.option.en.label":
+      "英文（bge-base-en-v1.5）",
+    "settings.mnemopi.embeddingVariant.option.en.description":
+      "BAAI/bge-base-en-v1.5（768d），仅英文",
+    "settings.mnemopi.embeddingVariant.option.multilingual.label":
+      "多语言（multilingual-e5-large）",
+    "settings.mnemopi.embeddingVariant.option.multilingual.description":
+      "intfloat/multilingual-e5-large（1024d），跨语言回忆",
     "settings.mnemopi.autoRecall.label": "Mnemopi 自动回忆",
     "settings.mnemopi.autoRecall.description": "在每个会话的首轮回忆本地记忆",
     "settings.mnemopi.autoRetain.label": "Mnemopi 自动保留",
-    "settings.mnemopi.autoRetain.description": "将完成的对话轮次保留到本地 Mnemopi 记忆中",
+    "settings.mnemopi.autoRetain.description":
+      "将完成的对话轮次保留到本地 Mnemopi 记忆中",
     "settings.hindsight.autoRecall.label": "Hindsight 自动回忆",
     "settings.hindsight.autoRecall.description": "在每个会话的首轮回忆记忆",
     "settings.hindsight.autoRetain.label": "Hindsight 自动保留",
-    "settings.hindsight.autoRetain.description": "每 N 轮及会话边界时保留对话记录",
+    "settings.hindsight.autoRetain.description":
+      "每 N 轮及会话边界时保留对话记录",
     "settings.hindsight.retainMode.label": "Hindsight 保留模式",
-    "settings.hindsight.retainMode.description": "full-session = 每个会话插入或更新一份文档，last-turn = 分块",
+    "settings.hindsight.retainMode.description":
+      "full-session = 每个会话插入或更新一份文档，last-turn = 分块",
     "settings.hindsight.retainMode.option.full-session.label": "完整会话",
-    "settings.hindsight.retainMode.option.full-session.description": "每个会话插入或更新一份文档（推荐）",
+    "settings.hindsight.retainMode.option.full-session.description":
+      "每个会话插入或更新一份文档（推荐）",
     "settings.hindsight.retainMode.option.last-turn.label": "最后一轮",
-    "settings.hindsight.retainMode.option.last-turn.description": "按轮次边界切分的分块保留",
+    "settings.hindsight.retainMode.option.last-turn.description":
+      "按轮次边界切分的分块保留",
     "settings.ttsr.enabled.label": "TTSR",
-    "settings.ttsr.enabled.description": "当输出匹配规则模式时在流式输出中打断 Agent（时光流规则）",
+    "settings.ttsr.enabled.description":
+      "当输出匹配规则模式时在流式输出中打断 Agent（时光流规则）",
     "settings.ttsr.contextMode.label": "TTSR 上下文模式",
     "settings.ttsr.contextMode.description": "TTSR 触发时如何处理部分输出",
     "settings.ttsr.contextMode.option.discard.label": "丢弃",
     "settings.ttsr.contextMode.option.keep.label": "保留",
     "settings.ttsr.interruptMode.label": "TTSR 打断模式",
-    "settings.ttsr.interruptMode.description": "何时在流式输出中打断，何时在完成后注入警告",
+    "settings.ttsr.interruptMode.description":
+      "何时在流式输出中打断，何时在完成后注入警告",
     "settings.ttsr.interruptMode.option.always.label": "始终",
-    "settings.ttsr.interruptMode.option.always.description": "在文本和工具流中打断",
+    "settings.ttsr.interruptMode.option.always.description":
+      "在文本和工具流中打断",
     "settings.ttsr.interruptMode.option.prose-only.label": "仅文本",
-    "settings.ttsr.interruptMode.option.prose-only.description": "仅在回复/思考匹配时打断",
+    "settings.ttsr.interruptMode.option.prose-only.description":
+      "仅在回复/思考匹配时打断",
     "settings.ttsr.interruptMode.option.tool-only.label": "仅工具",
-    "settings.ttsr.interruptMode.option.tool-only.description": "仅在工具调用参数匹配时打断",
+    "settings.ttsr.interruptMode.option.tool-only.description":
+      "仅在工具调用参数匹配时打断",
     "settings.ttsr.interruptMode.option.never.label": "从不",
-    "settings.ttsr.interruptMode.option.never.description": "绝不打断；在完成后注入警告",
+    "settings.ttsr.interruptMode.option.never.description":
+      "绝不打断；在完成后注入警告",
     "settings.ttsr.repeatMode.label": "TTSR 重复模式",
-    "settings.ttsr.repeatMode.description": "规则如何重复：每个会话一次，或在消息间隔后",
+    "settings.ttsr.repeatMode.description":
+      "规则如何重复：每个会话一次，或在消息间隔后",
     "settings.ttsr.repeatMode.option.once.label": "一次",
     "settings.ttsr.repeatMode.option.after-gap.label": "间隔后",
     "settings.edit.mode.label": "编辑模式",
-    "settings.edit.mode.description": "选择编辑工具变体（replace、patch、hashline 或 apply_patch）",
+    "settings.edit.mode.description":
+      "选择编辑工具变体（replace、patch、hashline 或 apply_patch）",
     "settings.edit.mode.option.apply_patch.label": "apply_patch",
     "settings.edit.mode.option.hashline.label": "hashline",
     "settings.edit.mode.option.patch.label": "patch",
     "settings.edit.mode.option.replace.label": "replace",
     "settings.edit.fuzzyMatch.label": "模糊匹配",
-    "settings.edit.fuzzyMatch.description": "接受对空白差异具有高置信度的模糊匹配",
+    "settings.edit.fuzzyMatch.description":
+      "接受对空白差异具有高置信度的模糊匹配",
     "settings.git.enabled.label": "启用 Git 集成",
-    "settings.git.enabled.description": "在 TUI 中显示 git 分支、状态和 PR 信息，并监视仓库元数据。",
+    "settings.git.enabled.description":
+      "在 TUI 中显示 git 分支、状态和 PR 信息，并监视仓库元数据。",
     "settings.tui.hyperlinks.label": "终端超链接",
-    "settings.tui.hyperlinks.description": "将路径和 URL 包装为 OSC 8 超链接，以便在终端中原生点击打开（自动：检测支持；关闭：从不；始终：无条件）",
+    "settings.tui.hyperlinks.description":
+      "将路径和 URL 包装为 OSC 8 超链接，以便在终端中原生点击打开（自动：检测支持；关闭：从不；始终：无条件）",
     "settings.tui.hyperlinks.option.off.label": "关闭",
     "settings.tui.hyperlinks.option.auto.label": "自动",
     "settings.tui.hyperlinks.option.always.label": "始终",
     "settings.tui.renderMermaid.label": "渲染 Mermaid 图表",
-    "settings.tui.renderMermaid.description": "将 Mermaid 围栏代码块渲染为 ASCII 图表",
+    "settings.tui.renderMermaid.description":
+      "将 Mermaid 围栏代码块渲染为 ASCII 图表",
     "settings.display.showTokenUsage.label": "显示 Token 用量",
-    "settings.display.showTokenUsage.description": "在助手消息中显示每轮 Token 用量",
+    "settings.display.showTokenUsage.description":
+      "在助手消息中显示每轮 Token 用量",
     "settings.display.smoothStreaming.label": "平滑流式输出",
-    "settings.display.smoothStreaming.description": "在数据块到达时平滑显示助手文本和流式工具输入",
+    "settings.display.smoothStreaming.description":
+      "在数据块到达时平滑显示助手文本和流式工具输入",
     "settings.display.hideToolActivity.label": "隐藏工具活动",
-    "settings.display.hideToolActivity.description": "在对话记录中隐藏模型发起的工具调用及结果",
+    "settings.display.hideToolActivity.description":
+      "在对话记录中隐藏模型发起的工具调用及结果",
     "settings.display.shimmer.label": "微光动画",
     "settings.display.shimmer.description": "工作/加载消息的动画样式",
     "settings.display.shimmer.option.classic.label": "经典",
-    "settings.display.shimmer.option.classic.description": "柔和的余弦波扫过文本",
+    "settings.display.shimmer.option.classic.description":
+      "柔和的余弦波扫过文本",
     "settings.display.shimmer.option.kitt.label": "KITT 扫描器",
-    "settings.display.shimmer.option.kitt.description": "《霹雳游侠》1982 风格的红灯左右往返",
+    "settings.display.shimmer.option.kitt.description":
+      "《霹雳游侠》1982 风格的红灯左右往返",
     "settings.display.shimmer.option.disabled.label": "已禁用",
-    "settings.display.shimmer.option.disabled.description": "无动画；静态弱化文本",
+    "settings.display.shimmer.option.disabled.description":
+      "无动画；静态弱化文本",
     "settings.edit.fuzzyThreshold.label": "模糊匹配阈值",
-    "settings.edit.fuzzyThreshold.description": "接受模糊匹配的相似度阈值（0-1）",
+    "settings.edit.fuzzyThreshold.description":
+      "接受模糊匹配的相似度阈值（0-1）",
     "settings.edit.fuzzyThreshold.option.0.85.label": "0.85",
     "settings.edit.fuzzyThreshold.option.0.85.description": "宽松",
     "settings.edit.fuzzyThreshold.option.0.90.label": "0.90",
@@ -987,213 +1129,306 @@ export const zhCNLocale: LocalePlugin = {
     "settings.edit.fuzzyThreshold.option.0.98.label": "0.98",
     "settings.edit.fuzzyThreshold.option.0.98.description": "严格",
     "settings.edit.streamingAbort.label": "预览失败时中止",
-    "settings.edit.streamingAbort.description": "补丁预览失败时中止流式编辑工具调用",
+    "settings.edit.streamingAbort.description":
+      "补丁预览失败时中止流式编辑工具调用",
     "settings.edit.blockAutoGenerated.label": "阻止编辑自动生成文件",
-    "settings.edit.blockAutoGenerated.description": "阻止编辑看似由工具自动生成的文件（protoc、sqlc、swagger 等）",
+    "settings.edit.blockAutoGenerated.description":
+      "阻止编辑看似由工具自动生成的文件（protoc、sqlc、swagger 等）",
     "settings.edit.enforceSeenLines.label": "强制已读行保护",
-    "settings.edit.enforceSeenLines.description": "拒绝锚定在先前 read/search 未完整显示过的行上的编辑",
+    "settings.edit.enforceSeenLines.description":
+      "拒绝锚定在先前 read/search 未完整显示过的行上的编辑",
     "settings.readLineNumbers.label": "行号",
     "settings.readLineNumbers.description": "默认在 read 工具输出前添加行号",
     "settings.read.defaultLimit.label": "默认读取限制",
-    "settings.read.defaultLimit.description": "Agent 调用 read 且未指定限制时默认返回的行数",
+    "settings.read.defaultLimit.description":
+      "Agent 调用 read 且未指定限制时默认返回的行数",
     "settings.read.defaultLimit.option.200.label": "200 行",
     "settings.read.defaultLimit.option.300.label": "300 行",
     "settings.read.defaultLimit.option.500.label": "500 行",
     "settings.read.defaultLimit.option.1000.label": "1000 行",
     "settings.read.defaultLimit.option.5000.label": "5000 行",
     "settings.read.renderMarkdown.label": "Markdown 预览",
-    "settings.read.renderMarkdown.description": "将 Markdown 读取结果渲染为格式化的终端 Markdown 预览，而非原始源码",
+    "settings.read.renderMarkdown.description":
+      "将 Markdown 读取结果渲染为格式化的终端 Markdown 预览，而非原始源码",
     "settings.read.summarize.enabled.label": "读取摘要",
-    "settings.read.summarize.enabled.description": "read 在未指定选择器时返回结构化代码摘要",
+    "settings.read.summarize.enabled.description":
+      "read 在未指定选择器时返回结构化代码摘要",
     "settings.read.summarize.prose.label": "文本摘要",
-    "settings.read.summarize.prose.description": "为 Markdown 和纯文本读取返回结构化摘要",
+    "settings.read.summarize.prose.description":
+      "为 Markdown 和纯文本读取返回结构化摘要",
     "settings.read.toolResultPreview.label": "行内读取预览",
-    "settings.read.toolResultPreview.description": "在对话记录中行内渲染 read 工具结果，而非显示为摘要行",
+    "settings.read.toolResultPreview.description":
+      "在对话记录中行内渲染 read 工具结果，而非显示为摘要行",
     "settings.lsp.enabled.label": "LSP",
-    "settings.lsp.enabled.description": "启用 lsp 工具以获得代码智能功能（定义、引用、诊断、重命名）",
+    "settings.lsp.enabled.description":
+      "启用 lsp 工具以获得代码智能功能（定义、引用、诊断、重命名）",
     "settings.lsp.lazy.label": "延迟启动 LSP",
-    "settings.lsp.lazy.description": "首次使用时（使用 lsp 工具或编辑匹配的文件类型）启动语言服务器，而非在会话启动时启动",
+    "settings.lsp.lazy.description":
+      "首次使用时（使用 lsp 工具或编辑匹配的文件类型）启动语言服务器，而非在会话启动时启动",
     "settings.lsp.shared.label": "共享语言服务器",
-    "settings.lsp.shared.description": "通过守护进程代理在多个 omp 实例间为每个项目共享一个语言服务器（不可用时回退为私有服务器）",
+    "settings.lsp.shared.description":
+      "通过守护进程代理在多个 omp 实例间为每个项目共享一个语言服务器（不可用时回退为私有服务器）",
     "settings.lsp.formatOnWrite.label": "写入时格式化",
-    "settings.lsp.formatOnWrite.description": "写入后使用 LSP 自动格式化代码文件",
+    "settings.lsp.formatOnWrite.description":
+      "写入后使用 LSP 自动格式化代码文件",
     "settings.lsp.diagnosticsOnWrite.label": "写入时诊断",
-    "settings.lsp.diagnosticsOnWrite.description": "写入代码文件后返回 LSP 诊断信息",
+    "settings.lsp.diagnosticsOnWrite.description":
+      "写入代码文件后返回 LSP 诊断信息",
     "settings.lsp.diagnosticsOnEdit.label": "编辑时诊断",
-    "settings.lsp.diagnosticsOnEdit.description": "编辑代码文件后返回 LSP 诊断信息",
+    "settings.lsp.diagnosticsOnEdit.description":
+      "编辑代码文件后返回 LSP 诊断信息",
     "settings.lsp.diagnosticsDeduplicate.label": "诊断去重",
-    "settings.lsp.diagnosticsDeduplicate.description": "抑制文件已显示过的编辑后 LSP 诊断信息；仅显示新增或变更的诊断信息",
+    "settings.lsp.diagnosticsDeduplicate.description":
+      "抑制文件已显示过的编辑后 LSP 诊断信息；仅显示新增或变更的诊断信息",
     "settings.secrets.hide.label": "隐藏密钥",
-    "settings.secrets.hide.description": "发送给 AI 提供商前，混淆已配置的密钥并脱敏形似凭据的 Token",
+    "settings.secrets.hide.description":
+      "发送给 AI 提供商前，混淆已配置的密钥并脱敏形似凭据的 Token",
     "settings.providers.antigravityEndpoint.label": "Antigravity 端点模式",
-    "settings.providers.antigravityEndpoint.description": "google-antigravity 提供商的端点路由策略（聊天、搜索、图像、发现）",
+    "settings.providers.antigravityEndpoint.description":
+      "google-antigravity 提供商的端点路由策略（聊天、搜索、图像、发现）",
     "settings.providers.antigravityEndpoint.option.auto.label": "自动",
-    "settings.providers.antigravityEndpoint.option.auto.description": "尝试生产端点；遇到 5xx/429 时故障转移到沙盒",
-    "settings.providers.antigravityEndpoint.option.production.label": "仅生产环境",
-    "settings.providers.antigravityEndpoint.option.production.description": "强制仅使用生产端点",
+    "settings.providers.antigravityEndpoint.option.auto.description":
+      "尝试生产端点；遇到 5xx/429 时故障转移到沙盒",
+    "settings.providers.antigravityEndpoint.option.production.label":
+      "仅生产环境",
+    "settings.providers.antigravityEndpoint.option.production.description":
+      "强制仅使用生产端点",
     "settings.providers.antigravityEndpoint.option.sandbox.label": "仅沙盒",
-    "settings.providers.antigravityEndpoint.option.sandbox.description": "强制仅使用沙盒端点",
+    "settings.providers.antigravityEndpoint.option.sandbox.description":
+      "强制仅使用沙盒端点",
     "settings.providers.fireworksTier.label": "Fireworks 层级",
-    "settings.providers.fireworksTier.description": "Fireworks 请求的服务路径。高优先级会发送 `service_tier: \"priority\"`，以更高价格在流量高峰期获得更高可靠性；标准不发送该字段。快速（`-fast`）模型会忽略此设置——快速使用其独立的服务路径。",
+    "settings.providers.fireworksTier.description":
+      'Fireworks 请求的服务路径。高优先级会发送 `service_tier: "priority"`，以更高价格在流量高峰期获得更高可靠性；标准不发送该字段。快速（`-fast`）模型会忽略此设置——快速使用其独立的服务路径。',
     "settings.providers.fireworksTier.option.standard.label": "标准",
-    "settings.providers.fireworksTier.option.standard.description": "默认服务路径（不使用 service_tier）",
+    "settings.providers.fireworksTier.option.standard.description":
+      "默认服务路径（不使用 service_tier）",
     "settings.providers.fireworksTier.option.priority.label": "高优先级",
-    "settings.providers.fireworksTier.option.priority.description": "高优先级服务路径：更高可靠性，Token 单价更高",
+    "settings.providers.fireworksTier.option.priority.description":
+      "高优先级服务路径：更高可靠性，Token 单价更高",
     "settings.providers.tts.label": "文本转语音提供商",
-    "settings.providers.tts.description": "tts 工具的后端：本地设备端神经 TTS（Kokoro-82M）或 xAI Grok Voice",
+    "settings.providers.tts.description":
+      "tts 工具的后端：本地设备端神经 TTS（Kokoro-82M）或 xAI Grok Voice",
     "settings.providers.tts.option.auto.label": "自动",
-    "settings.providers.tts.option.auto.description": "优先使用本地设备端 TTS；存在凭据时将 .mp3 输出路由至 xAI",
+    "settings.providers.tts.option.auto.description":
+      "优先使用本地设备端 TTS；存在凭据时将 .mp3 输出路由至 xAI",
     "settings.providers.tts.option.local.label": "本地",
-    "settings.providers.tts.option.local.description": "设备端神经 TTS（Kokoro-82M）；输出为 WAV/PCM16",
+    "settings.providers.tts.option.local.description":
+      "设备端神经 TTS（Kokoro-82M）；输出为 WAV/PCM16",
     "settings.providers.tts.option.xai.label": "xAI Grok Voice",
-    "settings.providers.tts.option.xai.description": "需要 xAI Grok OAuth 或 XAI_API_KEY；支持 MP3 或 WAV",
+    "settings.providers.tts.option.xai.description":
+      "需要 xAI Grok OAuth 或 XAI_API_KEY；支持 MP3 或 WAV",
     "settings.speech.enabled.label": "语音朗读",
-    "settings.speech.enabled.description": "在流式输出时通过扬声器朗读助手的输出",
+    "settings.speech.enabled.description":
+      "在流式输出时通过扬声器朗读助手的输出",
     "settings.speech.mode.label": "语音朗读模式",
-    "settings.speech.mode.description": "要朗读的内容：all = 助手消息 + 思考；assistant = 仅消息；yield = 仅在轮次结束时朗读最终消息",
+    "settings.speech.mode.description":
+      "要朗读的内容：all = 助手消息 + 思考；assistant = 仅消息；yield = 仅在轮次结束时朗读最终消息",
     "settings.speech.mode.option.all.label": "全部（消息 + 思考）",
     "settings.speech.mode.option.assistant.label": "助手消息",
     "settings.speech.mode.option.yield.label": "仅最终消息",
     "settings.speech.enhanced.label": "增强型语音改写",
-    "settings.speech.enhanced.description": "在合成前，使用 tiny/smol 模型将助手输出改写为自然的口语文本（描述代码，移除链接和 Markdown）。失败时回退到机械清理",
+    "settings.speech.enhanced.description":
+      "在合成前，使用 tiny/smol 模型将助手输出改写为自然的口语文本（描述代码，移除链接和 Markdown）。失败时回退到机械清理",
     "settings.providers.kimiApiFormat.label": "Kimi API 格式",
-    "settings.providers.kimiApiFormat.description": "Kimi Code 提供商的 API 格式（自动会遵循实时模型元数据）",
+    "settings.providers.kimiApiFormat.description":
+      "Kimi Code 提供商的 API 格式（自动会遵循实时模型元数据）",
     "settings.providers.kimiApiFormat.option.auto.label": "自动",
-    "settings.providers.kimiApiFormat.option.auto.description": "使用模型服务器声明的协议",
+    "settings.providers.kimiApiFormat.option.auto.description":
+      "使用模型服务器声明的协议",
     "settings.providers.kimiApiFormat.option.openai.label": "OpenAI",
-    "settings.providers.kimiApiFormat.option.openai.description": "api.kimi.com",
+    "settings.providers.kimiApiFormat.option.openai.description":
+      "api.kimi.com",
     "settings.providers.kimiApiFormat.option.anthropic.label": "Anthropic",
-    "settings.providers.kimiApiFormat.option.anthropic.description": "api.moonshot.ai",
+    "settings.providers.kimiApiFormat.option.anthropic.description":
+      "api.moonshot.ai",
     "settings.providers.openaiWebsockets.label": "OpenAI WebSocket",
-    "settings.providers.openaiWebsockets.description": "OpenAI Codex 模型的 WebSocket 策略（自动使用模型默认值，开启为强制启用，关闭为禁用）",
+    "settings.providers.openaiWebsockets.description":
+      "OpenAI Codex 模型的 WebSocket 策略（自动使用模型默认值，开启为强制启用，关闭为禁用）",
     "settings.providers.openaiWebsockets.option.auto.label": "自动",
-    "settings.providers.openaiWebsockets.option.auto.description": "使用模型/提供商默认的 WebSocket 行为",
+    "settings.providers.openaiWebsockets.option.auto.description":
+      "使用模型/提供商默认的 WebSocket 行为",
     "settings.providers.openaiWebsockets.option.off.label": "关闭",
-    "settings.providers.openaiWebsockets.option.off.description": "为 OpenAI Codex 模型禁用 WebSocket",
+    "settings.providers.openaiWebsockets.option.off.description":
+      "为 OpenAI Codex 模型禁用 WebSocket",
     "settings.providers.openaiWebsockets.option.on.label": "开启",
-    "settings.providers.openaiWebsockets.option.on.description": "为 OpenAI Codex 模型强制启用 WebSocket",
+    "settings.providers.openaiWebsockets.option.on.description":
+      "为 OpenAI Codex 模型强制启用 WebSocket",
     "settings.providers.streamFirstEventTimeoutSeconds.label": "流首事件超时",
-    "settings.providers.streamFirstEventTimeoutSeconds.description": "等待首个模型流事件的秒数；-1 使用提供商/环境默认值，0 禁用监视器",
+    "settings.providers.streamFirstEventTimeoutSeconds.description":
+      "等待首个模型流事件的秒数；-1 使用提供商/环境默认值，0 禁用监视器",
     "settings.providers.streamFirstEventTimeoutSeconds.option.-1.label": "自动",
-    "settings.providers.streamFirstEventTimeoutSeconds.option.-1.description": "使用提供商默认值和 PI_* 超时环境变量",
+    "settings.providers.streamFirstEventTimeoutSeconds.option.-1.description":
+      "使用提供商默认值和 PI_* 超时环境变量",
     "settings.providers.streamFirstEventTimeoutSeconds.option.0.label": "关闭",
-    "settings.providers.streamFirstEventTimeoutSeconds.option.0.description": "禁用首事件超时",
-    "settings.providers.streamFirstEventTimeoutSeconds.option.300.label": "5 分钟",
-    "settings.providers.streamFirstEventTimeoutSeconds.option.600.label": "10 分钟",
-    "settings.providers.streamFirstEventTimeoutSeconds.option.1800.label": "30 分钟",
+    "settings.providers.streamFirstEventTimeoutSeconds.option.0.description":
+      "禁用首事件超时",
+    "settings.providers.streamFirstEventTimeoutSeconds.option.300.label":
+      "5 分钟",
+    "settings.providers.streamFirstEventTimeoutSeconds.option.600.label":
+      "10 分钟",
+    "settings.providers.streamFirstEventTimeoutSeconds.option.1800.label":
+      "30 分钟",
     "settings.providers.streamIdleTimeoutSeconds.label": "流空闲超时",
-    "settings.providers.streamIdleTimeoutSeconds.description": "模型流在事件之间可保持静默的秒数；-1 使用提供商/环境默认值，0 禁用监视器",
+    "settings.providers.streamIdleTimeoutSeconds.description":
+      "模型流在事件之间可保持静默的秒数；-1 使用提供商/环境默认值，0 禁用监视器",
     "settings.providers.streamIdleTimeoutSeconds.option.-1.label": "自动",
-    "settings.providers.streamIdleTimeoutSeconds.option.-1.description": "使用提供商默认值和 PI_* 超时环境变量",
+    "settings.providers.streamIdleTimeoutSeconds.option.-1.description":
+      "使用提供商默认值和 PI_* 超时环境变量",
     "settings.providers.streamIdleTimeoutSeconds.option.0.label": "关闭",
-    "settings.providers.streamIdleTimeoutSeconds.option.0.description": "禁用空闲超时",
+    "settings.providers.streamIdleTimeoutSeconds.option.0.description":
+      "禁用空闲超时",
     "settings.providers.streamIdleTimeoutSeconds.option.300.label": "5 分钟",
     "settings.providers.streamIdleTimeoutSeconds.option.600.label": "10 分钟",
     "settings.providers.streamIdleTimeoutSeconds.option.1800.label": "30 分钟",
     "settings.providers.openrouterVariant.label": "OpenRouter 路由",
-    "settings.providers.openrouterVariant.description": "附加到 OpenRouter 模型 ID 的默认路由变体后缀（选择器已指定变体时将覆盖此设置）",
+    "settings.providers.openrouterVariant.description":
+      "附加到 OpenRouter 模型 ID 的默认路由变体后缀（选择器已指定变体时将覆盖此设置）",
     "settings.providers.openrouterVariant.option.default.label": "默认",
-    "settings.providers.openrouterVariant.option.default.description": "不添加后缀；使用 OpenRouter 的默认路由",
+    "settings.providers.openrouterVariant.option.default.description":
+      "不添加后缀；使用 OpenRouter 的默认路由",
     "settings.providers.openrouterVariant.option.nitro.label": ":nitro",
-    "settings.providers.openrouterVariant.option.nitro.description": "优先保证吞吐量 / 最低延迟",
+    "settings.providers.openrouterVariant.option.nitro.description":
+      "优先保证吞吐量 / 最低延迟",
     "settings.providers.openrouterVariant.option.floor.label": ":floor",
-    "settings.providers.openrouterVariant.option.floor.description": "优先选择最便宜的可用提供商",
+    "settings.providers.openrouterVariant.option.floor.description":
+      "优先选择最便宜的可用提供商",
     "settings.providers.openrouterVariant.option.online.label": ":online",
-    "settings.providers.openrouterVariant.option.online.description": "启用 OpenRouter 的网页搜索插件",
+    "settings.providers.openrouterVariant.option.online.description":
+      "启用 OpenRouter 的网页搜索插件",
     "settings.providers.openrouterVariant.option.exacto.label": ":exacto",
-    "settings.providers.openrouterVariant.option.exacto.description": "精选的高质量提供商（仅为部分模型定义）",
+    "settings.providers.openrouterVariant.option.exacto.description":
+      "精选的高质量提供商（仅为部分模型定义）",
     "settings.providers.fetch.label": "抓取提供商",
-    "settings.providers.fetch.description": "fetch/read URL 工具的阅读器后端优先级",
+    "settings.providers.fetch.description":
+      "fetch/read URL 工具的阅读器后端优先级",
     "settings.providers.fetch.option.auto.label": "自动",
-    "settings.providers.fetch.option.auto.description": "优先级：native > trafilatura > lynx > parallel > jina",
+    "settings.providers.fetch.option.auto.description":
+      "优先级：native > trafilatura > lynx > parallel > jina",
     "settings.providers.fetch.option.native.label": "原生",
-    "settings.providers.fetch.option.native.description": "进程内 HTML→Markdown 转换器（始终可用）",
+    "settings.providers.fetch.option.native.description":
+      "进程内 HTML→Markdown 转换器（始终可用）",
     "settings.providers.fetch.option.trafilatura.label": "Trafilatura",
-    "settings.providers.fetch.option.trafilatura.description": "通过 uv/pip 自动安装",
+    "settings.providers.fetch.option.trafilatura.description":
+      "通过 uv/pip 自动安装",
     "settings.providers.fetch.option.lynx.label": "Lynx",
     "settings.providers.fetch.option.lynx.description": "需要 lynx 系统软件包",
     "settings.providers.fetch.option.parallel.label": "Parallel",
-    "settings.providers.fetch.option.parallel.description": "需要 PARALLEL_API_KEY",
+    "settings.providers.fetch.option.parallel.description":
+      "需要 PARALLEL_API_KEY",
     "settings.providers.fetch.option.jina.label": "Jina",
-    "settings.providers.fetch.option.jina.description": "使用 r.jina.ai 阅读器（JINA_API_KEY 可选）",
+    "settings.providers.fetch.option.jina.description":
+      "使用 r.jina.ai 阅读器（JINA_API_KEY 可选）",
     "settings.codexResets.autoRedeem.label": "Codex 自动兑换已保存的重置次数",
-    "settings.codexResets.autoRedeem.description": "自动使用已保存的 Codex 速率限制重置次数：当轮次卡住且没有其他账户可接管时，恢复因 5 小时或每周窗口耗尽而被阻止的账户，并挽救即将过期的额度。未设置会在首次使用前询问；yes 会直接使用；no 会禁用两项检查。",
+    "settings.codexResets.autoRedeem.description":
+      "自动使用已保存的 Codex 速率限制重置次数：当轮次卡住且没有其他账户可接管时，恢复因 5 小时或每周窗口耗尽而被阻止的账户，并挽救即将过期的额度。未设置会在首次使用前询问；yes 会直接使用；no 会禁用两项检查。",
     "settings.codexResets.autoRedeem.option.unset.label": "未设置",
-    "settings.codexResets.autoRedeem.option.unset.description": "检查资格，然后在使用首次已保存重置次数前询问。",
+    "settings.codexResets.autoRedeem.option.unset.description":
+      "检查资格，然后在使用首次已保存重置次数前询问。",
     "settings.codexResets.autoRedeem.option.yes.label": "是",
-    "settings.codexResets.autoRedeem.option.yes.description": "直接使用符合条件的已保存重置次数。",
+    "settings.codexResets.autoRedeem.option.yes.description":
+      "直接使用符合条件的已保存重置次数。",
     "settings.codexResets.autoRedeem.option.no.label": "否",
-    "settings.codexResets.autoRedeem.option.no.description": "不运行已保存重置次数的自动兑换检查。",
+    "settings.codexResets.autoRedeem.option.no.description":
+      "不运行已保存重置次数的自动兑换检查。",
     "settings.provider.appendOnlyContext.label": "仅追加上下文",
-    "settings.provider.appendOnlyContext.description": "缓存系统提示词和工具规范，并维护仅追加的消息日志，以最高命中率使用提供商前缀缓存（DeepSeek、Xiaomi/SGLang、Anthropic）。自动模式会为已知前缀缓存提供商启用。",
+    "settings.provider.appendOnlyContext.description":
+      "缓存系统提示词和工具规范，并维护仅追加的消息日志，以最高命中率使用提供商前缀缓存（DeepSeek、Xiaomi/SGLang、Anthropic）。自动模式会为已知前缀缓存提供商启用。",
     "settings.provider.appendOnlyContext.option.auto.label": "自动",
-    "settings.provider.appendOnlyContext.option.auto.description": "为已知前缀缓存提供商启用（推荐）",
+    "settings.provider.appendOnlyContext.option.auto.description":
+      "为已知前缀缓存提供商启用（推荐）",
     "settings.provider.appendOnlyContext.option.on.label": "开启",
-    "settings.provider.appendOnlyContext.option.on.description": "始终启用仅追加上下文",
+    "settings.provider.appendOnlyContext.option.on.description":
+      "始终启用仅追加上下文",
     "settings.provider.appendOnlyContext.option.off.label": "关闭",
-    "settings.provider.appendOnlyContext.option.off.description": "禁用仅追加上下文",
+    "settings.provider.appendOnlyContext.option.off.description":
+      "禁用仅追加上下文",
     "settings.exa.enabled.label": "Exa",
     "settings.exa.enabled.description": "启用 Exa 网页搜索提供商",
     "settings.plan.enabled.label": "计划模式",
-    "settings.plan.enabled.description": "启用计划模式，以便在执行前进行只读探索和规划",
+    "settings.plan.enabled.description":
+      "启用计划模式，以便在执行前进行只读探索和规划",
     "settings.plan.defaultOnStartup.label": "以计划模式启动",
-    "settings.plan.defaultOnStartup.description": "每个新会话开始时自动进入计划模式",
+    "settings.plan.defaultOnStartup.description":
+      "每个新会话开始时自动进入计划模式",
     "settings.goal.enabled.label": "目标模式",
-    "settings.goal.enabled.description": "启用按会话设置的目标模式及隐藏的目标工具",
+    "settings.goal.enabled.description":
+      "启用按会话设置的目标模式及隐藏的目标工具",
     "settings.goal.statusInFooter.label": "页脚中的目标状态",
-    "settings.goal.statusInFooter.description": "在状态栏中与目标指示器一同显示 Token 预算",
+    "settings.goal.statusInFooter.description":
+      "在状态栏中与目标指示器一同显示 Token 预算",
     "settings.title.refreshOnReplan.label": "重新规划时刷新标题",
-    "settings.title.refreshOnReplan.description": "除非用户已设置标题，否则在 todo 初始化重新规划后刷新生成的会话标题",
+    "settings.title.refreshOnReplan.description":
+      "除非用户已设置标题，否则在 todo 初始化重新规划后刷新生成的会话标题",
     "settings.task.isolation.mode.label": "隔离模式",
-    "settings.task.isolation.mode.description": "子代理的隔离后端。\"auto\" 让原生 PAL 选择最佳可用后端（支持 CoW 的文件系统，其次是 overlayfs/ProjFS，最后是 git worktree / 递归复制回退方案）。",
+    "settings.task.isolation.mode.description":
+      '子代理的隔离后端。"auto" 让原生 PAL 选择最佳可用后端（支持 CoW 的文件系统，其次是 overlayfs/ProjFS，最后是 git worktree / 递归复制回退方案）。',
     "settings.task.isolation.mode.option.none.label": "无",
     "settings.task.isolation.mode.option.none.description": "不隔离",
     "settings.task.isolation.mode.option.auto.label": "自动",
-    "settings.task.isolation.mode.option.auto.description": "让 PAL 选择最佳可用后端",
+    "settings.task.isolation.mode.option.auto.description":
+      "让 PAL 选择最佳可用后端",
     "settings.task.isolation.mode.option.apfs.label": "APFS",
-    "settings.task.isolation.mode.option.apfs.description": "macOS clonefile reflink（APFS）",
+    "settings.task.isolation.mode.option.apfs.description":
+      "macOS clonefile reflink（APFS）",
     "settings.task.isolation.mode.option.btrfs.label": "btrfs",
     "settings.task.isolation.mode.option.btrfs.description": "btrfs 子卷快照",
     "settings.task.isolation.mode.option.zfs.label": "ZFS",
     "settings.task.isolation.mode.option.zfs.description": "ZFS 快照 + 克隆",
     "settings.task.isolation.mode.option.reflink.label": "Reflink",
-    "settings.task.isolation.mode.option.reflink.description": "Linux FICLONE 单文件 reflink",
+    "settings.task.isolation.mode.option.reflink.description":
+      "Linux FICLONE 单文件 reflink",
     "settings.task.isolation.mode.option.overlayfs.label": "Overlayfs",
-    "settings.task.isolation.mode.option.overlayfs.description": "Linux 内核覆盖层（或回退到 fuse-overlayfs）",
+    "settings.task.isolation.mode.option.overlayfs.description":
+      "Linux 内核覆盖层（或回退到 fuse-overlayfs）",
     "settings.task.isolation.mode.option.projfs.label": "ProjFS",
-    "settings.task.isolation.mode.option.projfs.description": "Windows 投影文件系统",
+    "settings.task.isolation.mode.option.projfs.description":
+      "Windows 投影文件系统",
     "settings.task.isolation.mode.option.block-clone.label": "块克隆",
-    "settings.task.isolation.mode.option.block-clone.description": "Windows FSCTL_DUPLICATE_EXTENTS_TO_FILE（NTFS/ReFS）",
+    "settings.task.isolation.mode.option.block-clone.description":
+      "Windows FSCTL_DUPLICATE_EXTENTS_TO_FILE（NTFS/ReFS）",
     "settings.task.isolation.mode.option.rcopy.label": "递归复制",
-    "settings.task.isolation.mode.option.rcopy.description": "如果可用则使用 git worktree，否则递归复制",
+    "settings.task.isolation.mode.option.rcopy.description":
+      "如果可用则使用 git worktree，否则递归复制",
     "settings.task.isolation.apply.label": "应用隔离更改",
-    "settings.task.isolation.apply.description": "自动将成功的隔离任务更改应用到父检出目录；禁用后保留补丁或分支产物",
+    "settings.task.isolation.apply.description":
+      "自动将成功的隔离任务更改应用到父检出目录；禁用后保留补丁或分支产物",
     "settings.task.isolation.merge.label": "隔离合并策略",
-    "settings.task.isolation.merge.description": "如何集成隔离任务的更改（应用补丁或合并分支）",
+    "settings.task.isolation.merge.description":
+      "如何集成隔离任务的更改（应用补丁或合并分支）",
     "settings.task.isolation.merge.option.patch.label": "补丁",
-    "settings.task.isolation.merge.option.patch.description": "合并差异并使用 git apply",
+    "settings.task.isolation.merge.option.patch.description":
+      "合并差异并使用 git apply",
     "settings.task.isolation.merge.option.branch.label": "分支",
-    "settings.task.isolation.merge.option.branch.description": "每个任务提交一次，使用 --no-ff 合并",
+    "settings.task.isolation.merge.option.branch.description":
+      "每个任务提交一次，使用 --no-ff 合并",
     "settings.task.isolation.commits.label": "隔离提交风格",
-    "settings.task.isolation.commits.description": "嵌套仓库更改的提交消息风格（通用或 AI 生成）",
+    "settings.task.isolation.commits.description":
+      "嵌套仓库更改的提交消息风格（通用或 AI 生成）",
     "settings.task.isolation.commits.option.generic.label": "通用",
-    "settings.task.isolation.commits.option.generic.description": "固定提交消息",
+    "settings.task.isolation.commits.option.generic.description":
+      "固定提交消息",
     "settings.task.isolation.commits.option.ai.label": "AI",
-    "settings.task.isolation.commits.option.ai.description": "根据差异由 AI 生成的提交消息",
+    "settings.task.isolation.commits.option.ai.description":
+      "根据差异由 AI 生成的提交消息",
     "settings.task.eager.label": "优先委派任务",
     "settings.task.eager.description": "向子代理委派工作的倾向强度",
     "settings.task.eager.option.default.label": "默认",
     "settings.task.eager.option.default.description": "由模型决定何时委派",
     "settings.task.eager.option.preferred.label": "优先",
-    "settings.task.eager.option.preferred.description": "向系统提示词添加委派指导",
+    "settings.task.eager.option.preferred.description":
+      "向系统提示词添加委派指导",
     "settings.task.eager.option.always.label": "始终",
-    "settings.task.eager.option.always.description": "提示词指导加上首轮委派提醒",
+    "settings.task.eager.option.always.description":
+      "提示词指导加上首轮委派提醒",
     "settings.worktree.base.label": "Worktree 基础目录",
-    "settings.worktree.base.description": "代理管理的 worktree 基础目录——任务隔离副本、`github` PR 检出及 `omp worktree` 清理均存放于此。未设置时使用 ~/.omp/wt。必须是绝对路径或以 ~ 开头的路径；相对路径将被忽略。OMP_WORKTREE_DIR 环境变量会覆盖此设置。",
+    "settings.worktree.base.description":
+      "代理管理的 worktree 基础目录——任务隔离副本、`github` PR 检出及 `omp worktree` 清理均存放于此。未设置时使用 ~/.omp/wt。必须是绝对路径或以 ~ 开头的路径；相对路径将被忽略。OMP_WORKTREE_DIR 环境变量会覆盖此设置。",
     "settings.task.batch.label": "批量任务调用",
-    "settings.task.batch.description": "将任务工具切换为批量形式：一次调用包含 { context, tasks[] }——每项一个子代理，可选的每项代理（默认使用会话生成策略代理）、每项隔离，以及会添加到每个任务前的必填共享上下文。启用 async.enabled=true 时，每次生成都会作为独立后台代理运行，并遵循正常的空闲/停驻生命周期；否则调用会阻塞并等待合并结果。禁用后恢复为扁平的单次生成模式。",
+    "settings.task.batch.description":
+      "将任务工具切换为批量形式：一次调用包含 { context, tasks[] }——每项一个子代理，可选的每项代理（默认使用会话生成策略代理）、每项隔离，以及会添加到每个任务前的必填共享上下文。启用 async.enabled=true 时，每次生成都会作为独立后台代理运行，并遵循正常的空闲/停驻生命周期；否则调用会阻塞并等待合并结果。禁用后恢复为扁平的单次生成模式。",
     "settings.task.enableEffort.label": "每任务思考深度",
-    "settings.task.enableEffort.description": "在任务生成中公开可选的 effort 参数，使调用方可覆盖每个子代理的思考深度",
+    "settings.task.enableEffort.description":
+      "在任务生成中公开可选的 effort 参数，使调用方可覆盖每个子代理的思考深度",
     "settings.task.maxConcurrency.label": "最大并发任务数",
     "settings.task.maxConcurrency.description": "同时运行的子代理最大数量",
     "settings.task.maxConcurrency.option.0.label": "不限",
@@ -1205,16 +1440,19 @@ export const zhCNLocale: LocalePlugin = {
     "settings.task.maxConcurrency.option.32.label": "32 个任务",
     "settings.task.maxConcurrency.option.64.label": "64 个任务",
     "settings.task.enableLsp.label": "子代理中的 LSP",
-    "settings.task.enableLsp.description": "允许通过任务工具生成的子代理使用 lsp 工具。默认关闭以降低子代理成本；当 LSP 感知的委派值得额外 Token 时再启用。",
+    "settings.task.enableLsp.description":
+      "允许通过任务工具生成的子代理使用 lsp 工具。默认关闭以降低子代理成本；当 LSP 感知的委派值得额外 Token 时再启用。",
     "settings.task.maxRecursionDepth.label": "最大任务递归层数",
-    "settings.task.maxRecursionDepth.description": "子代理可自行生成子代理的最大层级数",
+    "settings.task.maxRecursionDepth.description":
+      "子代理可自行生成子代理的最大层级数",
     "settings.task.maxRecursionDepth.option.-1.label": "不限",
     "settings.task.maxRecursionDepth.option.0.label": "无",
     "settings.task.maxRecursionDepth.option.1.label": "单层",
     "settings.task.maxRecursionDepth.option.2.label": "双层",
     "settings.task.maxRecursionDepth.option.3.label": "三层",
     "settings.task.maxRuntimeMs.label": "子代理最长运行时间",
-    "settings.task.maxRuntimeMs.description": "每个子代理的硬性墙钟时间限制（毫秒）。0 表示禁用。作为针对逃过推理层看门狗的提供商端流挂起的纵深防御；触发后会以“超时”为原因正常中止子代理。",
+    "settings.task.maxRuntimeMs.description":
+      "每个子代理的硬性墙钟时间限制（毫秒）。0 表示禁用。作为针对逃过推理层看门狗的提供商端流挂起的纵深防御；触发后会以“超时”为原因正常中止子代理。",
     "settings.task.maxRuntimeMs.option.0.label": "不限",
     "settings.task.maxRuntimeMs.option.0.description": "默认",
     "settings.task.maxRuntimeMs.option.300000.label": "5 分钟",
@@ -1222,140 +1460,199 @@ export const zhCNLocale: LocalePlugin = {
     "settings.task.maxRuntimeMs.option.1800000.label": "30 分钟",
     "settings.task.maxRuntimeMs.option.3600000.label": "1 小时",
     "settings.task.softRequestBudget.label": "子代理软请求预算",
-    "settings.task.softRequestBudget.description": "每个子代理的软请求预算（每次运行的助手请求数）。超出时会注入收尾引导通知（见 task.softRequestBudgetNotice）；达到预算的 1.5 倍时运行会被强制停止，代理必须交付部分发现。0 表示禁用此保护。内置 scout/sonic 代理有更低的内置预算上限，因此低于该上限的值仍对它们生效。",
+    "settings.task.softRequestBudget.description":
+      "每个子代理的软请求预算（每次运行的助手请求数）。超出时会注入收尾引导通知（见 task.softRequestBudgetNotice）；达到预算的 1.5 倍时运行会被强制停止，代理必须交付部分发现。0 表示禁用此保护。内置 scout/sonic 代理有更低的内置预算上限，因此低于该上限的值仍对它们生效。",
     "settings.task.softRequestBudget.option.0.label": "已禁用",
     "settings.task.softRequestBudget.option.90.label": "90 次请求",
     "settings.task.softRequestBudget.option.150.label": "150 次请求",
     "settings.task.softRequestBudget.option.200.label": "200 次请求",
     "settings.task.softRequestBudget.option.200.description": "默认",
     "settings.task.softRequestBudgetNotice.label": "软请求预算通知",
-    "settings.task.softRequestBudgetNotice.description": "当子代理超出软请求预算时注入一条引导通知，要求其在 1.5 倍预算的强制交付停止前收尾。",
+    "settings.task.softRequestBudgetNotice.description":
+      "当子代理超出软请求预算时注入一条引导通知，要求其在 1.5 倍预算的强制交付停止前收尾。",
     "settings.task.maxEffort.label": "每次生成的最大思考深度",
-    "settings.task.maxEffort.description": "任务工具每次生成的 effort 提示允许使用的最大推理强度。较低的值会阻止调用方将子代理提升到此上限以上；默认值保留模型的完整范围。",
+    "settings.task.maxEffort.description":
+      "任务工具每次生成的 effort 提示允许使用的最大推理强度。较低的值会阻止调用方将子代理提升到此上限以上；默认值保留模型的完整范围。",
     "settings.task.maxEffort.option.minimal.label": "极低",
-    "settings.task.maxEffort.option.minimal.description": "极简推理（约 1k Token）",
+    "settings.task.maxEffort.option.minimal.description":
+      "极简推理（约 1k Token）",
     "settings.task.maxEffort.option.low.label": "低",
     "settings.task.maxEffort.option.low.description": "轻量推理（约 2k Token）",
     "settings.task.maxEffort.option.medium.label": "中",
-    "settings.task.maxEffort.option.medium.description": "中等推理（约 8k Token）",
+    "settings.task.maxEffort.option.medium.description":
+      "中等推理（约 8k Token）",
     "settings.task.maxEffort.option.high.label": "高",
-    "settings.task.maxEffort.option.high.description": "深度推理（约 16k Token）",
+    "settings.task.maxEffort.option.high.description":
+      "深度推理（约 16k Token）",
     "settings.task.maxEffort.option.xhigh.label": "极高",
-    "settings.task.maxEffort.option.xhigh.description": "扩展推理（约 32k Token）",
+    "settings.task.maxEffort.option.xhigh.description":
+      "扩展推理（约 32k Token）",
     "settings.task.maxEffort.option.max.label": "最高",
     "settings.task.maxEffort.option.max.description": "模型支持的最高推理强度",
     "settings.task.prewalk.label": "通用任务预检",
-    "settings.task.prewalk.description": "为内置通用 `task` 子代理启用预检：它从解析后的模型开始，规划并着手实现，然后在首次编辑/写入时交接给 'smol' 角色。无论此开关状态如何，每代理覆盖设置（task.agentPrewalk，可在 /agents 中按 P 切换）和用户代理 `prewalk` frontmatter 都会生效。",
+    "settings.task.prewalk.description":
+      "为内置通用 `task` 子代理启用预检：它从解析后的模型开始，规划并着手实现，然后在首次编辑/写入时交接给 'smol' 角色。无论此开关状态如何，每代理覆盖设置（task.agentPrewalk，可在 /agents 中按 P 切换）和用户代理 `prewalk` frontmatter 都会生效。",
     "settings.skills.enableSkillCommands.label": "技能命令",
-    "settings.skills.enableSkillCommands.description": "将技能注册为 /skill:name 命令",
+    "settings.skills.enableSkillCommands.description":
+      "将技能注册为 /skill:name 命令",
     "settings.commands.enableClaudeUser.label": "Claude 用户命令",
-    "settings.commands.enableClaudeUser.description": "从 ~/.claude/commands/ 加载命令",
+    "settings.commands.enableClaudeUser.description":
+      "从 ~/.claude/commands/ 加载命令",
     "settings.commands.enableClaudeProject.label": "Claude 项目命令",
-    "settings.commands.enableClaudeProject.description": "从 .claude/commands/ 加载命令",
+    "settings.commands.enableClaudeProject.description":
+      "从 .claude/commands/ 加载命令",
     "settings.commands.enableOpencodeUser.label": "OpenCode 用户命令",
-    "settings.commands.enableOpencodeUser.description": "从 ~/.config/opencode/commands/ 加载命令",
+    "settings.commands.enableOpencodeUser.description":
+      "从 ~/.config/opencode/commands/ 加载命令",
     "settings.commands.enableOpencodeProject.label": "OpenCode 项目命令",
-    "settings.commands.enableOpencodeProject.description": "从 .opencode/commands/ 加载命令",
+    "settings.commands.enableOpencodeProject.description":
+      "从 .opencode/commands/ 加载命令",
     "settings.bash.enabled.label": "Bash",
     "settings.bash.enabled.description": "启用 bash 工具以执行 shell 命令",
     "settings.bash.autoBackground.enabled.label": "Bash 自动后台运行",
-    "settings.bash.autoBackground.enabled.description": "自动将长时间运行的 bash 命令置于后台，并在稍后交付结果",
+    "settings.bash.autoBackground.enabled.description":
+      "自动将长时间运行的 bash 命令置于后台，并在稍后交付结果",
     "settings.bashInterceptor.enabled.label": "Bash 拦截器",
-    "settings.bashInterceptor.enabled.description": "拦截已有专用工具的 shell 命令",
+    "settings.bashInterceptor.enabled.description":
+      "拦截已有专用工具的 shell 命令",
     "settings.bash.direnv.label": "direnv 自动加载",
-    "settings.bash.direnv.description": "自动将仓库的 direnv/devenv `.envrc` 加载到 bash 会话中，让 devenv 工具和环境变量无需手动执行 `direnv exec` 即可使用。遵循 direnv 的允许列表：未执行过 `direnv allow` 的 `.envrc` 绝不会运行",
+    "settings.bash.direnv.description":
+      "自动将仓库的 direnv/devenv `.envrc` 加载到 bash 会话中，让 devenv 工具和环境变量无需手动执行 `direnv exec` 即可使用。遵循 direnv 的允许列表：未执行过 `direnv allow` 的 `.envrc` 绝不会运行",
     "settings.bash.direnv.option.auto.label": "自动",
     "settings.bash.direnv.option.off.label": "关闭",
     "settings.shellMinimizer.enabled.label": "Shell 输出精简器",
-    "settings.shellMinimizer.enabled.description": "在返回给 Agent 前压缩冗长的 shell 输出（git、npm、cargo 等）",
-    "settings.shellMinimizer.sourceOutlineLevel.label": "Shell 输出精简器源码大纲",
-    "settings.shellMinimizer.sourceOutlineLevel.description": "读取源文件时的源码大纲模式：默认或激进",
+    "settings.shellMinimizer.enabled.description":
+      "在返回给 Agent 前压缩冗长的 shell 输出（git、npm、cargo 等）",
+    "settings.shellMinimizer.sourceOutlineLevel.label":
+      "Shell 输出精简器源码大纲",
+    "settings.shellMinimizer.sourceOutlineLevel.description":
+      "读取源文件时的源码大纲模式：默认或激进",
     "settings.shellMinimizer.sourceOutlineLevel.option.default.label": "默认",
-    "settings.shellMinimizer.sourceOutlineLevel.option.aggressive.label": "激进",
+    "settings.shellMinimizer.sourceOutlineLevel.option.aggressive.label":
+      "激进",
     "settings.eval.py.label": "Python Eval 后端",
-    "settings.eval.py.description": "允许 eval 工具将 Python 单元派发到 IPython 内核",
+    "settings.eval.py.description":
+      "允许 eval 工具将 Python 单元派发到 IPython 内核",
     "settings.eval.js.label": "JavaScript Eval 后端",
-    "settings.eval.js.description": "允许 eval 工具将 JavaScript 单元派发到进程内运行时",
+    "settings.eval.js.description":
+      "允许 eval 工具将 JavaScript 单元派发到进程内运行时",
     "settings.eval.rb.label": "Ruby Eval 后端",
-    "settings.eval.rb.description": "允许 eval 工具将 Ruby 单元派发到持久化 Ruby 内核",
+    "settings.eval.rb.description":
+      "允许 eval 工具将 Ruby 单元派发到持久化 Ruby 内核",
     "settings.eval.jl.label": "Julia Eval 后端",
-    "settings.eval.jl.description": "允许 eval 工具将 Julia 单元派发到持久化 Julia 内核",
+    "settings.eval.jl.description":
+      "允许 eval 工具将 Julia 单元派发到持久化 Julia 内核",
     "settings.python.kernelMode.label": "Python 内核模式",
-    "settings.python.kernelMode.description": "让 IPython 内核在 eval 调用间保持运行，或每次重新启动",
+    "settings.python.kernelMode.description":
+      "让 IPython 内核在 eval 调用间保持运行，或每次重新启动",
     "settings.python.kernelMode.option.session.label": "会话",
     "settings.python.kernelMode.option.per-call.label": "每次调用",
     "settings.python.interpreter.label": "Python 解释器",
-    "settings.python.interpreter.description": "可选：指定准确的 Python 可执行文件路径。设置后将跳过自动发现 Python 运行时。",
+    "settings.python.interpreter.description":
+      "可选：指定准确的 Python 可执行文件路径。设置后将跳过自动发现 Python 运行时。",
     "settings.ruby.interpreter.label": "Ruby 解释器",
-    "settings.ruby.interpreter.description": "可选：指定准确的 Ruby 可执行文件路径。设置后将跳过自动发现 Ruby 运行时。",
+    "settings.ruby.interpreter.description":
+      "可选：指定准确的 Ruby 可执行文件路径。设置后将跳过自动发现 Ruby 运行时。",
     "settings.julia.interpreter.label": "Julia 解释器",
-    "settings.julia.interpreter.description": "可选：指定准确的 Julia 可执行文件路径。设置后将跳过自动发现 Julia 运行时。",
+    "settings.julia.interpreter.description":
+      "可选：指定准确的 Julia 可执行文件路径。设置后将跳过自动发现 Julia 运行时。",
     "settings.tools.artifactSpillThreshold.label": "工件溢出阈值（KB）",
-    "settings.tools.artifactSpillThreshold.description": "超过此大小的工具输出将保存为工件；末尾内容保留在内联输出中",
+    "settings.tools.artifactSpillThreshold.description":
+      "超过此大小的工具输出将保存为工件；末尾内容保留在内联输出中",
     "settings.tools.artifactSpillThreshold.option.1.label": "1 KB",
-    "settings.tools.artifactSpillThreshold.option.1.description": "约 250 个 Token",
+    "settings.tools.artifactSpillThreshold.option.1.description":
+      "约 250 个 Token",
     "settings.tools.artifactSpillThreshold.option.2.5.label": "2.5 KB",
-    "settings.tools.artifactSpillThreshold.option.2.5.description": "约 625 个 Token",
+    "settings.tools.artifactSpillThreshold.option.2.5.description":
+      "约 625 个 Token",
     "settings.tools.artifactSpillThreshold.option.5.label": "5 KB",
-    "settings.tools.artifactSpillThreshold.option.5.description": "约 1.25K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.5.description":
+      "约 1.25K 个 Token",
     "settings.tools.artifactSpillThreshold.option.10.label": "10 KB",
-    "settings.tools.artifactSpillThreshold.option.10.description": "约 2.5K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.10.description":
+      "约 2.5K 个 Token",
     "settings.tools.artifactSpillThreshold.option.20.label": "20 KB",
-    "settings.tools.artifactSpillThreshold.option.20.description": "约 5K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.20.description":
+      "约 5K 个 Token",
     "settings.tools.artifactSpillThreshold.option.30.label": "30 KB",
-    "settings.tools.artifactSpillThreshold.option.30.description": "约 7.5K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.30.description":
+      "约 7.5K 个 Token",
     "settings.tools.artifactSpillThreshold.option.50.label": "50 KB",
-    "settings.tools.artifactSpillThreshold.option.50.description": "默认；约 12.5K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.50.description":
+      "默认；约 12.5K 个 Token",
     "settings.tools.artifactSpillThreshold.option.75.label": "75 KB",
-    "settings.tools.artifactSpillThreshold.option.75.description": "约 19K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.75.description":
+      "约 19K 个 Token",
     "settings.tools.artifactSpillThreshold.option.100.label": "100 KB",
-    "settings.tools.artifactSpillThreshold.option.100.description": "约 25K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.100.description":
+      "约 25K 个 Token",
     "settings.tools.artifactSpillThreshold.option.200.label": "200 KB",
-    "settings.tools.artifactSpillThreshold.option.200.description": "约 50K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.200.description":
+      "约 50K 个 Token",
     "settings.tools.artifactSpillThreshold.option.500.label": "500 KB",
-    "settings.tools.artifactSpillThreshold.option.500.description": "约 125K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.500.description":
+      "约 125K 个 Token",
     "settings.tools.artifactSpillThreshold.option.1000.label": "1 MB",
-    "settings.tools.artifactSpillThreshold.option.1000.description": "约 250K 个 Token",
+    "settings.tools.artifactSpillThreshold.option.1000.description":
+      "约 250K 个 Token",
     "settings.tools.artifactTailBytes.label": "工件末尾大小（KB）",
-    "settings.tools.artifactTailBytes.description": "输出溢出到工件时，保留在内联输出中的末尾内容量",
+    "settings.tools.artifactTailBytes.description":
+      "输出溢出到工件时，保留在内联输出中的末尾内容量",
     "settings.tools.artifactTailBytes.option.1.label": "1 KB",
     "settings.tools.artifactTailBytes.option.1.description": "约 250 个 Token",
     "settings.tools.artifactTailBytes.option.2.5.label": "2.5 KB",
-    "settings.tools.artifactTailBytes.option.2.5.description": "约 625 个 Token",
+    "settings.tools.artifactTailBytes.option.2.5.description":
+      "约 625 个 Token",
     "settings.tools.artifactTailBytes.option.5.label": "5 KB",
-    "settings.tools.artifactTailBytes.option.5.description": "约 1.25K 个 Token",
+    "settings.tools.artifactTailBytes.option.5.description":
+      "约 1.25K 个 Token",
     "settings.tools.artifactTailBytes.option.10.label": "10 KB",
-    "settings.tools.artifactTailBytes.option.10.description": "约 2.5K 个 Token",
+    "settings.tools.artifactTailBytes.option.10.description":
+      "约 2.5K 个 Token",
     "settings.tools.artifactTailBytes.option.20.label": "20 KB",
-    "settings.tools.artifactTailBytes.option.20.description": "默认；约 5K 个 Token",
+    "settings.tools.artifactTailBytes.option.20.description":
+      "默认；约 5K 个 Token",
     "settings.tools.artifactTailBytes.option.50.label": "50 KB",
-    "settings.tools.artifactTailBytes.option.50.description": "约 12.5K 个 Token",
+    "settings.tools.artifactTailBytes.option.50.description":
+      "约 12.5K 个 Token",
     "settings.tools.artifactTailBytes.option.100.label": "100 KB",
-    "settings.tools.artifactTailBytes.option.100.description": "约 25K 个 Token",
+    "settings.tools.artifactTailBytes.option.100.description":
+      "约 25K 个 Token",
     "settings.tools.artifactTailBytes.option.200.label": "200 KB",
-    "settings.tools.artifactTailBytes.option.200.description": "约 50K 个 Token",
+    "settings.tools.artifactTailBytes.option.200.description":
+      "约 50K 个 Token",
     "settings.tools.artifactHeadBytes.label": "工件开头大小（KB）",
-    "settings.tools.artifactHeadBytes.description": "输出溢出到工件时，与末尾内容一起保留在内联输出中的开头内容量（省略中间部分）。设为 0 可禁用，仅保留末尾内容。",
+    "settings.tools.artifactHeadBytes.description":
+      "输出溢出到工件时，与末尾内容一起保留在内联输出中的开头内容量（省略中间部分）。设为 0 可禁用，仅保留末尾内容。",
     "settings.tools.artifactHeadBytes.option.0.label": "0 KB",
-    "settings.tools.artifactHeadBytes.option.0.description": "已禁用；仅末尾截断",
+    "settings.tools.artifactHeadBytes.option.0.description":
+      "已禁用；仅末尾截断",
     "settings.tools.artifactHeadBytes.option.1.label": "1 KB",
     "settings.tools.artifactHeadBytes.option.1.description": "约 250 个 Token",
     "settings.tools.artifactHeadBytes.option.2.5.label": "2.5 KB",
-    "settings.tools.artifactHeadBytes.option.2.5.description": "约 625 个 Token",
+    "settings.tools.artifactHeadBytes.option.2.5.description":
+      "约 625 个 Token",
     "settings.tools.artifactHeadBytes.option.5.label": "5 KB",
-    "settings.tools.artifactHeadBytes.option.5.description": "约 1.25K 个 Token",
+    "settings.tools.artifactHeadBytes.option.5.description":
+      "约 1.25K 个 Token",
     "settings.tools.artifactHeadBytes.option.10.label": "10 KB",
-    "settings.tools.artifactHeadBytes.option.10.description": "约 2.5K 个 Token",
+    "settings.tools.artifactHeadBytes.option.10.description":
+      "约 2.5K 个 Token",
     "settings.tools.artifactHeadBytes.option.20.label": "20 KB",
-    "settings.tools.artifactHeadBytes.option.20.description": "默认；约 5K 个 Token",
+    "settings.tools.artifactHeadBytes.option.20.description":
+      "默认；约 5K 个 Token",
     "settings.tools.artifactHeadBytes.option.50.label": "50 KB",
-    "settings.tools.artifactHeadBytes.option.50.description": "约 12.5K 个 Token",
+    "settings.tools.artifactHeadBytes.option.50.description":
+      "约 12.5K 个 Token",
     "settings.tools.artifactHeadBytes.option.100.label": "100 KB",
-    "settings.tools.artifactHeadBytes.option.100.description": "约 25K 个 Token",
+    "settings.tools.artifactHeadBytes.option.100.description":
+      "约 25K 个 Token",
     "settings.tools.artifactHeadBytes.option.200.label": "200 KB",
-    "settings.tools.artifactHeadBytes.option.200.description": "约 50K 个 Token",
+    "settings.tools.artifactHeadBytes.option.200.description":
+      "约 50K 个 Token",
     "settings.tools.outputMaxColumns.label": "输出列数上限",
-    "settings.tools.outputMaxColumns.description": "流式工具输出（bash、python、js eval）和 `read` 中每行的字节上限。超过此宽度的行会用省略号截断；直到下一换行符之前的其余字节将被丢弃。设为 0 可禁用。",
+    "settings.tools.outputMaxColumns.description":
+      "流式工具输出（bash、python、js eval）和 `read` 中每行的字节上限。超过此宽度的行会用省略号截断；直到下一换行符之前的其余字节将被丢弃。设为 0 可禁用。",
     "settings.tools.outputMaxColumns.option.0.label": "关闭",
     "settings.tools.outputMaxColumns.option.0.description": "无每行上限",
     "settings.tools.outputMaxColumns.option.256.label": "256",
@@ -1368,52 +1665,68 @@ export const zhCNLocale: LocalePlugin = {
     "settings.tools.outputMaxColumns.option.4096.label": "4096",
     "settings.tools.outputMaxColumns.option.4096.description": "宽松",
     "settings.tools.artifactTailLines.label": "工件末尾行数",
-    "settings.tools.artifactTailLines.description": "输出溢出到工件时，保留在内联输出中的末尾内容最大行数",
+    "settings.tools.artifactTailLines.description":
+      "输出溢出到工件时，保留在内联输出中的末尾内容最大行数",
     "settings.tools.artifactTailLines.option.50.label": "50 行",
     "settings.tools.artifactTailLines.option.50.description": "约 250 个 Token",
     "settings.tools.artifactTailLines.option.100.label": "100 行",
-    "settings.tools.artifactTailLines.option.100.description": "约 500 个 Token",
+    "settings.tools.artifactTailLines.option.100.description":
+      "约 500 个 Token",
     "settings.tools.artifactTailLines.option.250.label": "250 行",
-    "settings.tools.artifactTailLines.option.250.description": "约 1.25K 个 Token",
+    "settings.tools.artifactTailLines.option.250.description":
+      "约 1.25K 个 Token",
     "settings.tools.artifactTailLines.option.500.label": "500 行",
-    "settings.tools.artifactTailLines.option.500.description": "默认；约 2.5K 个 Token",
+    "settings.tools.artifactTailLines.option.500.description":
+      "默认；约 2.5K 个 Token",
     "settings.tools.artifactTailLines.option.1000.label": "1000 行",
-    "settings.tools.artifactTailLines.option.1000.description": "约 5K 个 Token",
+    "settings.tools.artifactTailLines.option.1000.description":
+      "约 5K 个 Token",
     "settings.tools.artifactTailLines.option.2000.label": "2000 行",
-    "settings.tools.artifactTailLines.option.2000.description": "约 10K 个 Token",
+    "settings.tools.artifactTailLines.option.2000.description":
+      "约 10K 个 Token",
     "settings.tools.artifactTailLines.option.5000.label": "5000 行",
-    "settings.tools.artifactTailLines.option.5000.description": "约 25K 个 Token",
+    "settings.tools.artifactTailLines.option.5000.description":
+      "约 25K 个 Token",
     "settings.todo.enabled.label": "待办事项",
     "settings.todo.enabled.description": "启用用于任务跟踪的待办事项工具",
     "settings.todo.reminders.label": "待办事项提醒",
     "settings.todo.reminders.description": "提醒 Agent 在停止前完成待办事项",
     "settings.todo.remindersMax.label": "待办事项提醒上限",
-    "settings.todo.remindersMax.description": "放弃前最多发出多少次待办事项提醒",
+    "settings.todo.remindersMax.description":
+      "放弃前最多发出多少次待办事项提醒",
     "settings.todo.remindersMax.option.1.label": "1 次提醒",
     "settings.todo.remindersMax.option.2.label": "2 次提醒",
     "settings.todo.remindersMax.option.3.label": "3 次提醒",
     "settings.todo.remindersMax.option.5.label": "5 次提醒",
     "settings.todo.eager.label": "自动创建待办事项",
-    "settings.todo.eager.description": "第一条消息后自动创建待办事项列表的推动强度",
+    "settings.todo.eager.description":
+      "第一条消息后自动创建待办事项列表的推动强度",
     "settings.todo.eager.option.default.label": "默认",
-    "settings.todo.eager.option.default.description": "由模型决定；不自动创建待办事项列表",
+    "settings.todo.eager.option.default.description":
+      "由模型决定；不自动创建待办事项列表",
     "settings.todo.eager.option.preferred.label": "首选",
-    "settings.todo.eager.option.preferred.description": "在第一条消息时建议创建待办事项列表（仅提醒，并非强制）",
+    "settings.todo.eager.option.preferred.description":
+      "在第一条消息时建议创建待办事项列表（仅提醒，并非强制）",
     "settings.todo.eager.option.always.label": "始终",
-    "settings.todo.eager.option.always.description": "在第一条消息时强制创建完整的待办事项列表",
+    "settings.todo.eager.option.always.description":
+      "在第一条消息时强制创建完整的待办事项列表",
     "settings.glob.enabled.label": "Glob",
-    "settings.glob.enabled.description": "启用用于基于 glob 查找文件的 glob 工具",
+    "settings.glob.enabled.description":
+      "启用用于基于 glob 查找文件的 glob 工具",
     "settings.grep.enabled.label": "Grep",
-    "settings.grep.enabled.description": "启用用于正则表达式内容搜索的 grep 工具",
+    "settings.grep.enabled.description":
+      "启用用于正则表达式内容搜索的 grep 工具",
     "settings.grep.contextBefore.label": "Grep 前置上下文",
-    "settings.grep.contextBefore.description": "每个 grep 匹配项之前的上下文行数",
+    "settings.grep.contextBefore.description":
+      "每个 grep 匹配项之前的上下文行数",
     "settings.grep.contextBefore.option.0.label": "0 行",
     "settings.grep.contextBefore.option.1.label": "1 行",
     "settings.grep.contextBefore.option.2.label": "2 行",
     "settings.grep.contextBefore.option.3.label": "3 行",
     "settings.grep.contextBefore.option.5.label": "5 行",
     "settings.grep.contextAfter.label": "Grep 后置上下文",
-    "settings.grep.contextAfter.description": "每个 grep 匹配项之后的上下文行数",
+    "settings.grep.contextAfter.description":
+      "每个 grep 匹配项之后的上下文行数",
     "settings.grep.contextAfter.option.0.label": "0 行",
     "settings.grep.contextAfter.option.1.label": "1 行",
     "settings.grep.contextAfter.option.2.label": "2 行",
@@ -1421,63 +1734,86 @@ export const zhCNLocale: LocalePlugin = {
     "settings.grep.contextAfter.option.5.label": "5 行",
     "settings.grep.contextAfter.option.10.label": "10 行",
     "settings.astGrep.enabled.label": "AST Grep",
-    "settings.astGrep.enabled.description": "启用用于结构化 AST 搜索的 ast_grep 工具",
+    "settings.astGrep.enabled.description":
+      "启用用于结构化 AST 搜索的 ast_grep 工具",
     "settings.astEdit.enabled.label": "AST Edit",
-    "settings.astEdit.enabled.description": "启用用于结构化 AST 重写的 ast_edit 工具",
+    "settings.astEdit.enabled.description":
+      "启用用于结构化 AST 重写的 ast_edit 工具",
     "settings.debug.enabled.label": "调试",
     "settings.debug.enabled.description": "启用基于 DAP 的调试工具",
     "settings.launch.enabled.label": "启动",
-    "settings.launch.enabled.description": "启用用于监管共享项目长期运行进程的 launch 工具",
+    "settings.launch.enabled.description":
+      "启用用于监管共享项目长期运行进程的 launch 工具",
     "settings.speechgen.enabled.label": "语音生成",
-    "settings.speechgen.enabled.description": "启用用于设备端（Kokoro）或 xAI Grok Voice 语音文件合成的 tts 工具",
+    "settings.speechgen.enabled.description":
+      "启用用于设备端（Kokoro）或 xAI Grok Voice 语音文件合成的 tts 工具",
     "settings.generate_image.enabled.label": "生成图像",
-    "settings.generate_image.enabled.description": "启用 generate_image 工具（文生图生成和编辑）。启用 tools.xdev 时，将作为 xd:// 设备公开。",
+    "settings.generate_image.enabled.description":
+      "启用 generate_image 工具（文生图生成和编辑）。启用 tools.xdev 时，将作为 xd:// 设备公开。",
     "settings.inspect_image.mode.label": "检查图像",
-    "settings.inspect_image.mode.description": "控制 inspect_image 工具，该工具将图像理解委托给支持视觉的模型。'auto' 仅在活动模型缺少原生图像输入时公开；'on' 始终公开；'off' 永不公开。",
-    "settings.inspect_image.mode.option.auto.label": "自动（仅适用于不支持视觉的模型）",
+    "settings.inspect_image.mode.description":
+      "控制 inspect_image 工具，该工具将图像理解委托给支持视觉的模型。'auto' 仅在活动模型缺少原生图像输入时公开；'on' 始终公开；'off' 永不公开。",
+    "settings.inspect_image.mode.option.auto.label":
+      "自动（仅适用于不支持视觉的模型）",
     "settings.inspect_image.mode.option.on.label": "开启",
     "settings.inspect_image.mode.option.off.label": "关闭",
     "settings.computer.enabled.label": "计算机",
-    "settings.computer.enabled.description": "启用可脚本控制的主机桌面控制工具（截图、输入、辅助功能）",
+    "settings.computer.enabled.description":
+      "启用可脚本控制的主机桌面控制工具（截图、输入、辅助功能）",
     "settings.computer.display.label": "计算机显示器",
-    "settings.computer.display.description": "合成所有显示器或选择原生显示器 ID",
+    "settings.computer.display.description":
+      "合成所有显示器或选择原生显示器 ID",
     "settings.inspect_image.timeoutMs.label": "检查图像超时",
-    "settings.inspect_image.timeoutMs.description": "inspect_image 视觉模型调用的每次请求超时，以毫秒为单位。停滞的提供商会快速返回超时错误，而非阻塞至手动中止。设为 0 可禁用超时。",
+    "settings.inspect_image.timeoutMs.description":
+      "inspect_image 视觉模型调用的每次请求超时，以毫秒为单位。停滞的提供商会快速返回超时错误，而非阻塞至手动中止。设为 0 可禁用超时。",
     "settings.inspect_image.timeoutMs.option.0.label": "已禁用",
     "settings.inspect_image.timeoutMs.option.60000.label": "1 分钟",
     "settings.inspect_image.timeoutMs.option.120000.label": "2 分钟",
     "settings.inspect_image.timeoutMs.option.180000.label": "3 分钟",
     "settings.inspect_image.timeoutMs.option.300000.label": "5 分钟",
     "settings.checkpoint.enabled.label": "检查点/回退",
-    "settings.checkpoint.enabled.description": "启用用于上下文检查点的 checkpoint 和 rewind 工具",
+    "settings.checkpoint.enabled.description":
+      "启用用于上下文检查点的 checkpoint 和 rewind 工具",
     "settings.fetch.enabled.label": "读取 URL",
     "settings.fetch.enabled.description": "允许 read 工具获取和处理 URL",
     "settings.vault.enabled.label": "Obsidian 仓库",
-    "settings.vault.enabled.description": "启用 vault:// 内部 URL，通过 Obsidian CLI 读取和编辑 Obsidian 仓库内容。禁用时，拒绝解析 vault://，并从系统提示词中省略 vault:// 条目。",
+    "settings.vault.enabled.description":
+      "启用 vault:// 内部 URL，通过 Obsidian CLI 读取和编辑 Obsidian 仓库内容。禁用时，拒绝解析 vault://，并从系统提示词中省略 vault:// 条目。",
     "settings.github.enabled.label": "GitHub CLI",
-    "settings.github.enabled.description": "启用 github 工具（面向仓库、议题、拉取请求、差异、搜索、检出、推送和 Actions 监视工作流的基于操作分发）",
+    "settings.github.enabled.description":
+      "启用 github 工具（面向仓库、议题、拉取请求、差异、搜索、检出、推送和 Actions 监视工作流的基于操作分发）",
     "settings.github.cache.enabled.label": "GitHub 视图缓存",
-    "settings.github.cache.enabled.description": "将渲染后的议题/PR 视图输出缓存在 ~/.omp/cache/github-cache.db，以便重复读取不产生费用",
+    "settings.github.cache.enabled.description":
+      "将渲染后的议题/PR 视图输出缓存在 ~/.omp/cache/github-cache.db，以便重复读取不产生费用",
     "settings.web_search.enabled.label": "网络搜索",
-    "settings.web_search.enabled.description": "启用 web_search 工具以获取实时网络结果",
+    "settings.web_search.enabled.description":
+      "启用 web_search 工具以获取实时网络结果",
     "settings.security.enabled.label": "安全",
-    "settings.security.enabled.description": "启用 OMP 原生安全扫描规划、执行和只读 security:// 资源命名空间",
+    "settings.security.enabled.description":
+      "启用 OMP 原生安全扫描规划、执行和只读 security:// 资源命名空间",
     "settings.ask.enabled.label": "提问",
     "settings.ask.enabled.description": "启用 ask 工具以进行交互式用户提问",
     "settings.browser.enabled.label": "浏览器",
-    "settings.browser.enabled.description": "启用用于 Chromium 脚本自动化（puppeteer）的 browser 工具",
+    "settings.browser.enabled.description":
+      "启用用于 Chromium 脚本自动化（puppeteer）的 browser 工具",
     "settings.browser.relay.label": "浏览器中继",
-    "settings.browser.relay.description": "通过 omp 浏览器中继控制您自己的 Chrome 标签页。安装一次扩展程序（`omp browser-relay install`）；browser 工具需要时会自动启动中继服务器。优先于浏览器 CDP URL；设置 PI_BROWSER_RELAY=0 或 PI_BROWSER_RELAY=1 可覆盖。",
+    "settings.browser.relay.description":
+      "通过 omp 浏览器中继控制您自己的 Chrome 标签页。安装一次扩展程序（`omp browser-relay install`）；browser 工具需要时会自动启动中继服务器。优先于浏览器 CDP URL；设置 PI_BROWSER_RELAY=0 或 PI_BROWSER_RELAY=1 可覆盖。",
     "settings.browser.headless.label": "无头浏览器",
-    "settings.browser.headless.description": "以无头模式启动浏览器（禁用以显示浏览器 UI）",
+    "settings.browser.headless.description":
+      "以无头模式启动浏览器（禁用以显示浏览器 UI）",
     "settings.browser.cmux.label": "cmux 浏览器",
-    "settings.browser.cmux.description": "当 cmux socket 可用时，使用 cmux WKWebView 界面进行浏览器自动化。设置 PI_BROWSER_CMUX=0 或 PI_BROWSER_CMUX=1 可覆盖。",
+    "settings.browser.cmux.description":
+      "当 cmux socket 可用时，使用 cmux WKWebView 界面进行浏览器自动化。设置 PI_BROWSER_CMUX=0 或 PI_BROWSER_CMUX=1 可覆盖。",
     "settings.tools.intentTracing.label": "意图追踪",
-    "settings.tools.intentTracing.description": "要求 Agent 在执行每次工具调用前描述其意图",
+    "settings.tools.intentTracing.description":
+      "要求 Agent 在执行每次工具调用前描述其意图",
     "settings.tools.abortOnFabricatedResult.label": "遇到伪造工具结果时中止",
-    "settings.tools.abortOnFabricatedResult.description": "使用带内工具调用时，模型在轮次中途开始幻觉生成工具结果后立即停止。禁用后将允许模型完成生成，并丢弃伪造的后续内容。",
+    "settings.tools.abortOnFabricatedResult.description":
+      "使用带内工具调用时，模型在轮次中途开始幻觉生成工具结果后立即停止。禁用后将允许模型完成生成，并丢弃伪造的后续内容。",
     "settings.tools.maxTimeout.label": "最大工具超时",
-    "settings.tools.maxTimeout.description": "Agent 可为任何工具设置的最大超时时间（秒）（0 = 无限制）",
+    "settings.tools.maxTimeout.description":
+      "Agent 可为任何工具设置的最大超时时间（秒）（0 = 无限制）",
     "settings.tools.maxTimeout.option.0.label": "无限制",
     "settings.tools.maxTimeout.option.30.label": "30 秒",
     "settings.tools.maxTimeout.option.60.label": "60 秒",
@@ -1487,39 +1823,50 @@ export const zhCNLocale: LocalePlugin = {
     "settings.async.enabled.label": "异步执行",
     "settings.async.enabled.description": "启用异步 bash 命令和后台任务执行",
     "settings.async.pollWaitDuration.label": "最大轮询时间",
-    "settings.async.pollWaitDuration.description": "`hub` 等待返回当前状态前监视后台任务的时长。固定值每次都会精确等待该时长。`smart` 会自适应：从 5 秒开始，连续等待时逐步延长（最长 5 分钟）；约一分钟未等待后重置为 5 秒。",
+    "settings.async.pollWaitDuration.description":
+      "`hub` 等待返回当前状态前监视后台任务的时长。固定值每次都会精确等待该时长。`smart` 会自适应：从 5 秒开始，连续等待时逐步延长（最长 5 分钟）；约一分钟未等待后重置为 5 秒。",
     "settings.async.pollWaitDuration.option.5s.label": "5 秒",
     "settings.async.pollWaitDuration.option.10s.label": "10 秒",
     "settings.async.pollWaitDuration.option.30s.label": "30 秒",
     "settings.async.pollWaitDuration.option.1m.label": "1 分钟",
     "settings.async.pollWaitDuration.option.5m.label": "5 分钟",
     "settings.async.pollWaitDuration.option.smart.label": "智能",
-    "settings.async.pollWaitDuration.option.smart.description": "默认——自适应从 5 秒到 5 分钟；停止轮询时重置",
+    "settings.async.pollWaitDuration.option.smart.description":
+      "默认——自适应从 5 秒到 5 分钟；停止轮询时重置",
     "settings.irc.timeoutMs.label": "IRC 超时",
-    "settings.irc.timeoutMs.description": "hub 消息等待（及 send await:true）的默认超时，以毫秒为单位；设为 0 可禁用超时",
+    "settings.irc.timeoutMs.description":
+      "hub 消息等待（及 send await:true）的默认超时，以毫秒为单位；设为 0 可禁用超时",
     "settings.irc.timeoutMs.option.0.label": "已禁用",
     "settings.irc.timeoutMs.option.30000.label": "30 秒",
     "settings.irc.timeoutMs.option.60000.label": "1 分钟",
     "settings.irc.timeoutMs.option.120000.label": "2 分钟",
     "settings.irc.timeoutMs.option.300000.label": "5 分钟",
     "settings.tools.xdev.label": "xd:// 工具",
-    "settings.tools.xdev.description": "通过 read/write 驱动的 xd:// 设备 URL 挂载不常用（可发现）工具，无需在每个请求中附带其 schema。未获授 write 工具的会话会跳过挂载，并在顶层公开所有工具。禁用后将在顶层公开所有已启用工具。",
+    "settings.tools.xdev.description":
+      "通过 read/write 驱动的 xd:// 设备 URL 挂载不常用（可发现）工具，无需在每个请求中附带其 schema。未获授 write 工具的会话会跳过挂载，并在顶层公开所有工具。禁用后将在顶层公开所有已启用工具。",
     "settings.tools.xdevDocs.label": "xd:// 提示词文档",
-    "settings.tools.xdevDocs.description": "选择哪些已挂载设备的文档和 schema 内联到系统提示词中。“内置工具”会保持核心工具内联，而 MCP 和扩展工具则按需提供。",
+    "settings.tools.xdevDocs.description":
+      "选择哪些已挂载设备的文档和 schema 内联到系统提示词中。“内置工具”会保持核心工具内联，而 MCP 和扩展工具则按需提供。",
     "settings.tools.xdevDocs.option.inline.label": "所有设备",
-    "settings.tools.xdevDocs.option.inline.description": "为每个已挂载设备内联文档和 schema。",
+    "settings.tools.xdevDocs.option.inline.description":
+      "为每个已挂载设备内联文档和 schema。",
     "settings.tools.xdevDocs.option.builtins.label": "仅内置工具",
-    "settings.tools.xdevDocs.option.builtins.description": "内联内置工具文档；按需获取 MCP 和扩展文档。",
+    "settings.tools.xdevDocs.option.builtins.description":
+      "内联内置工具文档；按需获取 MCP 和扩展文档。",
     "settings.tools.xdevDocs.option.catalog.label": "仅目录",
-    "settings.tools.xdevDocs.option.catalog.description": "列出所有设备；按需获取全部文档。",
+    "settings.tools.xdevDocs.option.catalog.description":
+      "列出所有设备；按需获取全部文档。",
     "settings.mcp.enableProjectConfig.label": "MCP 项目配置",
-    "settings.mcp.enableProjectConfig.description": "从项目根目录加载 .mcp.json/mcp.json",
+    "settings.mcp.enableProjectConfig.description":
+      "从项目根目录加载 .mcp.json/mcp.json",
     "settings.mcp.renderMarkdownResults.label": "MCP Markdown 结果",
-    "settings.mcp.renderMarkdownResults.description": "在记录中将非 JSON 的 MCP 文本结果渲染为 Markdown",
+    "settings.mcp.renderMarkdownResults.description":
+      "在记录中将非 JSON 的 MCP 文本结果渲染为 Markdown",
     "settings.mcp.notifications.label": "MCP 更新注入",
     "settings.mcp.notifications.description": "将 MCP 资源更新注入 Agent 对话",
     "settings.tasks.todoClearDelay.label": "待办事项自动清除延迟",
-    "settings.tasks.todoClearDelay.description": "已完成或已放弃的待办事项从待办事项小组件移除前的延迟",
+    "settings.tasks.todoClearDelay.description":
+      "已完成或已放弃的待办事项从待办事项小组件移除前的延迟",
     "settings.tasks.todoClearDelay.option.0.label": "立即",
     "settings.tasks.todoClearDelay.option.60.label": "1 分钟",
     "settings.tasks.todoClearDelay.option.60.description": "默认",
@@ -1529,8 +1876,10 @@ export const zhCNLocale: LocalePlugin = {
     "settings.tasks.todoClearDelay.option.3600.label": "1 小时",
     "settings.tasks.todoClearDelay.option.-1.label": "从不",
     "settings.dev.autoqa.label": "自动 QA",
-    "settings.dev.autoqa.description": "自动化工具问题报告（xd://report_issue）。默认开启；首次报告会请求同意，拒绝后将禁用报告，直到明确重新启用",
+    "settings.dev.autoqa.description":
+      "自动化工具问题报告（xd://report_issue）。默认开启；首次报告会请求同意，拒绝后将禁用报告，直到明确重新启用",
     "settings.dev.autoqaPush.endpoint.label": "自动 QA 推送端点",
-    "settings.dev.autoqaPush.endpoint.description": "接收自动 QA JSON 报告的完整 URL（默认 https://qa.omp.sh/v1/grievances）",
+    "settings.dev.autoqaPush.endpoint.description":
+      "接收自动 QA JSON 报告的完整 URL（默认 https://qa.omp.sh/v1/grievances）",
   },
 };

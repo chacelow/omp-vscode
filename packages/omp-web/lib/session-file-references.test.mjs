@@ -25,7 +25,10 @@ test("detects exact external file paths referenced in session entries", async ()
     },
   ];
 
-  assert.equal(isFilePathReferencedByEntries("/home/me/.codex/config.toml", entries), true);
+  assert.equal(
+    isFilePathReferencedByEntries("/home/me/.codex/config.toml", entries),
+    true
+  );
 });
 
 test("does not authorize sibling files by prefix match", async () => {
@@ -48,7 +51,10 @@ test("does not authorize sibling files by prefix match", async () => {
     },
   ];
 
-  assert.equal(isFilePathReferencedByEntries("/home/me/.codex/config.toml", entries), false);
+  assert.equal(
+    isFilePathReferencedByEntries("/home/me/.codex/config.toml", entries),
+    false
+  );
 });
 
 test("authorizes full output only from a bash execution message", async () => {
@@ -77,9 +83,18 @@ test("authorizes full output only from a bash execution message", async () => {
     },
   };
 
-  assert.equal(isBashOutputPathReferencedByEntries(outputPath, [bashEntry]), true);
-  assert.equal(isBashOutputPathReferencedByEntries(outputPath, [assistantEntry]), false);
-  assert.equal(isBashOutputPathReferencedByEntries("/tmp/pi-bash-other.log", [bashEntry]), false);
+  assert.equal(
+    isBashOutputPathReferencedByEntries(outputPath, [bashEntry]),
+    true
+  );
+  assert.equal(
+    isBashOutputPathReferencedByEntries(outputPath, [assistantEntry]),
+    false
+  );
+  assert.equal(
+    isBashOutputPathReferencedByEntries("/tmp/pi-bash-other.log", [bashEntry]),
+    false
+  );
 });
 
 test("validates session ids before resolving session paths", async () => {

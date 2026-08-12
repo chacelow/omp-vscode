@@ -71,7 +71,8 @@ export function ProjectSwitcher({
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -90,7 +91,7 @@ export function ProjectSwitcher({
         className="h-6 max-w-[200px] gap-1.5 rounded-[9px] px-2 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] data-[state=open]:bg-[var(--bg-hover)]"
       >
         <Folder size={11} className="shrink-0" />
-        <span className="min-w-0 max-w-[160px] truncate">
+        <span className="max-w-[160px] min-w-0 truncate">
           {cwdName ?? "Select project"}
         </span>
         <ChevronDown size={10} strokeWidth={2.2} className="shrink-0" />
@@ -107,7 +108,8 @@ export function ProjectSwitcher({
             background: "var(--bg)",
             border: "1px solid var(--border)",
             borderRadius: 8,
-            boxShadow: "0 6px 20px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
+            boxShadow:
+              "0 6px 20px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
             padding: "8px 12px",
             minWidth: 200,
             maxWidth: 320,
@@ -115,10 +117,23 @@ export function ProjectSwitcher({
             whiteSpace: "nowrap",
           }}
         >
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--text)",
+              marginBottom: 4,
+            }}
+          >
             Select Workspace
           </div>
-          <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              color: "var(--text-muted)",
+            }}
+          >
             {cwd ?? cwdName}
           </div>
         </div>
@@ -135,7 +150,8 @@ export function ProjectSwitcher({
             background: "var(--bg)",
             border: "1px solid var(--border)",
             borderRadius: 8,
-            boxShadow: "0 6px 20px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
+            boxShadow:
+              "0 6px 20px var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
             minWidth: 240,
             maxWidth: 320,
             maxHeight: 280,
@@ -144,11 +160,21 @@ export function ProjectSwitcher({
           }}
         >
           {loading ? (
-            <Shimmer className="px-2.5 py-2 text-[11px]" duration={2.5} spread={1}>
+            <Shimmer
+              className="px-2.5 py-2 text-[11px]"
+              duration={2.5}
+              spread={1}
+            >
               {t("sidebar.loadingProjects")}
             </Shimmer>
           ) : projects.length === 0 ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-dim)" }}>
+            <div
+              style={{
+                padding: "8px 10px",
+                fontSize: 11,
+                color: "var(--text-dim)",
+              }}
+            >
               {t("sidebar.noProjects")}
             </div>
           ) : (
@@ -170,11 +196,24 @@ export function ProjectSwitcher({
                   color: "var(--text)",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "none";
+                }}
               >
                 <div style={{ fontSize: 12, fontWeight: 500 }}>{p.name}</div>
-                <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "var(--text-muted)",
+                    fontFamily: "var(--font-mono)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {p.path}
                 </div>
               </button>

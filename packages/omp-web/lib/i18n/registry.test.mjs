@@ -26,7 +26,13 @@ test("returns only registered locales", () => {
 });
 
 test("allows a new locale plugin and rejects duplicate ids", () => {
-  registerLocale({ id: "test", label: "Test", messages: { "common.ok": "OK" } });
+  registerLocale({
+    id: "test",
+    label: "Test",
+    messages: { "common.ok": "OK" },
+  });
   assert.equal(getLocalePlugin("test")?.label, "Test");
-  assert.throws(() => registerLocale({ id: "test", label: "Again", messages: {} }));
+  assert.throws(() =>
+    registerLocale({ id: "test", label: "Again", messages: {} })
+  );
 });

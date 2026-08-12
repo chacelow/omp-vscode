@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo, useReducer } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+  useReducer,
+} from "react";
 import type {
   AgentMessage,
   AssistantMessage,
@@ -22,7 +29,11 @@ import type {
   AcpPermissionRequest,
   AcpSessionState,
 } from "../../../core/acp/protocol";
-import type { ContentBlock, ElicitationContentValue, ToolCall } from "@agentclientprotocol/sdk";
+import type {
+  ContentBlock,
+  ElicitationContentValue,
+  ToolCall,
+} from "@agentclientprotocol/sdk";
 import type { ModelsResult } from "../../../core/host/protocol";
 
 export interface SessionData {
@@ -49,20 +60,35 @@ type StreamAction =
   | { type: "end" }
   | { type: "reset" };
 
-function streamReducer(state: StreamingState, action: StreamAction): StreamingState {
+function streamReducer(
+  state: StreamingState,
+  action: StreamAction
+): StreamingState {
   switch (action.type) {
-    case "start": return { isStreaming: true, streamingMessage: null };
-    case "update": return { isStreaming: true, streamingMessage: action.message };
+    case "start":
+      return { isStreaming: true, streamingMessage: null };
+    case "update":
+      return { isStreaming: true, streamingMessage: action.message };
     case "end":
-    case "reset": return { isStreaming: false, streamingMessage: null };
-    default: return state;
+    case "reset":
+      return { isStreaming: false, streamingMessage: null };
+    default:
+      return state;
   }
 }
 
 export type NoticeType = "info" | "success" | "warning" | "error";
-export type NoticeItem = { id: string; message: string; type: NoticeType; exiting?: boolean };
+export type NoticeItem = {
+  id: string;
+  message: string;
+  type: NoticeType;
+  exiting?: boolean;
+};
 type NoticeState = { visible: NoticeItem[]; pending: NoticeItem[] };
-type NoticeAction = { type: "add"; notice: NoticeItem } | { type: "mark_oldest_exiting" } | { type: "remove"; id: string };
+type NoticeAction =
+  | { type: "add"; notice: NoticeItem }
+  | { type: "mark_oldest_exiting" }
+  | { type: "remove"; id: string };
 
 export type AgentPhase =
   | { kind: "waiting_model" }
@@ -82,12 +108,17 @@ export interface SlashCommandInfo {
   inputHint?: string;
   aliases?: string[];
   source: "extension" | "prompt" | "skill";
-  sourceInfo?: { path: string; source: string; scope: "user" | "project" | "temporary"; origin: "package" | "top-level"; baseDir?: string };
+  sourceInfo?: {
+    path: string;
+    source: string;
+    scope: "user" | "project" | "temporary";
+    origin: "package" | "top-level";
+    baseDir?: string;
+  };
 }
 
 export type BuiltinSlashCommandResult =
-  | { handled: false }
-  | { handled: true; message?: string; error?: string };
+  { handled: false } | { handled: true; message?: string; error?: string };
 
 export interface UseAgentSessionOptions {
   session: SessionInfo | null;
@@ -97,24 +128,38 @@ export interface UseAgentSessionOptions {
   onSessionForked?: (newSessionId: string) => void;
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
-  onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => Promise<void>) => void;
+  onBranchDataChange?: (
+    tree: SessionTreeNode[],
+    activeLeafId: string | null,
+    onLeafChange: (leafId: string | null) => Promise<void>
+  ) => void;
   onOpenSettings?: () => void;
   /** Opens the webview-native full session picker for the local `/resume` command. */
   onOpenResumeDialog?: () => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
 }
 
-export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+export type ThinkingLevelOption =
+  "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export interface ChatInputHandle {
   insertText: (text: string) => void;
   insertIfEmpty: (content: string) => void;
   prependText: (text: string) => void;
   addImages: (files: File[]) => void;
 }
-export interface AttachedImage { data: string; mimeType: string; previewUrl: string; }
+export interface AttachedImage {
+  data: string;
+  mimeType: string;
+  previewUrl: string;
+}
 
 type SelectedModel = { provider: string; modelId: string };
-type ModelEntry = { id: string; name: string; provider: string; contextWindow?: number };
+type ModelEntry = {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+};
 type InteractionDialog = AcpPermissionRequest | AcpElicitationRequest;
 
 const LAST_MODEL_KEY = "omp.lastModel";
@@ -123,14 +168,28 @@ const NOTICE_VISIBLE_MS = 5000;
 const NOTICE_EXIT_ANIMATION_MS = 180;
 const PROGRAMMATIC_SCROLL_IGNORE_MS = 700;
 const USER_SCROLL_INTENT_MS = 1200;
-const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Space", "Spacebar"]);
+const SCROLL_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+  " ",
+  "Space",
+  "Spacebar",
+]);
 type DisplayContent = Array<
   | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+  | {
+      type: "image";
+      source: { type: "base64"; media_type: string; data: string };
+    }
   | { type: "thinking"; thinking: string }
 >;
 function createNoticeId(): string {
-  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+  return typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
@@ -139,20 +198,40 @@ function readLastModel(): SelectedModel | null {
     const raw = localStorage.getItem(LAST_MODEL_KEY);
     if (!raw) return null;
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object" || !("provider" in value) || !("modelId" in value)) return null;
-    return typeof value.provider === "string" && typeof value.modelId === "string"
+    if (
+      !value ||
+      typeof value !== "object" ||
+      !("provider" in value) ||
+      !("modelId" in value)
+    )
+      return null;
+    return typeof value.provider === "string" &&
+      typeof value.modelId === "string"
       ? { provider: value.provider, modelId: value.modelId }
       : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 function saveLastModel(provider: string, modelId: string): void {
-  try { localStorage.setItem(LAST_MODEL_KEY, JSON.stringify({ provider, modelId })); } catch { /* storage is optional */ }
+  try {
+    localStorage.setItem(LAST_MODEL_KEY, JSON.stringify({ provider, modelId }));
+  } catch {
+    /* storage is optional */
+  }
 }
 function markOldestNoticeExiting(notices: NoticeItem[]): NoticeItem[] {
   const index = notices.findIndex((notice) => !notice.exiting);
-  return index < 0 ? notices : notices.map((notice, i) => i === index ? { ...notice, exiting: true } : notice);
+  return index < 0
+    ? notices
+    : notices.map((notice, i) =>
+        i === index ? { ...notice, exiting: true } : notice
+      );
 }
-function fillPendingNotices(visible: NoticeItem[], pending: NoticeItem[]): NoticeState {
+function fillPendingNotices(
+  visible: NoticeItem[],
+  pending: NoticeItem[]
+): NoticeState {
   let nextVisible = visible;
   let nextPending = pending;
   while (nextPending.length > 0 && nextVisible.length < MAX_NOTICES) {
@@ -161,74 +240,162 @@ function fillPendingNotices(visible: NoticeItem[], pending: NoticeItem[]): Notic
     nextVisible = [...nextVisible, next];
     nextPending = rest;
   }
-  if (nextPending.length > 0 && !nextVisible.some((notice) => notice.exiting)) nextVisible = markOldestNoticeExiting(nextVisible);
+  if (nextPending.length > 0 && !nextVisible.some((notice) => notice.exiting))
+    nextVisible = markOldestNoticeExiting(nextVisible);
   return { visible: nextVisible, pending: nextPending };
 }
 function noticeReducer(state: NoticeState, action: NoticeAction): NoticeState {
   if (action.type === "add") {
-    if (state.visible.some((notice) => notice.id === action.notice.id) || state.pending.some((notice) => notice.id === action.notice.id)) return state;
-    if (state.visible.some((notice) => notice.exiting) || state.visible.length >= MAX_NOTICES) {
-      return { visible: state.visible.some((notice) => notice.exiting) ? state.visible : markOldestNoticeExiting(state.visible), pending: [...state.pending, action.notice] };
+    if (
+      state.visible.some((notice) => notice.id === action.notice.id) ||
+      state.pending.some((notice) => notice.id === action.notice.id)
+    )
+      return state;
+    if (
+      state.visible.some((notice) => notice.exiting) ||
+      state.visible.length >= MAX_NOTICES
+    ) {
+      return {
+        visible: state.visible.some((notice) => notice.exiting)
+          ? state.visible
+          : markOldestNoticeExiting(state.visible),
+        pending: [...state.pending, action.notice],
+      };
     }
     return { ...state, visible: [...state.visible, action.notice] };
   }
-  if (action.type === "mark_oldest_exiting") return { ...state, visible: markOldestNoticeExiting(state.visible) };
-  if (action.type === "remove") return fillPendingNotices(state.visible.filter((notice) => notice.id !== action.id), state.pending);
+  if (action.type === "mark_oldest_exiting")
+    return { ...state, visible: markOldestNoticeExiting(state.visible) };
+  if (action.type === "remove")
+    return fillPendingNotices(
+      state.visible.filter((notice) => notice.id !== action.id),
+      state.pending
+    );
   return state;
 }
 function blocksToContent(blocks: readonly ContentBlock[]): DisplayContent {
   const result: DisplayContent = [];
   for (const block of blocks) {
     if (block.type === "text") result.push({ type: "text", text: block.text });
-    else if (block.type === "image") result.push({ type: "image", source: { type: "base64", media_type: block.mimeType, data: block.data } });
+    else if (block.type === "image")
+      result.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: block.mimeType,
+          data: block.data,
+        },
+      });
   }
   return result;
 }
 function normalizeKind(kind: string | undefined): ToolCallKind | undefined {
-  const allowed: readonly ToolCallKind[] = ["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"];
-  return kind && (allowed as readonly string[]).includes(kind) ? (kind as ToolCallKind) : undefined;
+  const allowed: readonly ToolCallKind[] = [
+    "read",
+    "edit",
+    "delete",
+    "move",
+    "search",
+    "execute",
+    "think",
+    "fetch",
+    "switch_mode",
+    "other",
+  ];
+  return kind && (allowed as readonly string[]).includes(kind)
+    ? (kind as ToolCallKind)
+    : undefined;
 }
-function normalizeStatus(status: string | undefined): ToolCallStatus | undefined {
-  const allowed: readonly ToolCallStatus[] = ["pending", "in_progress", "completed", "failed"];
-  return status && (allowed as readonly string[]).includes(status) ? (status as ToolCallStatus) : undefined;
+function normalizeStatus(
+  status: string | undefined
+): ToolCallStatus | undefined {
+  const allowed: readonly ToolCallStatus[] = [
+    "pending",
+    "in_progress",
+    "completed",
+    "failed",
+  ];
+  return status && (allowed as readonly string[]).includes(status)
+    ? (status as ToolCallStatus)
+    : undefined;
 }
-function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMessage[] {
+function toolMessages(
+  message: AcpMessage,
+  tool: ToolCall | undefined
+): AgentMessage[] {
   if (message.role !== "toolCall" || !tool) return [];
   const toolName = tool.name?.trim() || tool.kind || tool.title || "tool";
-  const input = typeof tool.rawInput === "object" && tool.rawInput !== null && !Array.isArray(tool.rawInput)
-    ? tool.rawInput as Record<string, unknown>
-    : {};
-  const locations = (tool.locations ?? []).flatMap((location) => location.path ? [{ path: location.path, line: typeof location.line === "number" ? location.line : undefined }] : []);
+  const input =
+    typeof tool.rawInput === "object" &&
+    tool.rawInput !== null &&
+    !Array.isArray(tool.rawInput)
+      ? (tool.rawInput as Record<string, unknown>)
+      : {};
+  const locations = (tool.locations ?? []).flatMap((location) =>
+    location.path
+      ? [
+          {
+            path: location.path,
+            line: typeof location.line === "number" ? location.line : undefined,
+          },
+        ]
+      : []
+  );
   // Prefer the tool's content blocks (human-readable text the agent
   // produced) over rawOutput. rawOutput is a structured object; JSON.stringify
   // of it feeds garbage into tool-specific renderers (e.g. the grep match
   // list treated every JSON line as a match).
-  let output = (tool.content ?? []).flatMap((item) => item.type === "content" && item.content.type === "text" ? [item.content.text] : item.type === "diff" ? [item.newText] : []).join("\n");
+  let output = (tool.content ?? [])
+    .flatMap((item) =>
+      item.type === "content" && item.content.type === "text"
+        ? [item.content.text]
+        : item.type === "diff"
+          ? [item.newText]
+          : []
+    )
+    .join("\n");
   if (!output) {
     if (typeof tool.rawOutput === "string") output = tool.rawOutput;
     else if (tool.rawOutput !== undefined) {
-      try { output = JSON.stringify(tool.rawOutput, null, 2); } catch { output = String(tool.rawOutput); }
+      try {
+        output = JSON.stringify(tool.rawOutput, null, 2);
+      } catch {
+        output = String(tool.rawOutput);
+      }
     }
   }
   const call: AssistantMessage = {
     role: "assistant",
-    content: [{
-      type: "toolCall",
-      toolCallId: message.toolCallId,
-      toolName,
-      input,
-      toolKind: normalizeKind(tool.kind ?? undefined),
-      title: tool.title ?? undefined,
-      status: normalizeStatus(tool.status ?? undefined),
-      locations: locations.length > 0 ? locations : undefined,
-    }],
+    content: [
+      {
+        type: "toolCall",
+        toolCallId: message.toolCallId,
+        toolName,
+        input,
+        toolKind: normalizeKind(tool.kind ?? undefined),
+        title: tool.title ?? undefined,
+        status: normalizeStatus(tool.status ?? undefined),
+        locations: locations.length > 0 ? locations : undefined,
+      },
+    ],
     model: "",
     provider: "",
     timestamp: Date.now(),
   };
   if (tool.status !== "completed" && tool.status !== "failed") return [call];
-  const details = tool.rawOutput !== undefined && typeof tool.rawOutput !== "string" ? tool.rawOutput : undefined;
-  const result: ToolResultMessage = { role: "toolResult", toolCallId: message.toolCallId, toolName, content: output ? [{ type: "text", text: output }] : [], isError: tool.status === "failed", details, timestamp: Date.now() };
+  const details =
+    tool.rawOutput !== undefined && typeof tool.rawOutput !== "string"
+      ? tool.rawOutput
+      : undefined;
+  const result: ToolResultMessage = {
+    role: "toolResult",
+    toolCallId: message.toolCallId,
+    toolName,
+    content: output ? [{ type: "text", text: output }] : [],
+    isError: tool.status === "failed",
+    details,
+    timestamp: Date.now(),
+  };
   return [call, result];
 }
 
@@ -241,7 +408,9 @@ function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMes
  */
 function coalesceToolAssistants(messages: AgentMessage[]): AgentMessage[] {
   const merged: AgentMessage[] = [];
-  const isToolOnlyAssistant = (message: AgentMessage): message is AssistantMessage =>
+  const isToolOnlyAssistant = (
+    message: AgentMessage
+  ): message is AssistantMessage =>
     message.role === "assistant" &&
     message.content.length > 0 &&
     message.content.every((block) => block.type === "toolCall");
@@ -249,10 +418,14 @@ function coalesceToolAssistants(messages: AgentMessage[]): AgentMessage[] {
   for (const message of messages) {
     if (isToolOnlyAssistant(message)) {
       let prevIndex = merged.length - 1;
-      while (prevIndex >= 0 && merged[prevIndex].role === "toolResult") prevIndex -= 1;
+      while (prevIndex >= 0 && merged[prevIndex].role === "toolResult")
+        prevIndex -= 1;
       const prev = prevIndex >= 0 ? merged[prevIndex] : null;
       if (prev && isToolOnlyAssistant(prev)) {
-        merged[prevIndex] = { ...prev, content: [...prev.content, ...message.content] };
+        merged[prevIndex] = {
+          ...prev,
+          content: [...prev.content, ...message.content],
+        };
         continue;
       }
     }
@@ -260,25 +433,93 @@ function coalesceToolAssistants(messages: AgentMessage[]): AgentMessage[] {
   }
   return merged;
 }
+// Identity cache — one AgentMessage per AcpMessage reference. Snapshots
+// arrive many times a second during streaming; acp-service already
+// returns the SAME AcpMessage object for messages that didn't change
+// this update, and only allocates a fresh one for the message whose
+// content grew. Without this cache, `toAgentMessage(...)` rebuilt every
+// message from scratch on every snapshot (new object refs, new
+// Date.now() timestamps), React saw them as different, and every
+// MessageView re-rendered per chunk — the "全量刷新，顿一下" the user
+// reported.
+//
+// Keys: AcpMessage (unchanged → cache hit) AND for tool-call rows the
+// ToolCall record it points at (tool progress mutates that separately).
+const agentMessageCache = new WeakMap<AcpMessage, AgentMessage[]>();
+const toolCallSnapshotCache = new WeakMap<AcpMessage, ToolCall | undefined>();
 
-function toAgentMessages(message: AcpMessage, tools: Record<string, ToolCall>): AgentMessage[] {
-  return message.role === "toolCall" ? toolMessages(message, tools[message.toolCallId]) : [toAgentMessage(message)];
+function toAgentMessages(
+  message: AcpMessage,
+  tools: Record<string, ToolCall>
+): AgentMessage[] {
+  if (message.role === "toolCall") {
+    const tool = tools[message.toolCallId];
+    const cached = agentMessageCache.get(message);
+    if (cached && toolCallSnapshotCache.get(message) === tool) return cached;
+    const fresh = toolMessages(message, tool);
+    agentMessageCache.set(message, fresh);
+    toolCallSnapshotCache.set(message, tool);
+    return fresh;
+  }
+  const cached = agentMessageCache.get(message);
+  if (cached) return cached;
+  const fresh = [toAgentMessage(message)];
+  agentMessageCache.set(message, fresh);
+  return fresh;
 }
 
 function toAgentMessage(message: AcpMessage): AgentMessage {
   const content = blocksToContent(message.content);
   if (message.role === "user") {
-    return { role: "user", content: content.filter((block): block is DisplayContent[number] & ({ type: "text" } | { type: "image" }) => block.type === "text" || block.type === "image"), timestamp: Date.now() };
+    return {
+      role: "user",
+      content: content.filter(
+        (
+          block
+        ): block is DisplayContent[number] &
+          ({ type: "text" } | { type: "image" }) =>
+          block.type === "text" || block.type === "image"
+      ),
+      timestamp: Date.now(),
+    };
   }
   if (message.role === "thought") {
-    return { role: "assistant", content: content.filter((block) => block.type === "text").map((block) => ({ type: "thinking" as const, thinking: block.text })), model: "", provider: "", timestamp: Date.now() };
+    return {
+      role: "assistant",
+      content: content
+        .filter((block) => block.type === "text")
+        .map((block) => ({ type: "thinking" as const, thinking: block.text })),
+      model: "",
+      provider: "",
+      timestamp: Date.now(),
+    };
   }
-  return { role: "assistant", content, model: "", provider: "", timestamp: Date.now() };
+  return {
+    role: "assistant",
+    content,
+    model: "",
+    provider: "",
+    timestamp: Date.now(),
+  };
 }
 function messageText(message: unknown): string {
-  if (!message || typeof message !== "object" || !("content" in message) || !Array.isArray(message.content)) return "";
+  if (
+    !message ||
+    typeof message !== "object" ||
+    !("content" in message) ||
+    !Array.isArray(message.content)
+  )
+    return "";
   return message.content.reduce<string>((text, block) => {
-    if (!block || typeof block !== "object" || !("type" in block) || block.type !== "text" || !("text" in block) || typeof block.text !== "string") return text;
+    if (
+      !block ||
+      typeof block !== "object" ||
+      !("type" in block) ||
+      block.type !== "text" ||
+      !("text" in block) ||
+      typeof block.text !== "string"
+    )
+      return text;
     return text + block.text;
   }, "");
 }
@@ -291,30 +532,74 @@ function messageText(message: unknown): string {
 function userMessageSignature(message: AgentMessage): string {
   if (message.role !== "user") return "";
   const text = messageText(message);
-  const imageCount = Array.isArray(message.content) ? message.content.reduce((count, block) => count + (block?.type === "image" ? 1 : 0), 0) : 0;
+  const imageCount = Array.isArray(message.content)
+    ? message.content.reduce(
+        (count, block) => count + (block?.type === "image" ? 1 : 0),
+        0
+      )
+    : 0;
   return `${text}\u0000${imageCount}`;
 }
 function parseModel(value: string | undefined): SelectedModel | null {
   if (!value) return null;
   const separator = value.indexOf("/");
-  return separator > 0 && separator < value.length - 1 ? { provider: value.slice(0, separator), modelId: value.slice(separator + 1) } : null;
+  return separator > 0 && separator < value.length - 1
+    ? {
+        provider: value.slice(0, separator),
+        modelId: value.slice(separator + 1),
+      }
+    : null;
 }
 function responseSessionId(response: unknown): string | null {
-  if (!response || typeof response !== "object" || !("sessionId" in response) || typeof response.sessionId !== "string") return null;
+  if (
+    !response ||
+    typeof response !== "object" ||
+    !("sessionId" in response) ||
+    typeof response.sessionId !== "string"
+  )
+    return null;
   return response.sessionId;
 }
 function activeModesFromSnapshot(snapshot: AcpSessionState | null): string[] {
   if (!snapshot || !("_meta" in snapshot)) return [];
   const meta: unknown = snapshot._meta;
-  if (!meta || typeof meta !== "object" || !("activeModes" in meta) || !Array.isArray(meta.activeModes)) return [];
-  return meta.activeModes.filter((mode): mode is string => typeof mode === "string");
+  if (
+    !meta ||
+    typeof meta !== "object" ||
+    !("activeModes" in meta) ||
+    !Array.isArray(meta.activeModes)
+  )
+    return [];
+  return meta.activeModes.filter(
+    (mode): mode is string => typeof mode === "string"
+  );
 }
 function contentFor(message: string, images?: AttachedImage[]): ContentBlock[] {
-  return [{ type: "text", text: message }, ...(images ?? []).map((image) => ({ type: "image", data: image.data, mimeType: image.mimeType } as unknown as ContentBlock))];
+  return [
+    { type: "text", text: message },
+    ...(images ?? []).map(
+      (image) =>
+        ({
+          type: "image",
+          data: image.data,
+          mimeType: image.mimeType,
+        }) as unknown as ContentBlock
+    ),
+  ];
 }
 
 export function useAgentSession(opts: UseAgentSessionOptions) {
-  const { session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, onBranchDataChange, onOpenSettings, onOpenResumeDialog } = opts;
+  const {
+    session,
+    newSessionCwd,
+    onAgentEnd,
+    onSessionCreated,
+    onSessionForked,
+    modelsRefreshKey,
+    onBranchDataChange,
+    onOpenSettings,
+    onOpenResumeDialog,
+  } = opts;
   const isNew = session === null && newSessionCwd !== null;
   const [data, setData] = useState<SessionData | null>(null);
   // Loading only applies to opening an EXISTING session (JSONL fetch).
@@ -329,45 +614,91 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // only appears in `state.messages` on the next full replay. We keep the
   // just-submitted user turn in its own slot until an ACP snapshot's
   // messages array contains a user row with a matching signature.
-  const [pendingUserMessage, setPendingUserMessage] = useState<AgentMessage | null>(null);
+  const [pendingUserMessage, setPendingUserMessage] =
+    useState<AgentMessage | null>(null);
   const messagesRef = useRef<AgentMessage[]>([]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   const [entryIds, setEntryIds] = useState<string[]>([]);
-  const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
+  const [streamState, dispatch] = useReducer(streamReducer, {
+    isStreaming: false,
+    streamingMessage: null,
+  });
   const [agentRunning, setAgentRunning] = useState(false);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelEntry[]>([]);
-  const [modelRoles, setModelRoles] = useState<Record<string, { provider: string; modelId: string; thinkingLevel?: string }>>({});
+  const [modelRoles, setModelRoles] = useState<
+    Record<
+      string,
+      { provider: string; modelId: string; thinkingLevel?: string }
+    >
+  >({});
   const [modelError, setModelError] = useState<string | null>(null);
   const [modelScopeWarnings, setModelScopeWarnings] = useState<string[]>([]);
-  const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
-  const [modelThinkingLevelMaps, setModelThinkingLevelMaps] = useState<Record<string, Record<string, string | null>>>({});
-  const [newSessionModel, setNewSessionModel] = useState<SelectedModel | null>(null);
-  const [newSessionDefaultModel, setNewSessionDefaultModel] = useState<SelectedModel | null>(null);
-  const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
-  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
-  const [contextUsage, setContextUsage] = useState<{ percent: number | null; contextWindow: number; tokens: number | null } | null>(null);
+  const [modelThinkingLevels, setModelThinkingLevels] = useState<
+    Record<string, string[]>
+  >({});
+  const [modelThinkingLevelMaps, setModelThinkingLevelMaps] = useState<
+    Record<string, Record<string, string | null>>
+  >({});
+  const [newSessionModel, setNewSessionModel] = useState<SelectedModel | null>(
+    null
+  );
+  const [newSessionDefaultModel, setNewSessionDefaultModel] =
+    useState<SelectedModel | null>(null);
+  const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">(
+    "default"
+  );
+  const [thinkingLevel, setThinkingLevel] =
+    useState<ThinkingLevelOption>("auto");
+  const [contextUsage, setContextUsage] = useState<{
+    percent: number | null;
+    contextWindow: number;
+    tokens: number | null;
+  } | null>(null);
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
-  const [compactResult, setCompactResult] = useState<CompactResultInfo | null>(null);
+  const [compactResult, setCompactResult] = useState<CompactResultInfo | null>(
+    null
+  );
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [liveTps, setLiveTps] = useState<number | null>(null);
   const [slashCommands, setSlashCommands] = useState<SlashCommandInfo[]>([]);
   const [slashCommandsLoading, setSlashCommandsLoading] = useState(true);
-  const [noticeState, dispatchNotice] = useReducer(noticeReducer, { visible: [], pending: [] });
-  const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; errorMessage?: string } | null>(null);
-  const [compactionBoundary, setCompactionBoundary] = useState<{ at: number; messageIndex: number } | null>(null);
-  const [sessionStatsOverride, setSessionStatsOverride] = useState<SessionStatsInfo | null>(null);
-  const [capabilities, setCapabilities] = useState<AcpCapabilitySnapshot | null>(null);
+  const [noticeState, dispatchNotice] = useReducer(noticeReducer, {
+    visible: [],
+    pending: [],
+  });
+  const [retryInfo, setRetryInfo] = useState<{
+    attempt: number;
+    maxAttempts: number;
+    errorMessage?: string;
+  } | null>(null);
+  const [compactionBoundary, setCompactionBoundary] = useState<{
+    at: number;
+    messageIndex: number;
+  } | null>(null);
+  const [sessionStatsOverride, setSessionStatsOverride] =
+    useState<SessionStatsInfo | null>(null);
+  const [capabilities, setCapabilities] =
+    useState<AcpCapabilitySnapshot | null>(null);
   const [snapshot, setSnapshot] = useState<AcpSessionState | null>(null);
-  const [pendingRestoreModel, setPendingRestoreModel] = useState<SelectedModel | null>(null);
+  const [pendingRestoreModel, setPendingRestoreModel] =
+    useState<SelectedModel | null>(null);
   // Optimistic model override: shows immediately on picker click and clears
   // once the ACP snapshot catches up. Without it the picker looks unresponsive
   // while omp round-trips setConfigOption.
-  const [optimisticModel, setOptimisticModel] = useState<SelectedModel | null>(null);
-  const activeModes = useMemo(() => activeModesFromSnapshot(snapshot), [snapshot]);
-  const [interactionDialog, setInteractionDialog] = useState<InteractionDialog | null>(null);
+  const [optimisticModel, setOptimisticModel] = useState<SelectedModel | null>(
+    null
+  );
+  const activeModes = useMemo(
+    () => activeModesFromSnapshot(snapshot),
+    [snapshot]
+  );
+  const [interactionDialog, setInteractionDialog] =
+    useState<InteractionDialog | null>(null);
 
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   // Tracks the session id we've actually LOADED (sessionDetail returned).
@@ -393,37 +724,79 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const sawErrorStopRef = useRef(false);
   const tpsRef = useRef({ chars: 0, startedAt: 0 });
   const restoredTurnRef = useRef<string | null>(null);
-  const addNotice = useCallback((notice: Omit<NoticeItem, "id"> & { id?: string }) => dispatchNotice({ type: "add", notice: { ...notice, id: notice.id ?? createNoticeId() } }), []);
+  const addNotice = useCallback(
+    (notice: Omit<NoticeItem, "id"> & { id?: string }) =>
+      dispatchNotice({
+        type: "add",
+        notice: { ...notice, id: notice.id ?? createNoticeId() },
+      }),
+    []
+  );
   const currentModel = useMemo(() => {
-    const option = snapshot?.configOptions.find((config) => config.category === "model");
-    return parseModel(typeof option?.currentValue === "string" ? option.currentValue : undefined);
+    const option = snapshot?.configOptions.find(
+      (config) => config.category === "model"
+    );
+    return parseModel(
+      typeof option?.currentValue === "string" ? option.currentValue : undefined
+    );
   }, [snapshot]);
   // Once the snapshot's model matches the optimistic pick, drop the override.
   useEffect(() => {
     if (!optimisticModel || !currentModel) return;
-    if (currentModel.provider === optimisticModel.provider && currentModel.modelId === optimisticModel.modelId) {
+    if (
+      currentModel.provider === optimisticModel.provider &&
+      currentModel.modelId === optimisticModel.modelId
+    ) {
       setOptimisticModel(null);
     }
   }, [currentModel, optimisticModel]);
-  const displayModel = optimisticModel ?? currentModel ?? (isNew ? (newSessionModel ?? newSessionDefaultModel) : null) ?? readLastModel() ?? modelRoles.default ?? null;
-  const fastMode = Boolean(snapshot?.currentMode && /fast/i.test(snapshot.currentMode));
+  const displayModel =
+    optimisticModel ??
+    currentModel ??
+    (isNew ? (newSessionModel ?? newSessionDefaultModel) : null) ??
+    readLastModel() ??
+    modelRoles.default ??
+    null;
+  const fastMode = Boolean(
+    snapshot?.currentMode && /fast/i.test(snapshot.currentMode)
+  );
   const bashRunning = false;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
-  const pendingBash = null as { command: string; excludeFromContext?: boolean } | null;
+  const pendingBash = null as {
+    command: string;
+    excludeFromContext?: boolean;
+  } | null;
   const sessionStats = useMemo(() => {
     if (sessionStatsOverride) return sessionStatsOverride;
-    const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
-    let cost = 0, userMessages = 0, assistantMessages = 0, toolResults = 0, toolCalls = 0;
+    const tokens = {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0,
+    };
+    let cost = 0,
+      userMessages = 0,
+      assistantMessages = 0,
+      toolResults = 0,
+      toolCalls = 0;
     for (const message of messages) {
       if (message.role === "user") userMessages += 1;
       if (message.role === "toolResult") toolResults += 1;
       if (message.role !== "assistant") continue;
-      toolCalls += message.content.filter((block) => block.type === "toolCall").length;
+      toolCalls += message.content.filter(
+        (block) => block.type === "toolCall"
+      ).length;
       const usage = message.usage;
       if (!usage) continue;
-      tokens.input += usage.input ?? 0; tokens.output += usage.output ?? 0; tokens.cacheRead += usage.cacheRead ?? 0; tokens.cacheWrite += usage.cacheWrite ?? 0; cost += usage.cost?.total ?? 0;
+      tokens.input += usage.input ?? 0;
+      tokens.output += usage.output ?? 0;
+      tokens.cacheRead += usage.cacheRead ?? 0;
+      tokens.cacheWrite += usage.cacheWrite ?? 0;
+      cost += usage.cost?.total ?? 0;
     }
-    tokens.total = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
+    tokens.total =
+      tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
     if (tokens.total === 0 && messages.length === 0) return null;
     // Context ring — canonical, no guessing:
     //   1. Live turn ended → ACP `usage_update`: `used` + `size`, both
@@ -443,7 +816,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     let contextWindow: number | null = null;
     if (contextUsage) {
       currentTokens = contextUsage.tokens;
-      contextWindow = contextUsage.contextWindow > 0 ? contextUsage.contextWindow : null;
+      contextWindow =
+        contextUsage.contextWindow > 0 ? contextUsage.contextWindow : null;
     } else {
       for (let i = messages.length - 1; i >= 0; i--) {
         const message = messages[i];
@@ -453,184 +827,318 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
     }
     if (contextWindow === null) {
-      const matched = displayModel ? modelList.find((model) => model.provider === displayModel.provider && (model.id === displayModel.modelId || displayModel.modelId.includes(model.id))) : null;
+      const matched = displayModel
+        ? modelList.find(
+            (model) =>
+              model.provider === displayModel.provider &&
+              (model.id === displayModel.modelId ||
+                displayModel.modelId.includes(model.id))
+          )
+        : null;
       contextWindow = matched?.contextWindow ?? null;
     }
-    const percent = currentTokens !== null && contextWindow !== null && contextWindow > 0
-      ? (currentTokens / contextWindow) * 100
-      : null;
-    return { sessionFile: data?.filePath || undefined, sessionId: sessionIdRef.current ?? session?.id ?? "", sessionName: session?.name, userMessages, assistantMessages, toolCalls, toolResults, totalMessages: messages.length, tokens, cost, contextUsage: { percent, contextWindow: contextWindow ?? 0, tokens: currentTokens } } satisfies SessionStatsInfo;
-  }, [contextUsage, data?.filePath, displayModel, messages, modelList, session?.id, session?.name, sessionStatsOverride]);
+    const percent =
+      currentTokens !== null && contextWindow !== null && contextWindow > 0
+        ? (currentTokens / contextWindow) * 100
+        : null;
+    return {
+      sessionFile: data?.filePath || undefined,
+      sessionId: sessionIdRef.current ?? session?.id ?? "",
+      sessionName: session?.name,
+      userMessages,
+      assistantMessages,
+      toolCalls,
+      toolResults,
+      totalMessages: messages.length,
+      tokens,
+      cost,
+      contextUsage: {
+        percent,
+        contextWindow: contextWindow ?? 0,
+        tokens: currentTokens,
+      },
+    } satisfies SessionStatsInfo;
+  }, [
+    contextUsage,
+    data?.filePath,
+    displayModel,
+    messages,
+    modelList,
+    session?.id,
+    session?.name,
+    sessionStatsOverride,
+  ]);
 
-  const promoteNewSession = useCallback((messageCount = 0, firstMessage = "(no messages)") => {
-    const sid = sessionIdRef.current;
-    if (!isNew || !newSessionCwd || !sid || newSessionPromotedRef.current) return;
-    newSessionPromotedRef.current = true;
-    onSessionCreated?.({ id: sid, path: data?.filePath ?? "", cwd: newSessionCwd, created: new Date().toISOString(), modified: new Date().toISOString(), messageCount, firstMessage });
-  }, [data?.filePath, isNew, newSessionCwd, onSessionCreated]);
+  const promoteNewSession = useCallback(
+    (messageCount = 0, firstMessage = "(no messages)") => {
+      const sid = sessionIdRef.current;
+      if (!isNew || !newSessionCwd || !sid || newSessionPromotedRef.current)
+        return;
+      newSessionPromotedRef.current = true;
+      onSessionCreated?.({
+        id: sid,
+        path: data?.filePath ?? "",
+        cwd: newSessionCwd,
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        messageCount,
+        firstMessage,
+      });
+    },
+    [data?.filePath, isNew, newSessionCwd, onSessionCreated]
+  );
   const beginCompaction = useCallback(() => {
     preCompactUsedRef.current = latestUsedRef.current;
     setIsCompacting(true);
     setCompactError(null);
   }, []);
 
-
-  const applySnapshot = useCallback((state: AcpSessionState) => {
-    if (state.sessionId !== sessionIdRef.current) return;
-    // Never let an empty-messages snapshot wipe a non-empty local transcript.
-    // This covers both the transient replaying-clear during session/load AND
-    // the initial post-newSession snapshot (which arrives with messages=[]
-    // because omp's bootstrap events don't include historical entries).
-    // The local transcript came from sessionDetail's authoritative JSONL
-    // parse; ACP snapshots only enrich it with mode/config/usage/plan.
-    if ((state.messages?.length ?? 0) === 0 && messagesRef.current.length > 0) {
+  const applySnapshot = useCallback(
+    (state: AcpSessionState) => {
+      if (state.sessionId !== sessionIdRef.current) return;
+      // Never let an empty-messages snapshot wipe a non-empty local transcript.
+      // This covers both the transient replaying-clear during session/load AND
+      // the initial post-newSession snapshot (which arrives with messages=[]
+      // because omp's bootstrap events don't include historical entries).
+      // The local transcript came from sessionDetail's authoritative JSONL
+      // parse; ACP snapshots only enrich it with mode/config/usage/plan.
+      if (
+        (state.messages?.length ?? 0) === 0 &&
+        messagesRef.current.length > 0
+      ) {
+        setSnapshot(state);
+        return;
+      }
       setSnapshot(state);
-      return;
-    }
-    setSnapshot(state);
-    const nextMessages = coalesceToolAssistants(state.messages.flatMap((message) => toAgentMessages(message, state.toolCalls)));
-    setMessages((current) => {
-      // Enrich assistants with local usage/duration/ttft that ACP doesn't
-      // emit. Align by assistant-index across the diff.
-      const previousAssistants: AssistantMessage[] = current.filter((message): message is AssistantMessage => message.role === "assistant");
-      let assistantIndex = 0;
-      return nextMessages.map((message) => {
-        if (message.role !== "assistant") return message;
-        const previous = previousAssistants[assistantIndex++];
-        if (!previous) return message;
-        return {
-          ...message,
-          usage: message.usage ?? previous.usage,
-          duration: message.duration ?? previous.duration,
-          ttft: message.ttft ?? previous.ttft,
-          timestamp: message.timestamp ?? previous.timestamp,
-        } satisfies AssistantMessage;
+      const nextMessages = coalesceToolAssistants(
+        state.messages.flatMap((message) =>
+          toAgentMessages(message, state.toolCalls)
+        )
+      );
+      setMessages((current) => {
+        // Enrich assistants with local usage/duration/ttft that ACP doesn't
+        // emit. Align by assistant-index across the diff. Return the
+        // NEW-from-cache message unchanged when nothing would be enriched
+        // — cloning every assistant with `{...message, usage: ...}` defeats
+        // the WeakMap cache in toAgentMessages and forces MessageView.memo
+        // to rerender every message per snapshot.
+        const previousAssistants: AssistantMessage[] = current.filter(
+          (message): message is AssistantMessage => message.role === "assistant"
+        );
+        let assistantIndex = 0;
+        return nextMessages.map((message) => {
+          if (message.role !== "assistant") return message;
+          const previous = previousAssistants[assistantIndex++];
+          if (!previous) return message;
+          const usage = message.usage ?? previous.usage;
+          const duration = message.duration ?? previous.duration;
+          const ttft = message.ttft ?? previous.ttft;
+          const timestamp = message.timestamp ?? previous.timestamp;
+          if (
+            usage === message.usage &&
+            duration === message.duration &&
+            ttft === message.ttft &&
+            timestamp === message.timestamp
+          ) return message;
+          return {
+            ...message,
+            usage,
+            duration,
+            ttft,
+            timestamp,
+          } satisfies AssistantMessage;
+        });
       });
-    });
-    // Clear optimistic user once its authoritative counterpart appears in
-    // the snapshot. Signature-matched (text + image count) so identical
-    // repeated prompts don't collide.
-    setPendingUserMessage((pending) => {
-      if (!pending) return pending;
-      const sig = userMessageSignature(pending);
-      const authoritative = nextMessages.some((message) => message.role === "user" && userMessageSignature(message) === sig);
-      return authoritative ? null : pending;
-    });
-    const wasRunning = agentRunningRef.current;
-    agentRunningRef.current = state.promptPending;
-    setAgentRunning(state.promptPending);
-    const activeTools = Object.entries(state.toolCalls).flatMap(([id, tool]) => tool.status === "in_progress" ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }] : []);
-    setAgentPhase(activeTools.length > 0 ? { kind: "running_tools", tools: activeTools } : state.promptPending ? { kind: "waiting_model" } : null);
-    setSlashCommands(state.availableCommands.map((command) => ({ name: command.name, description: command.description, inputHint: command.input?.hint, source: "prompt" })));
-    setSlashCommandsLoading(false);
-    // ACP `usage_update` maps to `state.usage`. Both `used` and
-    // contextWindow are required numbers when the field exists — no
-    // defensive nullish/zero filtering needed here. Absence of `usage`
-    // means "no usage_update has arrived", not "0 tokens": leave the
-    // slot null and let sessionStats fall back to the JSONL snapshot.
-    const usage = state.usage;
-    const nextUsed = usage ? usage.used : null;
-    const preCompactUsed = preCompactUsedRef.current;
-    latestUsedRef.current = nextUsed;
-    setContextUsage(usage ? { percent: null, contextWindow: usage.contextWindow, tokens: usage.used } : null);
-    if (isCompacting && (state.stopReason || (preCompactUsed !== null && nextUsed !== null && nextUsed < preCompactUsed))) {
-      if (preCompactUsed !== null && nextUsed !== null && nextUsed < preCompactUsed) setCompactionBoundary({ at: Date.now(), messageIndex: nextMessages.length });
-      preCompactUsedRef.current = null;
-      setIsCompacting(false);
-    }
-    setSystemPrompt(null);
-    if (state.stopReason === "error") sawErrorStopRef.current = true;
-    else if (state.promptPending) {
-      sawErrorStopRef.current = false;
-      setRetryInfo(null);
-    }
-    if (state.promptPending) {
-      // Only the transcript TAIL is the live streaming message. A prior
-      // turn's assistant must not count — prompt() appends the user row
-      // before any chunk arrives, so at turn start the tail is the user
-      // message (→ "start": shimmer shows), and once assistant chunks land
-      // the tail flips to the new assistant (→ "update": text streams).
-      const tail = nextMessages[nextMessages.length - 1];
-      const streaming = tail?.role === "assistant" ? tail : undefined;
-      if (streaming) dispatch({ type: "update", message: streaming }); else dispatch({ type: "start" });
-      const chars = messageText(streaming ?? null);
-      const now = performance.now();
-      if (tpsRef.current.startedAt === 0 || chars.length < tpsRef.current.chars) tpsRef.current = { chars: chars.length, startedAt: now };
-      else if (now > tpsRef.current.startedAt) setLiveTps((chars.length - tpsRef.current.chars) / ((now - tpsRef.current.startedAt) / 1000));
-    } else {
-      dispatch({ type: "end" });
-      setLiveTps(null);
-      tpsRef.current = { chars: 0, startedAt: 0 };
-      if (isCompacting) setIsCompacting(false);
-      // Only fire onAgentEnd on the pending→idle transition, not on every
-      // idle snapshot. omp publishes snapshots for usage_update / plan /
-      // tool_call state that arrive after the agent has settled, and each
-      // one would otherwise re-fire onAgentEnd → bump sidebar refreshKey →
-      // spam worktreesList/sessionsList every couple of seconds.
-      if (wasRunning) onAgentEnd?.();
-    }
-  }, [isCompacting, onAgentEnd]);
-
-  const loadSession = useCallback(async (sid: string, showLoading = false) => {
-    if (showLoading) setLoading(true);
-    try {
-      const detail = await hostCall("sessionDetail", { sessionId: sid });
-      if (sessionIdRef.current !== sid) return null;
-      if (!detail) throw new Error("Session not found");
-      const loaded: SessionData = {
-        sessionId: detail.sessionId,
-        filePath: detail.filePath,
-        tree: detail.tree.filter((node): node is SessionTreeNode => typeof node === "object" && node !== null),
-        leafId: detail.leafId,
-        context: detail.context,
-      };
-      setData(loaded);
-      setActiveLeafId(loaded.leafId);
-      setMessages(loaded.context.messages.map(normalizeToolCalls));
-      setEntryIds(loaded.context.entryIds);
-      setThinkingLevel(loaded.context.thinkingLevel as ThinkingLevelOption);
-      setError(null);
-      // JSONL is painted → release the loading overlay NOW. Attaching ACP
-      // (which re-parses the same JSONL server-side and replays it as
-      // notifications) can take another 2–5 s for long sessions; blocking
-      // the UI on that felt like "loading half a day".
-      if (showLoading) setLoading(false);
-
-      // ACP subscription is best-effort: if the agent hasn't heard of this
-      // session yet (fresh cold start after the file was written) we still
-      // want the transcript visible so the user can inspect / branch. Runs
-      // in the background — the local snapshot from sessionDetail stays
-      // authoritative until the first ACP snapshot arrives.
-      const cwd = detail.cwd || newSessionCwd || session?.cwd || "";
-      const alreadyOwned = sessionIdRef.current === sid && lastLoadedSessionIdRef.current === sid;
-      lastLoadedSessionIdRef.current = sid;
-      // If this hook already owns the ACP session (e.g. we just created it
-      // via `session/new`), skip `session/load` entirely — that op is
-      // historical replay and would wipe the live transcript. Just refresh
-      // the subscription. For a genuinely different session-from-disk,
-      // call `session/load` so omp opens the JSONL and replays it.
-      void (async () => {
-        try {
-          if (!alreadyOwned) {
-            await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd });
-          }
-          await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
-        } catch (acpErr) {
-          addNotice({
-            type: "warning",
-            message: acpErr instanceof Error
-              ? `Agent could not attach: ${acpErr.message}`
-              : "Agent could not attach to this session",
+      // Clear optimistic user once its authoritative counterpart appears in
+      // the snapshot. Signature-matched (text + image count) so identical
+      // repeated prompts don't collide.
+      setPendingUserMessage((pending) => {
+        if (!pending) return pending;
+        const sig = userMessageSignature(pending);
+        const authoritative = nextMessages.some(
+          (message) =>
+            message.role === "user" && userMessageSignature(message) === sig
+        );
+        return authoritative ? null : pending;
+      });
+      const wasRunning = agentRunningRef.current;
+      agentRunningRef.current = state.promptPending;
+      setAgentRunning(state.promptPending);
+      const activeTools = Object.entries(state.toolCalls).flatMap(
+        ([id, tool]) =>
+          tool.status === "in_progress"
+            ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }]
+            : []
+      );
+      setAgentPhase(
+        activeTools.length > 0
+          ? { kind: "running_tools", tools: activeTools }
+          : state.promptPending
+            ? { kind: "waiting_model" }
+            : null
+      );
+      setSlashCommands(
+        state.availableCommands.map((command) => ({
+          name: command.name,
+          description: command.description,
+          inputHint: command.input?.hint,
+          source: "prompt",
+        }))
+      );
+      setSlashCommandsLoading(false);
+      // ACP `usage_update` maps to `state.usage`. Both `used` and
+      // contextWindow are required numbers when the field exists — no
+      // defensive nullish/zero filtering needed here. Absence of `usage`
+      // means "no usage_update has arrived", not "0 tokens": leave the
+      // slot null and let sessionStats fall back to the JSONL snapshot.
+      const usage = state.usage;
+      const nextUsed = usage ? usage.used : null;
+      const preCompactUsed = preCompactUsedRef.current;
+      latestUsedRef.current = nextUsed;
+      setContextUsage(
+        usage
+          ? {
+              percent: null,
+              contextWindow: usage.contextWindow,
+              tokens: usage.used,
+            }
+          : null
+      );
+      if (
+        isCompacting &&
+        (state.stopReason ||
+          (preCompactUsed !== null &&
+            nextUsed !== null &&
+            nextUsed < preCompactUsed))
+      ) {
+        if (
+          preCompactUsed !== null &&
+          nextUsed !== null &&
+          nextUsed < preCompactUsed
+        )
+          setCompactionBoundary({
+            at: Date.now(),
+            messageIndex: nextMessages.length,
           });
-        }
-      })();
-      return loaded;
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-      if (showLoading) setLoading(false);
-      return null;
-    }
-  }, [addNotice, newSessionCwd, session?.cwd]);
+        preCompactUsedRef.current = null;
+        setIsCompacting(false);
+      }
+      if (state.stopReason === "error") sawErrorStopRef.current = true;
+      else if (state.promptPending) {
+        sawErrorStopRef.current = false;
+        setRetryInfo(null);
+      }
+      if (state.promptPending) {
+        // Only the transcript TAIL is the live streaming message. A prior
+        // turn's assistant must not count — prompt() appends the user row
+        // before any chunk arrives, so at turn start the tail is the user
+        // message (→ "start": shimmer shows), and once assistant chunks land
+        // the tail flips to the new assistant (→ "update": text streams).
+        const tail = nextMessages[nextMessages.length - 1];
+        const streaming = tail?.role === "assistant" ? tail : undefined;
+        if (streaming) dispatch({ type: "update", message: streaming });
+        else dispatch({ type: "start" });
+        const chars = messageText(streaming ?? null);
+        const now = performance.now();
+        if (
+          tpsRef.current.startedAt === 0 ||
+          chars.length < tpsRef.current.chars
+        )
+          tpsRef.current = { chars: chars.length, startedAt: now };
+        else if (now > tpsRef.current.startedAt)
+          setLiveTps(
+            (chars.length - tpsRef.current.chars) /
+              ((now - tpsRef.current.startedAt) / 1000)
+          );
+      } else {
+        dispatch({ type: "end" });
+        setLiveTps(null);
+        tpsRef.current = { chars: 0, startedAt: 0 };
+        if (isCompacting) setIsCompacting(false);
+        // Only fire onAgentEnd on the pending→idle transition, not on every
+        // idle snapshot. omp publishes snapshots for usage_update / plan /
+        // tool_call state that arrive after the agent has settled, and each
+        // one would otherwise re-fire onAgentEnd → bump sidebar refreshKey →
+        // spam worktreesList/sessionsList every couple of seconds.
+        if (wasRunning) onAgentEnd?.();
+      }
+    },
+    [isCompacting, onAgentEnd]
+  );
+
+  const loadSession = useCallback(
+    async (sid: string, showLoading = false) => {
+      if (showLoading) setLoading(true);
+      try {
+        const detail = await hostCall("sessionDetail", { sessionId: sid });
+        if (sessionIdRef.current !== sid) return null;
+        if (!detail) throw new Error("Session not found");
+        const loaded: SessionData = {
+          sessionId: detail.sessionId,
+          filePath: detail.filePath,
+          tree: detail.tree.filter(
+            (node): node is SessionTreeNode =>
+              typeof node === "object" && node !== null
+          ),
+          leafId: detail.leafId,
+          context: detail.context,
+        };
+        setData(loaded);
+        setActiveLeafId(loaded.leafId);
+        setMessages(loaded.context.messages.map(normalizeToolCalls));
+        setEntryIds(loaded.context.entryIds);
+        setThinkingLevel(loaded.context.thinkingLevel as ThinkingLevelOption);
+        setError(null);
+        // JSONL is painted → release the loading overlay NOW. Attaching ACP
+        // (which re-parses the same JSONL server-side and replays it as
+        // notifications) can take another 2–5 s for long sessions; blocking
+        // the UI on that felt like "loading half a day".
+        if (showLoading) setLoading(false);
+
+        // ACP subscription is best-effort: if the agent hasn't heard of this
+        // session yet (fresh cold start after the file was written) we still
+        // want the transcript visible so the user can inspect / branch. Runs
+        // in the background — the local snapshot from sessionDetail stays
+        // authoritative until the first ACP snapshot arrives.
+        const cwd = detail.cwd || newSessionCwd || session?.cwd || "";
+        const alreadyOwned =
+          sessionIdRef.current === sid &&
+          lastLoadedSessionIdRef.current === sid;
+        lastLoadedSessionIdRef.current = sid;
+        // If this hook already owns the ACP session (e.g. we just created it
+        // via `session/new`), skip `session/load` entirely — that op is
+        // historical replay and would wipe the live transcript. Just refresh
+        // the subscription. For a genuinely different session-from-disk,
+        // call `session/load` so omp opens the JSONL and replays it.
+        void (async () => {
+          try {
+            if (!alreadyOwned) {
+              await acpRequest({
+                type: "acp/loadSession",
+                sessionId: sid,
+                cwd,
+              });
+            }
+            await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
+          } catch (acpErr) {
+            addNotice({
+              type: "warning",
+              message:
+                acpErr instanceof Error
+                  ? `Agent could not attach: ${acpErr.message}`
+                  : "Agent could not attach to this session",
+            });
+          }
+        })();
+        return loaded;
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        if (showLoading) setLoading(false);
+        return null;
+      }
+    },
+    [addNotice, newSessionCwd, session?.cwd]
+  );
 
   // ACP-native session creation: a blank chat has NO session; the first
   // send creates one via session/new. Attaching to existing sessions is
@@ -655,231 +1163,534 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       lastLoadedSessionIdRef.current = sid;
       try {
         await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
-      } catch { /* subscription is best-effort */ }
+      } catch {
+        /* subscription is best-effort */
+      }
       return sid;
     })();
     ensuringNewSessionRef.current = task;
-    try { return await task; } finally { ensuringNewSessionRef.current = null; }
+    try {
+      return await task;
+    } finally {
+      ensuringNewSessionRef.current = null;
+    }
   }, [newSessionCwd, session?.cwd]);
 
-  const sendPrompt = useCallback(async (message: string, images?: AttachedImage[]) => {
-    const sid = sessionIdRef.current ?? await ensureNewSession();
-    if (!sid) throw new Error("No active session");
-    return acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(message, images) });
-  }, [ensureNewSession]);
+  const sendPrompt = useCallback(
+    async (message: string, images?: AttachedImage[]) => {
+      const sid = sessionIdRef.current ?? (await ensureNewSession());
+      if (!sid) throw new Error("No active session");
+      return acpRequest({
+        type: "acp/prompt",
+        sessionId: sid,
+        prompt: contentFor(message, images),
+      });
+    },
+    [ensureNewSession]
+  );
 
-  const handleSend = useCallback(async (message: string, images?: AttachedImage[], _flags?: { bashExcluded?: boolean }) => {
-    if (/^\/compact/i.test(message)) beginCompaction();
-    try {
-      const sid = sessionIdRef.current ?? await ensureNewSession();
-      if (!sid) return;
-      const command = message.trim().match(/^\/(live|collab|join|leave)(?:\s|$)/i)?.[1];
-      if (command) addNotice({ type: "info", message: `/${command.toLowerCase()} is TUI-only for now` });
-      const displayContent = blocksToContent(contentFor(message, images)).filter((block): block is DisplayContent[number] & ({ type: "text" } | { type: "image" }) => block.type === "text" || block.type === "image");
-      // Optimistic user message lives in its own slot until the ACP
-      // snapshot's messages array contains a signature-matched user row.
-      // Do NOT push into `messages` — that racedwith applySnapshot and
-      // caused duplicates + wrong ordering.
-      setPendingUserMessage({ role: "user", content: displayContent, timestamp: Date.now() });
-      await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(message, images) });
-      promoteNewSession(1, message);
-    } catch (cause) {
-      setPendingUserMessage(null);
-      addNotice({ type: "error", message: cause instanceof Error ? cause.message : "Failed to send message" });
-    }
-  }, [addNotice, beginCompaction, ensureNewSession, promoteNewSession]);
+  const handleSend = useCallback(
+    async (
+      message: string,
+      images?: AttachedImage[],
+      _flags?: { bashExcluded?: boolean }
+    ) => {
+      if (/^\/compact/i.test(message)) beginCompaction();
+      try {
+        const sid = sessionIdRef.current ?? (await ensureNewSession());
+        if (!sid) return;
+        const command = message
+          .trim()
+          .match(/^\/(live|collab|join|leave)(?:\s|$)/i)?.[1];
+        if (command)
+          addNotice({
+            type: "info",
+            message: `/${command.toLowerCase()} is TUI-only for now`,
+          });
+        const displayContent = blocksToContent(
+          contentFor(message, images)
+        ).filter(
+          (
+            block
+          ): block is DisplayContent[number] &
+            ({ type: "text" } | { type: "image" }) =>
+            block.type === "text" || block.type === "image"
+        );
+        // Optimistic user message lives in its own slot until the ACP
+        // snapshot's messages array contains a signature-matched user row.
+        // Do NOT push into `messages` — that racedwith applySnapshot and
+        // caused duplicates + wrong ordering.
+        setPendingUserMessage({
+          role: "user",
+          content: displayContent,
+          timestamp: Date.now(),
+        });
+        await acpRequest({
+          type: "acp/prompt",
+          sessionId: sid,
+          prompt: contentFor(message, images),
+        });
+        promoteNewSession(1, message);
+      } catch (cause) {
+        setPendingUserMessage(null);
+        addNotice({
+          type: "error",
+          message:
+            cause instanceof Error ? cause.message : "Failed to send message",
+        });
+      }
+    },
+    [addNotice, beginCompaction, ensureNewSession, promoteNewSession]
+  );
 
-  const handleAbort = useCallback(async () => { const sid = sessionIdRef.current; if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid }); }, []);
-  const handleFork = useCallback(async (entryId: string) => {
+  const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
-    const cwd = newSessionCwd ?? session?.cwd ?? "";
-    setForkingEntryId(entryId);
-    try {
+    if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid });
+  }, []);
+  const handleFork = useCallback(
+    async (entryId: string) => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      const cwd = newSessionCwd ?? session?.cwd ?? "";
+      setForkingEntryId(entryId);
+      try {
+        await acpRequest({ type: "acp/closeSession", sessionId: sid });
+        await hostCall("sessionNavigateLeaf", { sessionId: sid, entryId });
+        const response = await acpRequest({
+          type: "acp/forkSession",
+          sessionId: sid,
+          cwd,
+        });
+        const newId = responseSessionId(response);
+        if (newId) onSessionForked?.(newId);
+      } catch (cause) {
+        addNotice({
+          type: "error",
+          message:
+            cause instanceof Error ? cause.message : "Failed to fork session",
+        });
+      } finally {
+        setForkingEntryId(null);
+      }
+    },
+    [addNotice, newSessionCwd, onSessionForked, session?.cwd]
+  );
+  const reloadAfterFileChange = useCallback(
+    async (sid: string) => {
+      await acpRequest({
+        type: "acp/loadSession",
+        sessionId: sid,
+        cwd: newSessionCwd ?? session?.cwd ?? "",
+      });
+      await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
+    },
+    [newSessionCwd, session?.cwd]
+  );
+  const handleEditResend = useCallback(
+    async (
+      entryId: string,
+      text: string,
+      images?: Array<{ type: "image"; data: string; mimeType: string }>
+    ) => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      await acpRequest({ type: "acp/closeSession", sessionId: sid });
+      await hostCall("sessionRewind", { sessionId: sid, entryId });
+      await reloadAfterFileChange(sid);
+      const attached = images?.map((img) => ({
+        data: img.data,
+        mimeType: img.mimeType,
+        previewUrl: "",
+      }));
+      await sendPrompt(text, attached);
+    },
+    [reloadAfterFileChange, sendPrompt]
+  );
+  const handleNavigate = useCallback(
+    async (entryId: string) => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
       await acpRequest({ type: "acp/closeSession", sessionId: sid });
       await hostCall("sessionNavigateLeaf", { sessionId: sid, entryId });
-      const response = await acpRequest({ type: "acp/forkSession", sessionId: sid, cwd });
-      const newId = responseSessionId(response);
-      if (newId) onSessionForked?.(newId);
-    } catch (cause) {
-      addNotice({ type: "error", message: cause instanceof Error ? cause.message : "Failed to fork session" });
-    } finally {
-      setForkingEntryId(null);
-    }
-  }, [addNotice, newSessionCwd, onSessionForked, session?.cwd]);
-  const reloadAfterFileChange = useCallback(async (sid: string) => {
-    await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd: newSessionCwd ?? session?.cwd ?? "" });
-    await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
-  }, [newSessionCwd, session?.cwd]);
-  const handleEditResend = useCallback(async (entryId: string, text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>) => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    await acpRequest({ type: "acp/closeSession", sessionId: sid });
-    await hostCall("sessionRewind", { sessionId: sid, entryId });
-    await reloadAfterFileChange(sid);
-    const attached = images?.map((img) => ({ data: img.data, mimeType: img.mimeType, previewUrl: "" }));
-    await sendPrompt(text, attached);
-  }, [reloadAfterFileChange, sendPrompt]);
-  const handleNavigate = useCallback(async (entryId: string) => {
-    const sid = sessionIdRef.current; if (!sid) return;
-    await acpRequest({ type: "acp/closeSession", sessionId: sid });
-    await hostCall("sessionNavigateLeaf", { sessionId: sid, entryId });
-    await reloadAfterFileChange(sid);
-    setActiveLeafId(entryId);
-  }, [reloadAfterFileChange]);
-  const handleLeafChange = useCallback(async (leafId: string | null) => { if (leafId) await handleNavigate(leafId); }, [handleNavigate]);
+      await reloadAfterFileChange(sid);
+      setActiveLeafId(entryId);
+    },
+    [reloadAfterFileChange]
+  );
+  const handleLeafChange = useCallback(
+    async (leafId: string | null) => {
+      if (leafId) await handleNavigate(leafId);
+    },
+    [handleNavigate]
+  );
 
-  const handleModelChange = useCallback(async (provider: string, modelId: string) => {
-    // Optimistic: paint the picker with the chosen model immediately so the
-    // click feels instant, then round-trip through omp in the background.
-    setOptimisticModel({ provider, modelId });
-    saveLastModel(provider, modelId);
-    setNewSessionModel({ provider, modelId });
-    const sid = sessionIdRef.current ?? await ensureNewSession();
-    if (!sid) return;
-    try {
-      await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "model", value: `${provider}/${modelId}` });
-    } catch {
+  const handleModelChange = useCallback(
+    async (provider: string, modelId: string) => {
+      // Optimistic: paint the picker with the chosen model immediately so the
+      // click feels instant, then round-trip through omp in the background.
+      setOptimisticModel({ provider, modelId });
+      saveLastModel(provider, modelId);
+      setNewSessionModel({ provider, modelId });
+      const sid = sessionIdRef.current ?? (await ensureNewSession());
+      if (!sid) return;
       try {
-        await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(`/model ${provider}/${modelId}`) });
+        await acpRequest({
+          type: "acp/setConfigOption",
+          sessionId: sid,
+          configId: "model",
+          value: `${provider}/${modelId}`,
+        });
       } catch {
-        // Rollback the optimistic paint if both channels fail.
-        setOptimisticModel(null);
+        try {
+          await acpRequest({
+            type: "acp/prompt",
+            sessionId: sid,
+            prompt: contentFor(`/model ${provider}/${modelId}`),
+          });
+        } catch {
+          // Rollback the optimistic paint if both channels fail.
+          setOptimisticModel(null);
+        }
       }
-    }
-  }, [ensureNewSession]);
+    },
+    [ensureNewSession]
+  );
 
-  const handleThinkingLevelChange = useCallback(async (level: ThinkingLevelOption) => {
-    setThinkingLevel(level);
-    if (level === "auto") return;
-    const sid = sessionIdRef.current ?? await ensureNewSession();
-    if (!sid) return;
-    try { await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "thinking", value: level }); }
-    catch { await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(`/thinking-level ${level}`) }); }
-  }, [ensureNewSession]);
-  const handleToolPresetChange = useCallback(async (preset: "none" | "default" | "full") => {
-    setToolPresetState(preset);
-    const sid = sessionIdRef.current ?? await ensureNewSession();
-    if (!sid) return;
-    try { await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "tool_preset", value: preset }); }
-    catch { await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(`/tools ${getToolNamesForPreset(preset).join(" ")}`) }); }
-  }, [ensureNewSession, setToolPresetState]);
-  const handleRoleChange = useCallback(async (role: string) => {
-    const sid = sessionIdRef.current ?? await ensureNewSession(); if (!sid) return;
-    if (role === "fast") { try { await acpRequest({ type: "acp/setConfigOption", sessionId: sid, configId: "mode", value: "fast" }); } catch { await sendPrompt("/fast"); } return; }
-    if (role === "plan") { const mode = snapshot?.availableModes.find((candidate) => candidate.id.startsWith("plan")); if (mode) await acpRequest({ type: "acp/setMode", sessionId: sid, modeId: mode.id }); else await sendPrompt("/plan"); return; }
-    if (role === "default" && modelRoles.default) await handleModelChange(modelRoles.default.provider, modelRoles.default.modelId);
-  }, [ensureNewSession, handleModelChange, modelRoles.default, sendPrompt, snapshot?.availableModes]);
-  const handleCompact = useCallback(async () => { beginCompaction(); try { await sendPrompt("/compact"); } catch (cause) { setIsCompacting(false); setCompactError(cause instanceof Error ? cause.message : String(cause)); } }, [beginCompaction, sendPrompt]);
-  const handleAbortCompaction = useCallback(async () => { const sid = sessionIdRef.current; if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid }); }, []);
+  const handleThinkingLevelChange = useCallback(
+    async (level: ThinkingLevelOption) => {
+      setThinkingLevel(level);
+      if (level === "auto") return;
+      const sid = sessionIdRef.current ?? (await ensureNewSession());
+      if (!sid) return;
+      try {
+        await acpRequest({
+          type: "acp/setConfigOption",
+          sessionId: sid,
+          configId: "thinking",
+          value: level,
+        });
+      } catch {
+        await acpRequest({
+          type: "acp/prompt",
+          sessionId: sid,
+          prompt: contentFor(`/thinking-level ${level}`),
+        });
+      }
+    },
+    [ensureNewSession]
+  );
+  const handleToolPresetChange = useCallback(
+    async (preset: "none" | "default" | "full") => {
+      setToolPresetState(preset);
+      const sid = sessionIdRef.current ?? (await ensureNewSession());
+      if (!sid) return;
+      try {
+        await acpRequest({
+          type: "acp/setConfigOption",
+          sessionId: sid,
+          configId: "tool_preset",
+          value: preset,
+        });
+      } catch {
+        await acpRequest({
+          type: "acp/prompt",
+          sessionId: sid,
+          prompt: contentFor(
+            `/tools ${getToolNamesForPreset(preset).join(" ")}`
+          ),
+        });
+      }
+    },
+    [ensureNewSession, setToolPresetState]
+  );
+  const handleRoleChange = useCallback(
+    async (role: string) => {
+      const sid = sessionIdRef.current ?? (await ensureNewSession());
+      if (!sid) return;
+      if (role === "fast") {
+        try {
+          await acpRequest({
+            type: "acp/setConfigOption",
+            sessionId: sid,
+            configId: "mode",
+            value: "fast",
+          });
+        } catch {
+          await sendPrompt("/fast");
+        }
+        return;
+      }
+      if (role === "plan") {
+        const mode = snapshot?.availableModes.find((candidate) =>
+          candidate.id.startsWith("plan")
+        );
+        if (mode)
+          await acpRequest({
+            type: "acp/setMode",
+            sessionId: sid,
+            modeId: mode.id,
+          });
+        else await sendPrompt("/plan");
+        return;
+      }
+      if (role === "default" && modelRoles.default)
+        await handleModelChange(
+          modelRoles.default.provider,
+          modelRoles.default.modelId
+        );
+    },
+    [
+      ensureNewSession,
+      handleModelChange,
+      modelRoles.default,
+      sendPrompt,
+      snapshot?.availableModes,
+    ]
+  );
+  const handleCompact = useCallback(async () => {
+    beginCompaction();
+    try {
+      await sendPrompt("/compact");
+    } catch (cause) {
+      setIsCompacting(false);
+      setCompactError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }, [beginCompaction, sendPrompt]);
+  const handleAbortCompaction = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid });
+  }, []);
   const steeringPrompt = useCallback(
     (message: string, images?: AttachedImage[]) => sendPrompt(message, images),
-    [sendPrompt],
+    [sendPrompt]
   );
   const handleSteer = steeringPrompt;
   const handleFollowUp = steeringPrompt;
   const handlePromptWithStreamingBehavior = useCallback(
-    (message: string, _behavior: "steer" | "followUp", images?: AttachedImage[]) => steeringPrompt(message, images),
-    [steeringPrompt],
+    (
+      message: string,
+      _behavior: "steer" | "followUp",
+      images?: AttachedImage[]
+    ) => steeringPrompt(message, images),
+    [steeringPrompt]
   );
 
   // In-flight dedupe: multiple effects (session change, modelsRefreshKey,
   // isNew path) all fire loadModels on the same tick. Coalesce into one
   // hostCall by keeping the last inflight promise per cwd.
-  const modelsGetInflightRef = useRef<{ cwd: string; promise: Promise<ModelsResult> } | null>(null);
-  const loadModels = useCallback(async (_signal?: AbortSignal) => {
-    const cwd = newSessionCwd ?? "";
-    const inflight = modelsGetInflightRef.current;
-    if (inflight && inflight.cwd === cwd) return inflight.promise;
-    const promise = hostCall("modelsGet", { cwd }).then((response) => {
-      setModelNames(response.models);
-      setModelList(response.modelList);
-      setModelRoles(response.modelRoles);
-      setNewSessionDefaultModel(response.defaultModel);
-      setModelError(response.modelError);
-      setModelScopeWarnings(response.modelScopeWarnings.filter((warning): warning is string => typeof warning === "string"));
-      setModelThinkingLevels({});
-      setModelThinkingLevelMaps({});
-      return response;
-    });
-    modelsGetInflightRef.current = { cwd, promise };
-    // Clear the cache once the request settles (success or failure) so a
-    // later invalidation (modelsRefreshKey bump, user save) refetches.
-    promise.finally(() => {
-      if (modelsGetInflightRef.current?.promise === promise) {
-        modelsGetInflightRef.current = null;
-      }
-    });
-    return promise;
-  }, [newSessionCwd]);
+  const modelsGetInflightRef = useRef<{
+    cwd: string;
+    promise: Promise<ModelsResult>;
+  } | null>(null);
+  const loadModels = useCallback(
+    async (_signal?: AbortSignal) => {
+      const cwd = newSessionCwd ?? "";
+      const inflight = modelsGetInflightRef.current;
+      if (inflight && inflight.cwd === cwd) return inflight.promise;
+      const promise = hostCall("modelsGet", { cwd }).then((response) => {
+        setModelNames(response.models);
+        setModelList(response.modelList);
+        setModelRoles(response.modelRoles);
+        setNewSessionDefaultModel(response.defaultModel);
+        setModelError(response.modelError);
+        setModelScopeWarnings(
+          response.modelScopeWarnings.filter(
+            (warning): warning is string => typeof warning === "string"
+          )
+        );
+        setModelThinkingLevels({});
+        setModelThinkingLevelMaps({});
+        return response;
+      });
+      modelsGetInflightRef.current = { cwd, promise };
+      // Clear the cache once the request settles (success or failure) so a
+      // later invalidation (modelsRefreshKey bump, user save) refetches.
+      promise.finally(() => {
+        if (modelsGetInflightRef.current?.promise === promise) {
+          modelsGetInflightRef.current = null;
+        }
+      });
+      return promise;
+    },
+    [newSessionCwd]
+  );
   const loadTools = useCallback(async (_sid?: string) => [], []);
-  const loadSlashCommands = useCallback(async () => slashCommands, [slashCommands]);
+  const loadSlashCommands = useCallback(
+    async () => slashCommands,
+    [slashCommands]
+  );
   // Local slash-command whitelist (see tui-parity-plan Phase 0). Every other command MUST
   // fall through to ACP as prompt text so omp can execute its own slash commands.
-  const handleBuiltinSlashCommand = useCallback(async (text: string): Promise<BuiltinSlashCommandResult> => {
-    const [command] = text.trim().slice(1).split(/\s+/, 1);
-    const name = command?.toLowerCase();
-    if (!name) return { handled: false };
-    if (name === "history-search") {
-      addNotice({ type: "info", message: "History search coming soon" });
-      return { handled: true };
-    }
-    if (name === "copy") {
-      const assistant = [...messages].reverse().find((message) => message.role === "assistant");
-      const textToCopy = messageText(assistant ?? null);
-      if (!textToCopy) return { handled: true, error: "No assistant message to copy" };
-      await navigator.clipboard.writeText(textToCopy);
-      return { handled: true, message: "Copied last assistant message" };
-    }
-    if (name === "new") {
-      onSessionCreated?.({ id: "", path: "", cwd: newSessionCwd ?? "", created: new Date().toISOString(), modified: new Date().toISOString(), messageCount: 0, firstMessage: "(new session)" });
-      return { handled: true, message: "Started a new session" };
-    }
-    if (name === "quit") {
-      addNotice({ type: "info", message: "Close the webview via the panel's close button" });
-      return { handled: true };
-    }
-    if (name === "help" || name === "hotkeys") {
-      addNotice({ type: "info", message: "Enter sends; Shift+Enter newline; Ctrl+R history search; Alt+M models; Alt+A agent hub. Type /<cmd> to run omp commands." });
-      return { handled: true };
-    }
-    if (name === "settings") { onOpenSettings?.(); return { handled: true }; }
-    if (name === "models" || name === "model") { /* Alt+M / palette CTA opens ModelSelector; do not swallow */ return { handled: false }; }
-    if (name === "resume") {
-      if (!onOpenResumeDialog) return { handled: false };
-      onOpenResumeDialog();
-      return { handled: true };
-    }
-    // Everything else falls through to ACP (session/prompt) so omp handles it natively.
-    return { handled: false };
-  }, [addNotice, messages, newSessionCwd, onOpenResumeDialog, onOpenSettings, onSessionCreated]);
-
-  const respondInteraction = useCallback(async (request: InteractionDialog, response: { optionId?: string; action?: "accept" | "decline" | "cancel"; content?: Record<string, ElicitationContentValue> }) => {
-    if ("toolCall" in request) await acpRequest({ type: "acp/respondPermission", resolverId: request.resolverId, optionId: response.optionId });
-    else await acpRequest({ type: "acp/respondElicitation", resolverId: request.resolverId, action: response.action ?? "cancel", content: response.content });
-    setInteractionDialog(null);
-  }, []);
-  const handleDeleteSession = useCallback(async (sid: string) => { await acpRequest({ type: "acp/deleteSession", sessionId: sid }); await hostCall("sessionDelete", { sessionId: sid }); }, []);
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => { ignoreProgrammaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS; messagesEndRef.current?.scrollIntoView({ behavior }); }, []);
-  const scrollUserMsgToTop = useCallback(() => { const container = scrollContainerRef.current; const element = lastUserMsgRef.current; if (!container || !element) return; const top = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop; ignoreProgrammaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS; container.scrollTo({ top: top - 16, behavior: "smooth" }); }, []);
-  const markUserScrollIntent = useCallback((event: Event) => { if (event instanceof KeyboardEvent && (!SCROLL_KEYS.has(event.key) || (event.target instanceof Element && event.target.closest("input, textarea, [contenteditable='true']")))) return; userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_MS; }, []);
-  const handleScrollPositionChange = useCallback(() => { if (!agentRunningRef.current || Date.now() < ignoreProgrammaticScrollUntilRef.current || Date.now() > userScrollIntentUntilRef.current) return; completionScrollAllowedRef.current = false; }, []);
-
-  useEffect(() => subscribeAcp((event: AcpHostEvent) => {
-    if (event.type === "acp/sessionSnapshot") applySnapshot(event.state);
-    else if (event.type === "acp/connection") setCapabilities(event.snapshot.capabilities);
-    else if (event.type === "acp/notice") {
-      if (event.sessionId && event.sessionId !== sessionIdRef.current) return;
-      addNotice({ type: event.level, message: event.message });
-      if (sawErrorStopRef.current && /retry|retrying/i.test(event.message)) {
-        const attemptMatch = /attempt (\d+)\/(\d+)/i.exec(event.message);
-        setRetryInfo({ attempt: attemptMatch ? Number(attemptMatch[1]) : 1, maxAttempts: attemptMatch ? Number(attemptMatch[2]) : 1, errorMessage: event.message });
+  const handleBuiltinSlashCommand = useCallback(
+    async (text: string): Promise<BuiltinSlashCommandResult> => {
+      const [command] = text.trim().slice(1).split(/\s+/, 1);
+      const name = command?.toLowerCase();
+      if (!name) return { handled: false };
+      if (name === "history-search") {
+        addNotice({ type: "info", message: "History search coming soon" });
+        return { handled: true };
       }
-    } else if (event.type === "acp/permissionRequest") setInteractionDialog(event.request);
-    else if (event.type === "acp/elicitationRequest") setInteractionDialog(event.request);
-    else if (event.type === "acp/error") setError(event.message);
-  }), [addNotice, applySnapshot]);
+      if (name === "copy") {
+        const assistant = [...messages]
+          .reverse()
+          .find((message) => message.role === "assistant");
+        const textToCopy = messageText(assistant ?? null);
+        if (!textToCopy)
+          return { handled: true, error: "No assistant message to copy" };
+        await navigator.clipboard.writeText(textToCopy);
+        return { handled: true, message: "Copied last assistant message" };
+      }
+      if (name === "new") {
+        onSessionCreated?.({
+          id: "",
+          path: "",
+          cwd: newSessionCwd ?? "",
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          messageCount: 0,
+          firstMessage: "(new session)",
+        });
+        return { handled: true, message: "Started a new session" };
+      }
+      if (name === "quit") {
+        addNotice({
+          type: "info",
+          message: "Close the webview via the panel's close button",
+        });
+        return { handled: true };
+      }
+      if (name === "help" || name === "hotkeys") {
+        addNotice({
+          type: "info",
+          message:
+            "Enter sends; Shift+Enter newline; Ctrl+R history search; Alt+M models; Alt+A agent hub. Type /<cmd> to run omp commands.",
+        });
+        return { handled: true };
+      }
+      if (name === "settings") {
+        onOpenSettings?.();
+        return { handled: true };
+      }
+      if (name === "models" || name === "model") {
+        /* Alt+M / palette CTA opens ModelSelector; do not swallow */ return {
+          handled: false,
+        };
+      }
+      if (name === "resume") {
+        if (!onOpenResumeDialog) return { handled: false };
+        onOpenResumeDialog();
+        return { handled: true };
+      }
+      // Everything else falls through to ACP (session/prompt) so omp handles it natively.
+      return { handled: false };
+    },
+    [
+      addNotice,
+      messages,
+      newSessionCwd,
+      onOpenResumeDialog,
+      onOpenSettings,
+      onSessionCreated,
+    ]
+  );
+
+  const respondInteraction = useCallback(
+    async (
+      request: InteractionDialog,
+      response: {
+        optionId?: string;
+        action?: "accept" | "decline" | "cancel";
+        content?: Record<string, ElicitationContentValue>;
+      }
+    ) => {
+      if ("toolCall" in request)
+        await acpRequest({
+          type: "acp/respondPermission",
+          resolverId: request.resolverId,
+          optionId: response.optionId,
+        });
+      else
+        await acpRequest({
+          type: "acp/respondElicitation",
+          resolverId: request.resolverId,
+          action: response.action ?? "cancel",
+          content: response.content,
+        });
+      setInteractionDialog(null);
+    },
+    []
+  );
+  const handleDeleteSession = useCallback(async (sid: string) => {
+    await acpRequest({ type: "acp/deleteSession", sessionId: sid });
+    await hostCall("sessionDelete", { sessionId: sid });
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    ignoreProgrammaticScrollUntilRef.current =
+      Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
+  const scrollUserMsgToTop = useCallback(() => {
+    const container = scrollContainerRef.current;
+    const element = lastUserMsgRef.current;
+    if (!container || !element) return;
+    const top =
+      element.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop;
+    ignoreProgrammaticScrollUntilRef.current =
+      Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
+    container.scrollTo({ top: top - 16, behavior: "smooth" });
+  }, []);
+  const markUserScrollIntent = useCallback((event: Event) => {
+    if (
+      event instanceof KeyboardEvent &&
+      (!SCROLL_KEYS.has(event.key) ||
+        (event.target instanceof Element &&
+          event.target.closest("input, textarea, [contenteditable='true']")))
+    )
+      return;
+    userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_MS;
+  }, []);
+  const handleScrollPositionChange = useCallback(() => {
+    if (
+      !agentRunningRef.current ||
+      Date.now() < ignoreProgrammaticScrollUntilRef.current ||
+      Date.now() > userScrollIntentUntilRef.current
+    )
+      return;
+    completionScrollAllowedRef.current = false;
+  }, []);
+
+  useEffect(
+    () =>
+      subscribeAcp((event: AcpHostEvent) => {
+        if (event.type === "acp/sessionSnapshot") applySnapshot(event.state);
+        else if (event.type === "acp/connection")
+          setCapabilities(event.snapshot.capabilities);
+        else if (event.type === "acp/notice") {
+          if (event.sessionId && event.sessionId !== sessionIdRef.current)
+            return;
+          addNotice({ type: event.level, message: event.message });
+          if (
+            sawErrorStopRef.current &&
+            /retry|retrying/i.test(event.message)
+          ) {
+            const attemptMatch = /attempt (\d+)\/(\d+)/i.exec(event.message);
+            setRetryInfo({
+              attempt: attemptMatch ? Number(attemptMatch[1]) : 1,
+              maxAttempts: attemptMatch ? Number(attemptMatch[2]) : 1,
+              errorMessage: event.message,
+            });
+          }
+        } else if (event.type === "acp/permissionRequest")
+          setInteractionDialog(event.request);
+        else if (event.type === "acp/elicitationRequest")
+          setInteractionDialog(event.request);
+        else if (event.type === "acp/error") setError(event.message);
+      }),
+    [addNotice, applySnapshot]
+  );
   // Load a session on `session.id` change only. React may hand us a new
   // `session` OBJECT with the same id (e.g. AppShell hydrates missing
   // projectRoot metadata after promoteNewSession) — re-running loadSession
@@ -896,7 +1707,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     lastLoadedSessionIdRef.current = session.id;
     sessionIdRef.current = session.id;
     void loadSession(session.id, true);
-    return () => { void acpRequest({ type: "acp/unsubscribeSession", sessionId: session.id }); };
+    return () => {
+      void acpRequest({
+        type: "acp/unsubscribeSession",
+        sessionId: session.id,
+      });
+    };
   }, [loadSession, session?.id, session]);
   // Blank-chat mount: ACP-native means NO session exists until the first
   // send (handleSend → ensureNewSession → session/new). Just load models
@@ -906,17 +1722,95 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     void loadModels();
     setLoading(false);
   }, [isNew, loadModels, newSessionCwd, session]);
-  useEffect(() => { if (onBranchDataChange) onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange); }, [activeLeafId, data?.tree, handleLeafChange, onBranchDataChange]);
-  useEffect(() => { window.addEventListener("keydown", markUserScrollIntent); window.addEventListener("pointerdown", markUserScrollIntent, { passive: true }); return () => { window.removeEventListener("keydown", markUserScrollIntent); window.removeEventListener("pointerdown", markUserScrollIntent); }; }, [markUserScrollIntent]);
-  useEffect(() => { const container = scrollContainerRef.current; if (!container) return; container.addEventListener("wheel", markUserScrollIntent, { passive: true }); container.addEventListener("touchstart", markUserScrollIntent, { passive: true }); container.addEventListener("scroll", handleScrollPositionChange, { passive: true }); return () => { container.removeEventListener("wheel", markUserScrollIntent); container.removeEventListener("touchstart", markUserScrollIntent); container.removeEventListener("scroll", handleScrollPositionChange); }; }, [handleScrollPositionChange, loading, markUserScrollIntent, messages.length]);
-  useEffect(() => { if (messages.length === 0) return; if (pendingScrollToUserRef.current) { pendingScrollToUserRef.current = false; initialScrollDoneRef.current = true; scrollUserMsgToTop(); } else if (!initialScrollDoneRef.current) { initialScrollDoneRef.current = true; scrollToBottom("instant"); } else if (!agentRunningRef.current && completionScrollAllowedRef.current) scrollToBottom("smooth"); }, [agentRunning, messages.length, scrollToBottom, scrollUserMsgToTop]);
-  useEffect(() => { const controller = new AbortController(); void loadModels(controller.signal); return () => controller.abort(); }, [loadModels, modelsRefreshKey]);
-  useEffect(() => { if (!compactResult) return; const timeout = setTimeout(() => setCompactResult(null), 6000); return () => clearTimeout(timeout); }, [compactResult]);
-  useEffect(() => { if (noticeState.visible.length === 0) return; const exiting = noticeState.visible.find((notice) => notice.exiting); const timeout = setTimeout(() => dispatchNotice(exiting ? { type: "remove", id: exiting.id } : { type: "mark_oldest_exiting" }), exiting ? NOTICE_EXIT_ANIMATION_MS : NOTICE_VISIBLE_MS); return () => clearTimeout(timeout); }, [noticeState.visible]);
-  useEffect(() => { setSessionStatsOverride(null); }, [contextUsage?.contextWindow, contextUsage?.percent, contextUsage?.tokens, messages.length]);
+  useEffect(() => {
+    if (onBranchDataChange)
+      onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
+  }, [activeLeafId, data?.tree, handleLeafChange, onBranchDataChange]);
+  useEffect(() => {
+    window.addEventListener("keydown", markUserScrollIntent);
+    window.addEventListener("pointerdown", markUserScrollIntent, {
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("keydown", markUserScrollIntent);
+      window.removeEventListener("pointerdown", markUserScrollIntent);
+    };
+  }, [markUserScrollIntent]);
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.addEventListener("wheel", markUserScrollIntent, {
+      passive: true,
+    });
+    container.addEventListener("touchstart", markUserScrollIntent, {
+      passive: true,
+    });
+    container.addEventListener("scroll", handleScrollPositionChange, {
+      passive: true,
+    });
+    return () => {
+      container.removeEventListener("wheel", markUserScrollIntent);
+      container.removeEventListener("touchstart", markUserScrollIntent);
+      container.removeEventListener("scroll", handleScrollPositionChange);
+    };
+  }, [
+    handleScrollPositionChange,
+    loading,
+    markUserScrollIntent,
+    messages.length,
+  ]);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (pendingScrollToUserRef.current) {
+      pendingScrollToUserRef.current = false;
+      initialScrollDoneRef.current = true;
+      scrollUserMsgToTop();
+    } else if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true;
+      scrollToBottom("instant");
+    } else if (!agentRunningRef.current && completionScrollAllowedRef.current)
+      scrollToBottom("smooth");
+  }, [agentRunning, messages.length, scrollToBottom, scrollUserMsgToTop]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadModels(controller.signal);
+    return () => controller.abort();
+  }, [loadModels, modelsRefreshKey]);
+  useEffect(() => {
+    if (!compactResult) return;
+    const timeout = setTimeout(() => setCompactResult(null), 6000);
+    return () => clearTimeout(timeout);
+  }, [compactResult]);
+  useEffect(() => {
+    if (noticeState.visible.length === 0) return;
+    const exiting = noticeState.visible.find((notice) => notice.exiting);
+    const timeout = setTimeout(
+      () =>
+        dispatchNotice(
+          exiting
+            ? { type: "remove", id: exiting.id }
+            : { type: "mark_oldest_exiting" }
+        ),
+      exiting ? NOTICE_EXIT_ANIMATION_MS : NOTICE_VISIBLE_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [noticeState.visible]);
+  useEffect(() => {
+    setSessionStatsOverride(null);
+  }, [
+    contextUsage?.contextWindow,
+    contextUsage?.percent,
+    contextUsage?.tokens,
+    messages.length,
+  ]);
   useEffect(() => {
     const stopReason = snapshot?.stopReason;
-    if (!pendingRestoreModel || !stopReason || restoredTurnRef.current === stopReason) return;
+    if (
+      !pendingRestoreModel ||
+      !stopReason ||
+      restoredTurnRef.current === stopReason
+    )
+      return;
     restoredTurnRef.current = stopReason;
     const sessionId = sessionIdRef.current;
     if (!sessionId) return;
@@ -949,43 +1843,118 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const sessionId = sessionIdRef.current;
     if (!sessionId) return;
     let cancelled = false;
-    void hostCall("sessionDetail", { sessionId }).then((detail) => {
-      if (cancelled || !detail || sessionIdRef.current !== sessionId) return;
-      // A new turn may have started while the fetch was in flight — the
-      // JSONL doesn't have the live turn yet; don't wipe it.
-      if (agentRunningRef.current) return;
-      // The JSONL is the at-rest authority: same transcript the ACP replay
-      // produces, plus entry ids and persisted stats. Swap atomically so
-      // messages[idx] ↔ entryIds[idx] stay aligned.
-      setData({ sessionId: detail.sessionId, filePath: detail.filePath, tree: detail.tree.filter((node): node is SessionTreeNode => typeof node === "object" && node !== null), leafId: detail.leafId, context: detail.context });
-      setActiveLeafId(detail.leafId);
-      setMessages(detail.context.messages.map(normalizeToolCalls));
-      setEntryIds(detail.context.entryIds);
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [snapshot?.promptPending, snapshot?.stopReason, snapshot?.messages?.length]);
-
+    void hostCall("sessionDetail", { sessionId })
+      .then((detail) => {
+        if (cancelled || !detail || sessionIdRef.current !== sessionId) return;
+        // A new turn may have started while the fetch was in flight — the
+        // JSONL doesn't have the live turn yet; don't wipe it.
+        if (agentRunningRef.current) return;
+        // The JSONL is the at-rest authority: same transcript the ACP replay
+        // produces, plus entry ids and persisted stats. Swap atomically so
+        // messages[idx] ↔ entryIds[idx] stay aligned.
+        setData({
+          sessionId: detail.sessionId,
+          filePath: detail.filePath,
+          tree: detail.tree.filter(
+            (node): node is SessionTreeNode =>
+              typeof node === "object" && node !== null
+          ),
+          leafId: detail.leafId,
+          context: detail.context,
+        });
+        setActiveLeafId(detail.leafId);
+        setMessages(detail.context.messages.map(normalizeToolCalls));
+        setEntryIds(detail.context.entryIds);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    snapshot?.promptPending,
+    snapshot?.stopReason,
+    snapshot?.messages?.length,
+  ]);
 
   return {
-    data, loading, error, activeLeafId, messages, pendingUserMessage, entryIds, streamState,
-    agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, modelRoles, fastMode, newSessionModel, toolPreset, thinkingLevel, pendingRestoreModel,
-    retryInfo, contextUsage: sessionStats?.contextUsage ?? contextUsage, imageSupported: capabilities?.prompts.image ?? false, forkingEntryId, compactionBoundary,
-    isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,
-    agentPhase, liveTps, isNew, activeModes,
+    data,
+    loading,
+    error,
+    activeLeafId,
+    messages,
+    pendingUserMessage,
+    entryIds,
+    streamState,
+    agentRunning,
+    modelNames,
+    modelList,
+    modelError,
+    modelScopeWarnings,
+    modelThinkingLevels,
+    modelThinkingLevelMaps,
+    modelRoles,
+    fastMode,
+    newSessionModel,
+    toolPreset,
+    thinkingLevel,
+    pendingRestoreModel,
+    retryInfo,
+    contextUsage: sessionStats?.contextUsage ?? contextUsage,
+    imageSupported: capabilities?.prompts.image ?? false,
+    forkingEntryId,
+    compactionBoundary,
+    isCompacting,
+    compactError,
+    compactResult,
+    currentModel,
+    displayModel,
+    sessionStats,
+    agentPhase,
+    liveTps,
+    isNew,
+    activeModes,
     notices: noticeState.visible,
     isAutoModelSelection: isNew && newSessionModel === null,
-    slashCommands, slashCommandsLoading,
-    
-    sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
-    lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
-    handleSend, handleAbort, handleFork, handleEditResend, handleNavigate, handleModelChange, setPendingRestoreModel,
-    handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
+    slashCommands,
+    slashCommandsLoading,
+
+    sessionIdRef,
+    eventSourceRef,
+    messagesEndRef,
+    scrollContainerRef,
+    lastUserMsgRef,
+    pendingScrollToUserRef,
+    initialScrollDoneRef,
+    handleSend,
+    handleAbort,
+    handleFork,
+    handleEditResend,
+    handleNavigate,
+    handleModelChange,
+    setPendingRestoreModel,
+    handleCompact,
+    handleSteer,
+    handleFollowUp,
+    handlePromptWithStreamingBehavior,
+    handleAbortCompaction,
     handleBuiltinSlashCommand,
-    handleToolPresetChange, handleThinkingLevelChange, handleRoleChange, loadModels, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
-    dispatch, setAgentRunning, setForkingEntryId,
-    bashRunning, pendingBash,
+    handleToolPresetChange,
+    handleThinkingLevelChange,
+    handleRoleChange,
+    loadModels,
+    loadTools,
+    loadSlashCommands,
+    setActiveLeafId,
+    setData,
+    setMessages,
+    dispatch,
+    setAgentRunning,
+    setForkingEntryId,
+    bashRunning,
+    pendingBash,
     handleAgentEventRef,
-    interactionDialog, respondInteraction,
+    interactionDialog,
+    respondInteraction,
     handleDeleteSession,
   };
 }

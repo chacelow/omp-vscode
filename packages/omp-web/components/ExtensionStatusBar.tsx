@@ -10,14 +10,20 @@ export function sanitizeExtensionStatusText(text: string): string {
     .trim();
 }
 
-export function formatExtensionStatusLine(statuses: ExtensionStatusItem[]): string {
+export function formatExtensionStatusLine(
+  statuses: ExtensionStatusItem[]
+): string {
   return [...statuses]
     .sort((a, b) => a.key.localeCompare(b.key))
     .map(({ text }) => sanitizeExtensionStatusText(text))
     .join(" ");
 }
 
-export function ExtensionStatusBar({ statuses }: { statuses: ExtensionStatusItem[] }) {
+export function ExtensionStatusBar({
+  statuses,
+}: {
+  statuses: ExtensionStatusItem[];
+}) {
   if (statuses.length === 0) return null;
 
   const statusLine = formatExtensionStatusLine(statuses);
@@ -51,7 +57,9 @@ export function ExtensionStatusBar({ statuses }: { statuses: ExtensionStatusItem
         }}
       >
         {parseAnsiLine(statusLine).map((segment, index) => (
-          <span key={index} style={segment.style}>{segment.text}</span>
+          <span key={index} style={segment.style}>
+            {segment.text}
+          </span>
         ))}
       </span>
     </div>

@@ -20,13 +20,22 @@ test("splits trailing final answer blocks from process blocks", async () => {
     { type: "thinking", thinking: "work through it" },
     { type: "toolCall", toolCallId: "call-1", toolName: "bash", input: {} },
     { type: "text", text: "Final answer" },
-    { type: "image", source: { type: "url", url: "https://example.com/final.png" } },
+    {
+      type: "image",
+      source: { type: "url", url: "https://example.com/final.png" },
+    },
   ]);
 
   const result = splitFinalAssistantBlocks(message, { isStreaming: false });
 
-  assert.deepEqual(result.answerBlocks.map((block) => block.type), ["text", "image"]);
-  assert.deepEqual(result.processBlocks.map((block) => block.type), ["thinking", "toolCall"]);
+  assert.deepEqual(
+    result.answerBlocks.map((block) => block.type),
+    ["text", "image"]
+  );
+  assert.deepEqual(
+    result.processBlocks.map((block) => block.type),
+    ["thinking", "toolCall"]
+  );
 });
 
 test("keeps pre-tool text in process blocks", async () => {
@@ -39,9 +48,15 @@ test("keeps pre-tool text in process blocks", async () => {
 
   const result = splitFinalAssistantBlocks(message, { isStreaming: false });
 
-  assert.deepEqual(result.answerBlocks.map((block) => block.type), ["text"]);
+  assert.deepEqual(
+    result.answerBlocks.map((block) => block.type),
+    ["text"]
+  );
   assert.equal(result.answerBlocks[0].text, "Final answer");
-  assert.deepEqual(result.processBlocks.map((block) => block.type), ["text", "toolCall"]);
+  assert.deepEqual(
+    result.processBlocks.map((block) => block.type),
+    ["text", "toolCall"]
+  );
 });
 
 test("does not expose text before a trailing tool call as final answer", async () => {
@@ -55,23 +70,32 @@ test("does not expose text before a trailing tool call as final answer", async (
   const result = splitFinalAssistantBlocks(message, { isStreaming: false });
 
   assert.deepEqual(result.answerBlocks, []);
-  assert.deepEqual(result.processBlocks.map((block) => block.type), ["thinking", "text", "toolCall"]);
+  assert.deepEqual(
+    result.processBlocks.map((block) => block.type),
+    ["thinking", "text", "toolCall"]
+  );
 });
 
 test("drops empty thinking blocks after completion", async () => {
-  const { getDisplayableAssistantBlocks, splitFinalAssistantBlocks } = await loadSubject();
+  const { getDisplayableAssistantBlocks, splitFinalAssistantBlocks } =
+    await loadSubject();
   const message = assistant([
     { type: "thinking", thinking: "" },
     { type: "text", text: "Final answer" },
   ]);
 
   assert.deepEqual(
-    getDisplayableAssistantBlocks(message, { isStreaming: false }).map((block) => block.type),
-    ["text"],
+    getDisplayableAssistantBlocks(message, { isStreaming: false }).map(
+      (block) => block.type
+    ),
+    ["text"]
   );
 
   const result = splitFinalAssistantBlocks(message, { isStreaming: false });
-  assert.deepEqual(result.answerBlocks.map((block) => block.type), ["text"]);
+  assert.deepEqual(
+    result.answerBlocks.map((block) => block.type),
+    ["text"]
+  );
   assert.deepEqual(result.processBlocks, []);
 });
 
@@ -84,8 +108,14 @@ test("keeps empty thinking while streaming", async () => {
 
   const result = splitFinalAssistantBlocks(message, { isStreaming: true });
 
-  assert.deepEqual(result.answerBlocks.map((block) => block.type), ["text"]);
-  assert.deepEqual(result.processBlocks.map((block) => block.type), ["thinking"]);
+  assert.deepEqual(
+    result.answerBlocks.map((block) => block.type),
+    ["text"]
+  );
+  assert.deepEqual(
+    result.processBlocks.map((block) => block.type),
+    ["thinking"]
+  );
 });
 
 test("keeps deferred historical thinking placeholders", async () => {
@@ -96,8 +126,10 @@ test("keeps deferred historical thinking placeholders", async () => {
   ]);
 
   assert.deepEqual(
-    getDisplayableAssistantBlocks(message, { isStreaming: false }).map((block) => block.type),
-    ["thinking", "text"],
+    getDisplayableAssistantBlocks(message, { isStreaming: false }).map(
+      (block) => block.type
+    ),
+    ["thinking", "text"]
   );
 });
 
@@ -111,7 +143,7 @@ test("returns completed provider errors even when the message has no content", a
 
   assert.equal(
     getAssistantErrorMessage(message),
-    "OpenAI API error (403): request forbidden",
+    "OpenAI API error (403): request forbidden"
   );
   assert.equal(getAssistantErrorMessage(message, { isStreaming: true }), null);
 });
@@ -121,10 +153,10 @@ test("falls back when a provider error has no message", async () => {
 
   assert.equal(
     getAssistantErrorMessage({ ...assistant([]), stopReason: "error" }),
-    "Unknown provider error",
+    "Unknown provider error"
   );
   assert.equal(
     getAssistantErrorMessage({ ...assistant([]), stopReason: "stop" }),
-    null,
+    null
   );
 });

@@ -18,13 +18,21 @@ function modelFromValue(value: unknown): DiscoveredModel | null {
   }
   if (!isRecord(value)) return null;
 
-  const rawId = cleanString(value.id) ?? cleanString(value.model) ?? cleanString(value.name);
+  const rawId =
+    cleanString(value.id) ??
+    cleanString(value.model) ??
+    cleanString(value.name);
   if (!rawId) return null;
-  const id = rawId.startsWith("models/") ? rawId.slice("models/".length) : rawId;
+  const id = rawId.startsWith("models/")
+    ? rawId.slice("models/".length)
+    : rawId;
   if (!id) return null;
-  const name = cleanString(value.display_name)
-    ?? cleanString(value.displayName)
-    ?? (cleanString(value.id) || cleanString(value.model) ? cleanString(value.name) : undefined);
+  const name =
+    cleanString(value.display_name) ??
+    cleanString(value.displayName) ??
+    (cleanString(value.id) || cleanString(value.model)
+      ? cleanString(value.name)
+      : undefined);
   return name && name !== id ? { id, name } : { id };
 }
 
@@ -48,10 +56,12 @@ export function parseDiscoveredModels(value: unknown): DiscoveredModel[] {
     seen.add(model.id);
     models.push(model);
   }
-  return models.sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id, undefined, {
-    numeric: true,
-    sensitivity: "base",
-  }));
+  return models.sort((a, b) =>
+    (a.name ?? a.id).localeCompare(b.name ?? b.id, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    })
+  );
 }
 
 export function buildModelsListUrl(baseUrl: string, api: string): URL {
@@ -60,8 +70,10 @@ export function buildModelsListUrl(baseUrl: string, api: string): URL {
 
   if (!/\/models$/i.test(trimmedPath)) {
     let path = trimmedPath;
-    if (api === "anthropic-messages" && !/\/v\d+(?:beta)?$/i.test(path)) path += "/v1";
-    if (api === "google-generative-ai" && !/\/v\d+(?:beta)?$/i.test(path)) path += "/v1beta";
+    if (api === "anthropic-messages" && !/\/v\d+(?:beta)?$/i.test(path))
+      path += "/v1";
+    if (api === "google-generative-ai" && !/\/v\d+(?:beta)?$/i.test(path))
+      path += "/v1beta";
     url.pathname = `${path}/models`.replace(/\/+/g, "/");
   }
 

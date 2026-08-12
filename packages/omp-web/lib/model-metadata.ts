@@ -7,10 +7,18 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function firstPositiveInteger(record: Record<string, unknown>, keys: readonly string[]): number | undefined {
+function firstPositiveInteger(
+  record: Record<string, unknown>,
+  keys: readonly string[]
+): number | undefined {
   for (const key of keys) {
     const raw = record[key];
-    const number = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
+    const number =
+      typeof raw === "number"
+        ? raw
+        : typeof raw === "string" && raw.trim()
+          ? Number(raw)
+          : NaN;
     if (Number.isFinite(number) && number > 0) return Math.floor(number);
   }
   return undefined;
@@ -43,7 +51,11 @@ const OUTPUT_KEYS = [
 export function extractModelMetadata(value: unknown): ModelMetadata {
   if (!isRecord(value)) return {};
 
-  const nestedRecords = [value.limits, value.capabilities, value.metadata].filter(isRecord);
+  const nestedRecords = [
+    value.limits,
+    value.capabilities,
+    value.metadata,
+  ].filter(isRecord);
   const records = [value, ...nestedRecords];
   let contextWindow: number | undefined;
   let maxTokens: number | undefined;
@@ -60,7 +72,10 @@ export function extractModelMetadata(value: unknown): ModelMetadata {
   };
 }
 
-export function extractMatchingModelMetadata(payload: unknown, modelId: string): ModelMetadata {
+export function extractMatchingModelMetadata(
+  payload: unknown,
+  modelId: string
+): ModelMetadata {
   const models = Array.isArray(payload)
     ? payload
     : isRecord(payload) && Array.isArray(payload.data)
@@ -69,6 +84,11 @@ export function extractMatchingModelMetadata(payload: unknown, modelId: string):
         ? payload.models
         : [];
   const normalizedId = modelId.trim().toLowerCase();
-  const match = models.find((model) => isRecord(model) && typeof model.id === "string" && model.id.toLowerCase() === normalizedId);
+  const match = models.find(
+    (model) =>
+      isRecord(model) &&
+      typeof model.id === "string" &&
+      model.id.toLowerCase() === normalizedId
+  );
   return extractModelMetadata(match);
 }

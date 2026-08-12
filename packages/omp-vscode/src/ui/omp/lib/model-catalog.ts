@@ -28,7 +28,8 @@ export interface ModelCatalogPreset {
   cost?: ModelCatalogCost;
 }
 
-export type ModelCatalogMatchMethod = "provider" | "base-url" | "consensus" | "none";
+export type ModelCatalogMatchMethod =
+  "provider" | "base-url" | "consensus" | "none";
 
 export type ModelCatalogPriceRecommendation =
   | {
@@ -42,7 +43,11 @@ export type ModelCatalogPriceRecommendation =
     }
   | {
       status: "unreliable";
-      reason: "no-exact-match" | "no-valid-price" | "insufficient-support" | "conflict";
+      reason:
+        | "no-exact-match"
+        | "no-valid-price"
+        | "insufficient-support"
+        | "conflict";
       support: number;
       total: number;
     };
@@ -74,11 +79,15 @@ function cleanString(value: unknown): string | undefined {
 }
 
 function optionalNonNegativeNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
 }
 
 function optionalPositiveNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
 }
 
 function readCost(value: unknown): ModelCatalogCost {
@@ -93,19 +102,29 @@ function readCost(value: unknown): ModelCatalogCost {
 
 function readInputModalities(value: unknown): string[] | undefined {
   if (!isRecord(value) || !Array.isArray(value.input)) return undefined;
-  const input = Array.from(new Set(value.input
-    .filter((entry): entry is string => typeof entry === "string")
-    .map((entry) => entry.trim().toLocaleLowerCase())
-    .filter((entry) => SUPPORTED_INPUT_MODALITIES.has(entry))));
+  const input = Array.from(
+    new Set(
+      value.input
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim().toLocaleLowerCase())
+        .filter((entry) => SUPPORTED_INPUT_MODALITIES.has(entry))
+    )
+  );
   return input.length ? input : undefined;
 }
 
 function normalizeProvider(value: string): string {
-  return value.trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+  return value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function normalizeModelId(value: string): string {
-  return value.trim().toLocaleLowerCase().replace(/^models\//, "");
+  return value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/^models\//, "");
 }
 
 function hostname(value: string | undefined): string | undefined {
@@ -121,20 +140,27 @@ function hostMatches(actual: string, expected: string): boolean {
   return actual === expected || actual.endsWith(`.${expected}`);
 }
 
-function providerMatches(entry: ModelCatalogEntry, providerHint: string): boolean {
+function providerMatches(
+  entry: ModelCatalogEntry,
+  providerHint: string
+): boolean {
   const normalizedHint = normalizeProvider(providerHint);
   if (!normalizedHint) return false;
-  return normalizeProvider(entry.providerId) === normalizedHint
-    || normalizeProvider(entry.providerName) === normalizedHint;
+  return (
+    normalizeProvider(entry.providerId) === normalizedHint ||
+    normalizeProvider(entry.providerName) === normalizedHint
+  );
 }
 
 function baseUrlMatches(entry: ModelCatalogEntry, baseUrl: string): boolean {
   const actualHost = hostname(baseUrl);
   if (!actualHost) return false;
-  const knownHosts = KNOWN_PROVIDER_HOSTS[normalizeProvider(entry.providerId)] ?? [];
+  const knownHosts =
+    KNOWN_PROVIDER_HOSTS[normalizeProvider(entry.providerId)] ?? [];
   const providerHost = hostname(entry.providerBaseUrl);
-  return [...knownHosts, ...(providerHost ? [providerHost] : [])]
-    .some((candidate) => hostMatches(actualHost, candidate));
+  return [...knownHosts, ...(providerHost ? [providerHost] : [])].some(
+    (candidate) => hostMatches(actualHost, candidate)
+  );
 }
 
 function exactModelMatches(entry: ModelCatalogEntry, query: string): boolean {
@@ -142,7 +168,9 @@ function exactModelMatches(entry: ModelCatalogEntry, query: string): boolean {
   if (!normalizedQuery) return false;
   const normalizedId = normalizeModelId(entry.id);
   const normalizedFullId = `${entry.providerId.toLocaleLowerCase()}/${normalizedId}`;
-  return normalizedId === normalizedQuery || normalizedFullId === normalizedQuery;
+  return (
+    normalizedId === normalizedQuery || normalizedFullId === normalizedQuery
+  );
 }
 
 function validPrice(entry: ModelCatalogEntry): entry is ModelCatalogEntry & {
@@ -154,7 +182,7 @@ function validPrice(entry: ModelCatalogEntry): entry is ModelCatalogEntry & {
 function modeValue<T>(
   values: readonly T[],
   total: number,
-  keyFor: (value: T) => string,
+  keyFor: (value: T) => string
 ): T | undefined {
   if (values.length === 0 || total <= 0) return undefined;
   const groups = new Map<string, { value: T; count: number }>();
@@ -190,36 +218,50 @@ function metadataFromEntry(entry: ModelCatalogEntry): ModelCatalogPreset {
   };
 }
 
-function consensusMetadata(entries: readonly ModelCatalogEntry[]): ModelCatalogPreset {
+function consensusMetadata(
+  entries: readonly ModelCatalogEntry[]
+): ModelCatalogPreset {
   const total = entries.length;
   return {
-    name: modeValue(entries.map((entry) => entry.name), total, (value) => value.toLocaleLowerCase()),
-    reasoning: modeValue(
-      entries.flatMap((entry) => entry.reasoning === undefined ? [] : [entry.reasoning]),
+    name: modeValue(
+      entries.map((entry) => entry.name),
       total,
-      String,
+      (value) => value.toLocaleLowerCase()
+    ),
+    reasoning: modeValue(
+      entries.flatMap((entry) =>
+        entry.reasoning === undefined ? [] : [entry.reasoning]
+      ),
+      total,
+      String
     ),
     input: modeValue(
-      entries.flatMap((entry) => entry.input ? [entry.input] : []),
+      entries.flatMap((entry) => (entry.input ? [entry.input] : [])),
       total,
-      (value) => [...value].sort().join(","),
+      (value) => [...value].sort().join(",")
     ),
     contextWindow: modeValue(
-      entries.flatMap((entry) => entry.contextWindow === undefined ? [] : [entry.contextWindow]),
+      entries.flatMap((entry) =>
+        entry.contextWindow === undefined ? [] : [entry.contextWindow]
+      ),
       total,
-      String,
+      String
     ),
     maxTokens: modeValue(
-      entries.flatMap((entry) => entry.maxTokens === undefined ? [] : [entry.maxTokens]),
+      entries.flatMap((entry) =>
+        entry.maxTokens === undefined ? [] : [entry.maxTokens]
+      ),
       total,
-      String,
+      String
     ),
   };
 }
 
 function priceFromEntry(
-  entry: ModelCatalogEntry & { cost: ModelCatalogCost & { input: number; output: number } },
-  method: "provider" | "base-url",
+  entry: ModelCatalogEntry & {
+    cost: ModelCatalogCost & { input: number; output: number };
+  },
+  method: "provider" | "base-url"
 ): ModelCatalogPriceRecommendation {
   return {
     status: "reliable",
@@ -232,13 +274,25 @@ function priceFromEntry(
   };
 }
 
-function consensusPrice(entries: readonly ModelCatalogEntry[]): ModelCatalogPriceRecommendation {
+function consensusPrice(
+  entries: readonly ModelCatalogEntry[]
+): ModelCatalogPriceRecommendation {
   const priced = entries.filter(validPrice);
   if (priced.length === 0) {
-    return { status: "unreliable", reason: "no-valid-price", support: 0, total: 0 };
+    return {
+      status: "unreliable",
+      reason: "no-valid-price",
+      support: 0,
+      total: 0,
+    };
   }
   if (priced.length === 1) {
-    return { status: "unreliable", reason: "insufficient-support", support: 1, total: 1 };
+    return {
+      status: "unreliable",
+      reason: "insufficient-support",
+      support: 1,
+      total: 1,
+    };
   }
 
   const groups = new Map<string, typeof priced>();
@@ -251,9 +305,17 @@ function consensusPrice(entries: readonly ModelCatalogEntry[]): ModelCatalogPric
   const ranked = [...groups.values()].sort((a, b) => b.length - a.length);
   const winner = ranked[0];
   if (!winner) {
-    return { status: "unreliable", reason: "no-valid-price", support: 0, total: priced.length };
+    return {
+      status: "unreliable",
+      reason: "no-valid-price",
+      support: 0,
+      total: priced.length,
+    };
   }
-  if (ranked[1]?.length === winner.length || winner.length / priced.length < CONSENSUS_MIN_SHARE) {
+  if (
+    ranked[1]?.length === winner.length ||
+    winner.length / priced.length < CONSENSUS_MIN_SHARE
+  ) {
     return {
       status: "unreliable",
       reason: "conflict",
@@ -262,8 +324,16 @@ function consensusPrice(entries: readonly ModelCatalogEntry[]): ModelCatalogPric
     };
   }
 
-  const cacheRead = modeNumber(winner.flatMap((entry) => entry.cost.cacheRead === undefined ? [] : [entry.cost.cacheRead]));
-  const cacheWrite = modeNumber(winner.flatMap((entry) => entry.cost.cacheWrite === undefined ? [] : [entry.cost.cacheWrite]));
+  const cacheRead = modeNumber(
+    winner.flatMap((entry) =>
+      entry.cost.cacheRead === undefined ? [] : [entry.cost.cacheRead]
+    )
+  );
+  const cacheWrite = modeNumber(
+    winner.flatMap((entry) =>
+      entry.cost.cacheWrite === undefined ? [] : [entry.cost.cacheWrite]
+    )
+  );
   return {
     status: "reliable",
     method: "consensus",
@@ -301,7 +371,8 @@ export function flattenModelsDevCatalog(value: unknown): ModelCatalogEntry[] {
         cost: readCost(rawModel.cost),
       };
       if (providerBaseUrl) entry.providerBaseUrl = providerBaseUrl;
-      if (typeof rawModel.reasoning === "boolean") entry.reasoning = rawModel.reasoning;
+      if (typeof rawModel.reasoning === "boolean")
+        entry.reasoning = rawModel.reasoning;
       const input = readInputModalities(rawModel.modalities);
       if (input) entry.input = input;
       if (isRecord(rawModel.limit)) {
@@ -321,27 +392,40 @@ export function recommendModelCatalogPreset(
   entries: readonly ModelCatalogEntry[],
   query: string,
   providerHint = "",
-  baseUrl = "",
+  baseUrl = ""
 ): ModelCatalogRecommendation {
-  const exactEntries = entries.filter((entry) => exactModelMatches(entry, query));
+  const exactEntries = entries.filter((entry) =>
+    exactModelMatches(entry, query)
+  );
   if (exactEntries.length === 0) {
     return {
       exactMatches: 0,
       metadataMethod: "none",
       preset: {},
-      price: { status: "unreliable", reason: "no-exact-match", support: 0, total: 0 },
+      price: {
+        status: "unreliable",
+        reason: "no-exact-match",
+        support: 0,
+        total: 0,
+      },
     };
   }
 
-  const providerEntries = exactEntries.filter((entry) => providerMatches(entry, providerHint));
-  const baseUrlEntries = exactEntries.filter((entry) => baseUrlMatches(entry, baseUrl));
+  const providerEntries = exactEntries.filter((entry) =>
+    providerMatches(entry, providerHint)
+  );
+  const baseUrlEntries = exactEntries.filter((entry) =>
+    baseUrlMatches(entry, baseUrl)
+  );
   const metadataEntry = providerEntries[0] ?? baseUrlEntries[0];
   const metadataMethod: ModelCatalogMatchMethod = providerEntries.length
     ? "provider"
     : baseUrlEntries.length
       ? "base-url"
       : "consensus";
-  const preset = metadataEntry ? metadataFromEntry(metadataEntry) : consensusMetadata(exactEntries);
+  const preset = metadataEntry
+    ? metadataFromEntry(metadataEntry)
+    : consensusMetadata(exactEntries);
 
   const providerPrice = providerEntries.find(validPrice);
   const baseUrlPrice = baseUrlEntries.find(validPrice);
@@ -362,7 +446,11 @@ export function recommendModelCatalogPreset(
   };
 }
 
-function matchRank(entry: ModelCatalogEntry, query: string, providerHint: string): number {
+function matchRank(
+  entry: ModelCatalogEntry,
+  query: string,
+  providerHint: string
+): number {
   const id = entry.id.toLocaleLowerCase();
   const name = entry.name.toLocaleLowerCase();
   const providerId = entry.providerId.toLocaleLowerCase();
@@ -374,11 +462,21 @@ function matchRank(entry: ModelCatalogEntry, query: string, providerHint: string
   else if (id === query || fullId === query) rank = 0;
   else if (name === query) rank = 1;
   else if (id.startsWith(query) || name.startsWith(query)) rank = 2;
-  else if (fullId.startsWith(query) || providerId === query || providerName === query) rank = 3;
+  else if (
+    fullId.startsWith(query) ||
+    providerId === query ||
+    providerName === query
+  )
+    rank = 3;
   else if (id.includes(query) || name.includes(query)) rank = 4;
   else if (fullId.includes(query) || providerName.includes(query)) rank = 5;
 
-  if (rank < 20 && providerHint && (providerId === providerHint || providerName === providerHint)) rank -= 0.5;
+  if (
+    rank < 20 &&
+    providerHint &&
+    (providerId === providerHint || providerName === providerHint)
+  )
+    rank -= 0.5;
   return rank;
 }
 
@@ -386,19 +484,33 @@ export function searchModelCatalog(
   entries: readonly ModelCatalogEntry[],
   query: string,
   providerHint = "",
-  limit = 50,
+  limit = 50
 ): ModelCatalogEntry[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const normalizedProvider = providerHint.trim().toLocaleLowerCase();
   const cappedLimit = Math.max(1, Math.min(100, Math.floor(limit) || 50));
 
   return entries
-    .map((entry) => ({ entry, rank: matchRank(entry, normalizedQuery, normalizedProvider) }))
+    .map((entry) => ({
+      entry,
+      rank: matchRank(entry, normalizedQuery, normalizedProvider),
+    }))
     .filter(({ rank }) => !normalizedQuery || rank < 20)
-    .sort((a, b) => a.rank - b.rank
-      || a.entry.providerName.localeCompare(b.entry.providerName, undefined, { sensitivity: "base" })
-      || a.entry.name.localeCompare(b.entry.name, undefined, { numeric: true, sensitivity: "base" })
-      || a.entry.id.localeCompare(b.entry.id, undefined, { numeric: true, sensitivity: "base" }))
+    .sort(
+      (a, b) =>
+        a.rank - b.rank ||
+        a.entry.providerName.localeCompare(b.entry.providerName, undefined, {
+          sensitivity: "base",
+        }) ||
+        a.entry.name.localeCompare(b.entry.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }) ||
+        a.entry.id.localeCompare(b.entry.id, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+    )
     .slice(0, cappedLimit)
     .map(({ entry }) => entry);
 }

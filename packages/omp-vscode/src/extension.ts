@@ -20,8 +20,11 @@ let chat: ChatProvider;
 let statusBar: vscode.StatusBarItem;
 let acpLog: vscode.OutputChannel | null = null;
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+export async function activate(
+  context: vscode.ExtensionContext
+): Promise<void> {
+  const cwd =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
 
   acp = new AcpService({
     cwd,
@@ -39,7 +42,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     extensionVersion: String(context.extension.packageJSON.version ?? ""),
   });
 
-  statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    100
+  );
   statusBar.text = "$(hubot) OMP";
   statusBar.command = "omp.openChat";
   statusBar.tooltip = "OMP Chat — open";
@@ -57,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("omp.openWorkbench", () => {
       chat.openWorkbench();
     }),
-    statusBar,
+    statusBar
   );
 
   void acp.start().catch((err) => {
@@ -66,6 +72,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export async function deactivate(): Promise<void> {
-  void acp?.shutdown().catch(() => { /* ignore */ });
+  void acp?.shutdown().catch(() => {
+    /* ignore */
+  });
   chat?.disposeAll();
 }

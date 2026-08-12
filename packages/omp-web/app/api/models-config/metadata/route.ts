@@ -1,5 +1,10 @@
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
-import { extractMatchingModelMetadata, extractModelMetadata, isRecord, type ModelMetadata } from "@/lib/model-metadata";
+import {
+  extractMatchingModelMetadata,
+  extractModelMetadata,
+  isRecord,
+  type ModelMetadata,
+} from "@/lib/model-metadata";
 import { getOmpAgentDir } from "@/lib/file-paths";
 import { readOmpModelsConfig } from "@/lib/omp-model-config";
 
@@ -9,21 +14,41 @@ const LOOKUP_TIMEOUT_MS = 8_000;
 const MAX_RESPONSE_BYTES = 1_000_000;
 
 function hasMetadata(metadata: ModelMetadata): boolean {
-  return metadata.contextWindow !== undefined || metadata.maxTokens !== undefined;
+  return (
+    metadata.contextWindow !== undefined || metadata.maxTokens !== undefined
+  );
 }
 
-function providerMatches(model: { provider?: string }, providerName: string): boolean {
-  return typeof model.provider === "string" && model.provider.toLowerCase() === providerName.toLowerCase();
+function providerMatches(
+  model: { provider?: string },
+  providerName: string
+): boolean {
+  return (
+    typeof model.provider === "string" &&
+    model.provider.toLowerCase() === providerName.toLowerCase()
+  );
 }
 
 function modelIdMatches(model: { id?: string }, modelId: string): boolean {
-  return typeof model.id === "string" && model.id.toLowerCase() === modelId.toLowerCase();
+  return (
+    typeof model.id === "string" &&
+    model.id.toLowerCase() === modelId.toLowerCase()
+  );
 }
 
-function modelCatalogMetadata(runtime: ModelRuntime, providerName: string, modelId: string): ModelMetadata {
+function modelCatalogMetadata(
+  runtime: ModelRuntime,
+  providerName: string,
+  modelId: string
+): ModelMetadata {
   const models = runtime.getModels();
-  const exactProvider = models.filter((model) => providerMatches(model, providerName) && modelIdMatches(model, modelId));
-  const exactId = models.filter((model) => modelIdMatches(model, modelId) && !exactProvider.includes(model));
+  const exactProvider = models.filter(
+    (model) =>
+      providerMatches(model, providerName) && modelIdMatches(model, modelId)
+  );
+  const exactId = models.filter(
+    (model) => modelIdMatches(model, modelId) && !exactProvider.includes(model)
+  );
   for (const model of [...exactProvider, ...exactId]) {
     const metadata = extractModelMetadata(model);
     if (hasMetadata(metadata)) return metadata;
@@ -40,7 +65,9 @@ function modelUrls(baseUrl: string): string[] {
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") return [];
 
-  const pathname = url.pathname.replace(/\/+$/u, "").replace(/\/chat\/completions$/u, "");
+  const pathname = url.pathname
+    .replace(/\/+$/u, "")
+    .replace(/\/chat\/completions$/u, "");
   const paths = pathname.endsWith("/v1")
     ? ["/models", "/v1/models"]
     : [`${pathname || ""}/models`, `${pathname || ""}/v1/models`];
@@ -57,33 +84,49 @@ function modelUrls(baseUrl: string): string[] {
   });
 }
 
-function requestHeaders(provider: Record<string, unknown>): Record<string, string> {
+function requestHeaders(
+  provider: Record<string, unknown>
+): Record<string, string> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (isRecord(provider.headers)) {
     for (const [name, value] of Object.entries(provider.headers)) {
       if (typeof value === "string" && value.trim()) headers[name] = value;
     }
   }
-  const hasAuthorization = Object.keys(headers).some((name) => name.toLowerCase() === "authorization");
+  const hasAuthorization = Object.keys(headers).some(
+    (name) => name.toLowerCase() === "authorization"
+  );
   const configuredKey = provider.apiKey ?? provider.key;
-  const apiKey = typeof configuredKey === "string" && configuredKey.trim() && !configuredKey.startsWith("$") && !configuredKey.startsWith("!")
-    ? configuredKey.trim()
-    : undefined;
+  const apiKey =
+    typeof configuredKey === "string" &&
+    configuredKey.trim() &&
+    !configuredKey.startsWith("$") &&
+    !configuredKey.startsWith("!")
+      ? configuredKey.trim()
+      : undefined;
   if (apiKey && !hasAuthorization) headers.Authorization = `Bearer ${apiKey}`;
   return headers;
 }
 
-async function fetchRemoteMetadata(provider: Record<string, unknown>, modelId: string): Promise<ModelMetadata> {
-  const baseUrl = typeof provider.baseUrl === "string" ? provider.baseUrl.trim() : "";
+async function fetchRemoteMetadata(
+  provider: Record<string, unknown>,
+  modelId: string
+): Promise<ModelMetadata> {
+  const baseUrl =
+    typeof provider.baseUrl === "string" ? provider.baseUrl.trim() : "";
   if (!baseUrl) return {};
   const api = typeof provider.api === "string" ? provider.api : "";
-  if (api && api !== "openai-completions" && api !== "openai-responses") return {};
+  if (api && api !== "openai-completions" && api !== "openai-responses")
+    return {};
 
   for (const url of modelUrls(baseUrl)) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
     try {
-      const response = await fetch(url, { headers: requestHeaders(provider), signal: controller.signal });
+      const response = await fetch(url, {
+        headers: requestHeaders(provider),
+        signal: controller.signal,
+      });
       if (!response.ok) continue;
       const buffer = await response.arrayBuffer();
       if (buffer.byteLength > MAX_RESPONSE_BYTES) continue;
@@ -101,42 +144,84 @@ async function fetchRemoteMetadata(provider: Record<string, unknown>, modelId: s
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { providerName?: unknown; provider?: unknown; modelId?: unknown };
-    const providerName = typeof body.providerName === "string" ? body.providerName.trim() : "";
+    const body = (await req.json()) as {
+      providerName?: unknown;
+      provider?: unknown;
+      modelId?: unknown;
+    };
+    const providerName =
+      typeof body.providerName === "string" ? body.providerName.trim() : "";
     const modelId = typeof body.modelId === "string" ? body.modelId.trim() : "";
     const provider = isRecord(body.provider) ? body.provider : null;
     if (!providerName || !modelId || !provider) {
-      return Response.json({ ok: false, error: "providerName, provider, and modelId are required" }, { status: 400 });
+      return Response.json(
+        {
+          ok: false,
+          error: "providerName, provider, and modelId are required",
+        },
+        { status: 400 }
+      );
     }
 
     try {
       const runtime = await ModelRuntime.create({ allowModelNetwork: false });
       const metadata = modelCatalogMetadata(runtime, providerName, modelId);
       if (hasMetadata(metadata)) {
-        return Response.json({ ok: true, ...metadata, source: "Pi model catalog" });
+        return Response.json({
+          ok: true,
+          ...metadata,
+          source: "Pi model catalog",
+        });
       }
     } catch {
       // Continue with the provider's own catalog if the local runtime cannot load.
     }
 
-    const configuredProvider = (readOmpModelsConfig(getOmpAgentDir()).providers ?? {})[providerName];
-    const configuredModel = configuredProvider && Array.isArray(configuredProvider.models)
-      ? configuredProvider.models.find((model) => isRecord(model) && model.id === modelId)
-      : undefined;
+    const configuredProvider = (readOmpModelsConfig(getOmpAgentDir())
+      .providers ?? {})[providerName];
+    const configuredModel =
+      configuredProvider && Array.isArray(configuredProvider.models)
+        ? configuredProvider.models.find(
+            (model) => isRecord(model) && model.id === modelId
+          )
+        : undefined;
     if (configuredModel && isRecord(configuredModel)) {
-      const localMetadata = extractModelMetadata({ ...configuredModel, provider: providerName } as Parameters<typeof extractModelMetadata>[0]);
+      const localMetadata = extractModelMetadata({
+        ...configuredModel,
+        provider: providerName,
+      } as Parameters<typeof extractModelMetadata>[0]);
       if (hasMetadata(localMetadata)) {
-        return Response.json({ ok: true, ...localMetadata, source: "models.yml" });
+        return Response.json({
+          ok: true,
+          ...localMetadata,
+          source: "models.yml",
+        });
       }
     }
 
     const remoteMetadata = await fetchRemoteMetadata(provider, modelId);
     if (hasMetadata(remoteMetadata)) {
-      return Response.json({ ok: true, ...remoteMetadata, source: "Provider /models catalog" });
+      return Response.json({
+        ok: true,
+        ...remoteMetadata,
+        source: "Provider /models catalog",
+      });
     }
 
-    return Response.json({ ok: false, error: `No context or output limits found for ${providerName}/${modelId}` }, { status: 404 });
+    return Response.json(
+      {
+        ok: false,
+        error: `No context or output limits found for ${providerName}/${modelId}`,
+      },
+      { status: 404 }
+    );
   } catch (error) {
-    return Response.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return Response.json(
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }

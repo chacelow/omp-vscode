@@ -16,9 +16,21 @@ const MODELS = [
   { id: "claude-opus-5", provider: "anthropic", name: "Claude Opus 5" },
   { id: "claude-sonnet-5", provider: "anthropic", name: "Claude Sonnet 5" },
   { id: "claude-sonnet-4-6", provider: "anthropic", name: "Claude Sonnet 4.6" },
-  { id: "claude-opus-4-8", provider: "acme-gateway", name: "Claude Opus 4.8 (Acme)" },
-  { id: "claude-sonnet-5", provider: "acme-gateway", name: "Claude Sonnet 5 (Acme)" },
-  { id: "gpt-5.6-sol", provider: "acme-gateway-openai", name: "GPT-5.6 (Acme)" },
+  {
+    id: "claude-opus-4-8",
+    provider: "acme-gateway",
+    name: "Claude Opus 4.8 (Acme)",
+  },
+  {
+    id: "claude-sonnet-5",
+    provider: "acme-gateway",
+    name: "Claude Sonnet 5 (Acme)",
+  },
+  {
+    id: "gpt-5.6-sol",
+    provider: "acme-gateway-openai",
+    name: "GPT-5.6 (Acme)",
+  },
 ];
 
 const runtime = { getAvailable: async () => MODELS };
@@ -28,7 +40,10 @@ const refs = (result) => result.visible.map((m) => `${m.provider}/${m.id}`);
 test("returns every available model when no patterns are configured", async () => {
   for (const patterns of [undefined, [], ["", "   "]]) {
     const result = await resolveVisibleModels(runtime, patterns);
-    assert.deepEqual(refs(result), MODELS.map((m) => `${m.provider}/${m.id}`));
+    assert.deepEqual(
+      refs(result),
+      MODELS.map((m) => `${m.provider}/${m.id}`)
+    );
     assert.deepEqual(result.scopedModels, []);
     assert.deepEqual(result.warnings, []);
   }
@@ -75,19 +90,31 @@ test("keeps thinking-level suffixes out of the matched reference and reports the
     "anthropic/claude-sonnet-4-6": "high",
   });
 
-  const single = await resolveVisibleModels(runtime, ["acme-gateway/claude-opus-4-8:low"]);
+  const single = await resolveVisibleModels(runtime, [
+    "acme-gateway/claude-opus-4-8:low",
+  ]);
   assert.deepEqual(refs(single), ["acme-gateway/claude-opus-4-8"]);
-  assert.deepEqual(single.thinkingLevelPins, { "acme-gateway/claude-opus-4-8": "low" });
+  assert.deepEqual(single.thinkingLevelPins, {
+    "acme-gateway/claude-opus-4-8": "low",
+  });
 });
 
 test("leaves models without a pinned thinking level unpinned", async () => {
-  const result = await resolveVisibleModels(runtime, ["anthropic/claude-opus-5:high", "acme-gateway/*"]);
+  const result = await resolveVisibleModels(runtime, [
+    "anthropic/claude-opus-5:high",
+    "acme-gateway/*",
+  ]);
 
-  assert.deepEqual(result.thinkingLevelPins, { "anthropic/claude-opus-5": "high" });
+  assert.deepEqual(result.thinkingLevelPins, {
+    "anthropic/claude-opus-5": "high",
+  });
 });
 
 test("reports patterns that match nothing but keeps the models that matched", async () => {
-  const result = await resolveVisibleModels(runtime, ["anthropic/claude-opus-5", "ghost-gateway/*"]);
+  const result = await resolveVisibleModels(runtime, [
+    "anthropic/claude-opus-5",
+    "ghost-gateway/*",
+  ]);
 
   assert.deepEqual(refs(result), ["anthropic/claude-opus-5"]);
   assert.equal(result.warnings.length, 1);
@@ -97,7 +124,10 @@ test("reports patterns that match nothing but keeps the models that matched", as
 test("falls back to all available models when nothing matches at all", async () => {
   const result = await resolveVisibleModels(runtime, ["ghost-gateway/*"]);
 
-  assert.deepEqual(refs(result), MODELS.map((m) => `${m.provider}/${m.id}`));
+  assert.deepEqual(
+    refs(result),
+    MODELS.map((m) => `${m.provider}/${m.id}`)
+  );
   assert.equal(result.warnings.length, 1);
   assert.deepEqual(result.scopedModels, []);
   assert.deepEqual(result.thinkingLevelPins, {});
@@ -112,7 +142,10 @@ test("selects the saved scoped default and applies its thinking pin", async () =
     defaultModel: { provider: "acme-gateway", modelId: "claude-sonnet-5" },
   });
 
-  assert.equal(`${initial.model.provider}/${initial.model.id}`, "acme-gateway/claude-sonnet-5");
+  assert.equal(
+    `${initial.model.provider}/${initial.model.id}`,
+    "acme-gateway/claude-sonnet-5"
+  );
   assert.equal(initial.thinkingLevel, "low");
   assert.equal(initial.scopedModels.length, 3);
 });
@@ -123,7 +156,10 @@ test("uses the saved default without creating a synthetic scope when unconfigure
     defaultModel: { provider: "acme-gateway-openai", modelId: "gpt-5.6-sol" },
   });
 
-  assert.equal(`${initial.model.provider}/${initial.model.id}`, "acme-gateway-openai/gpt-5.6-sol");
+  assert.equal(
+    `${initial.model.provider}/${initial.model.id}`,
+    "acme-gateway-openai/gpt-5.6-sol"
+  );
   assert.equal(initial.thinkingLevel, undefined);
   assert.deepEqual(initial.scopedModels, []);
 });
@@ -137,7 +173,10 @@ test("uses resolver order when the saved default is outside the enabled scope", 
     defaultModel: { provider: "acme-gateway-openai", modelId: "gpt-5.6-sol" },
   });
 
-  assert.equal(`${initial.model.provider}/${initial.model.id}`, "anthropic/claude-opus-5");
+  assert.equal(
+    `${initial.model.provider}/${initial.model.id}`,
+    "anthropic/claude-opus-5"
+  );
   assert.equal(initial.thinkingLevel, "high");
 });
 
@@ -147,15 +186,17 @@ test("applies a requested scoped model pin unless thinking was explicitly overri
 
   assert.equal(
     selectInitialModelScope(scope, { requestedModel }).thinkingLevel,
-    "high",
+    "high"
   );
   assert.equal(
-    selectInitialModelScope(scope, { requestedModel, thinkingLevel: "low" }).thinkingLevel,
-    "low",
+    selectInitialModelScope(scope, { requestedModel, thinkingLevel: "low" })
+      .thinkingLevel,
+    "low"
   );
   assert.equal(
-    selectInitialModelScope(scope, { requestedModel, thinkingLevel: "off" }).thinkingLevel,
-    "off",
+    selectInitialModelScope(scope, { requestedModel, thinkingLevel: "off" })
+      .thinkingLevel,
+    "off"
   );
 });
 
@@ -163,9 +204,13 @@ test("rejects an explicit model outside the enabled scope", async () => {
   const scope = await resolveVisibleModels(runtime, ["anthropic/*"]);
 
   assert.throws(
-    () => selectInitialModelScope(scope, {
-      requestedModel: { provider: "acme-gateway", modelId: "claude-sonnet-5" },
-    }),
-    /not available in the enabled scope/,
+    () =>
+      selectInitialModelScope(scope, {
+        requestedModel: {
+          provider: "acme-gateway",
+          modelId: "claude-sonnet-5",
+        },
+      }),
+    /not available in the enabled scope/
   );
 });

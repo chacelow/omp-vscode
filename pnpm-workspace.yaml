@@ -1,38 +1,38 @@
 packages:
-- packages/*
+  - packages/*
 onlyBuiltDependencies:
-- sharp
-- onnxruntime-node
-- unrs-resolver
-- better-sqlite3
-- esbuild
+  - sharp
+  - onnxruntime-node
+  - unrs-resolver
+  - better-sqlite3
+  - esbuild
 allowBuilds:
   better-sqlite3: true
   esbuild: true
   onnxruntime-node: true
   sharp: true
-  '@google/genai': false
-  '@parcel/watcher': false
+  "@google/genai": false
+  "@parcel/watcher": false
   protobufjs: false
   unrs-resolver: true
 minimumReleaseAgeExclude:
-- '@oh-my-pi/hashline@17.2.11'
-- '@oh-my-pi/omp-stats@17.2.11'
-- '@oh-my-pi/omptype@17.2.11'
-- '@oh-my-pi/pi-agent-core@17.2.11'
-- '@oh-my-pi/pi-ai@17.2.11'
-- '@oh-my-pi/pi-catalog@17.2.11'
-- '@oh-my-pi/pi-coding-agent@17.2.11'
-- '@oh-my-pi/pi-mnemopi@17.2.11'
-- '@oh-my-pi/pi-natives-darwin-arm64@17.2.11'
-- '@oh-my-pi/pi-natives-darwin-x64@17.2.11'
-- '@oh-my-pi/pi-natives-linux-arm64@17.2.11'
-- '@oh-my-pi/pi-natives-linux-x64@17.2.11'
-- '@oh-my-pi/pi-natives-win32-x64@17.2.11'
-- '@oh-my-pi/pi-natives@17.2.11'
-- '@oh-my-pi/pi-tui@17.2.11'
-- '@oh-my-pi/pi-utils@17.2.11'
-- '@oh-my-pi/pi-wire@17.2.11'
-- '@oh-my-pi/snapcompact@17.2.11'
+  - "@oh-my-pi/hashline@17.2.11"
+  - "@oh-my-pi/omp-stats@17.2.11"
+  - "@oh-my-pi/omptype@17.2.11"
+  - "@oh-my-pi/pi-agent-core@17.2.11"
+  - "@oh-my-pi/pi-ai@17.2.11"
+  - "@oh-my-pi/pi-catalog@17.2.11"
+  - "@oh-my-pi/pi-coding-agent@17.2.11"
+  - "@oh-my-pi/pi-mnemopi@17.2.11"
+  - "@oh-my-pi/pi-natives-darwin-arm64@17.2.11"
+  - "@oh-my-pi/pi-natives-darwin-x64@17.2.11"
+  - "@oh-my-pi/pi-natives-linux-arm64@17.2.11"
+  - "@oh-my-pi/pi-natives-linux-x64@17.2.11"
+  - "@oh-my-pi/pi-natives-win32-x64@17.2.11"
+  - "@oh-my-pi/pi-natives@17.2.11"
+  - "@oh-my-pi/pi-tui@17.2.11"
+  - "@oh-my-pi/pi-utils@17.2.11"
+  - "@oh-my-pi/pi-wire@17.2.11"
+  - "@oh-my-pi/snapcompact@17.2.11"
 overrides:
   eslint-import-resolver-typescript: ^3.10.1

@@ -98,7 +98,10 @@ export class OmpRpcProcess {
     if (this.options.resume) args.push("--resume", this.options.resume);
     if (this.options.noSession) args.push("--no-session");
     if (this.options.model) {
-      args.push("--model", `${this.options.model.provider}/${this.options.model.modelId}`);
+      args.push(
+        "--model",
+        `${this.options.model.provider}/${this.options.model.modelId}`
+      );
     }
     if (this.options.thinkingLevel && this.options.thinkingLevel !== "auto") {
       args.push("--thinking", this.options.thinkingLevel);
@@ -246,15 +249,18 @@ export class OmpRpcProcess {
       clearTimeout(req.timer);
       if (frame.type === "response") {
         if (frame.success === false) {
-          const msg = typeof frame.error === "string"
-            ? frame.error
-            : `Command ${String(frame.command)} failed`;
+          const msg =
+            typeof frame.error === "string"
+              ? frame.error
+              : `Command ${String(frame.command)} failed`;
           req.reject(new Error(msg));
         } else {
           req.resolve(frame.data);
         }
       } else {
-        req.reject(new Error(`Unexpected response frame type: ${String(frame.type)}`));
+        req.reject(
+          new Error(`Unexpected response frame type: ${String(frame.type)}`)
+        );
       }
       return;
     }
@@ -264,7 +270,11 @@ export class OmpRpcProcess {
   }
 
   /** Send a command and resolve with the response `data` (reject on failure). */
-  send<T = unknown>(type: string, payload: Record<string, unknown> = {}, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS): Promise<T> {
+  send<T = unknown>(
+    type: string,
+    payload: Record<string, unknown> = {},
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+  ): Promise<T> {
     if (!this.isAlive()) {
       return Promise.reject(new Error("omp session process is not running"));
     }
@@ -274,9 +284,15 @@ export class OmpRpcProcess {
         this.pending.delete(id);
         reject(new Error(`Command ${type} timed out after ${timeoutMs}ms`));
       }, timeoutMs);
-      this.pending.set(id, { resolve: resolve as (d: unknown) => void, reject, timer });
+      this.pending.set(id, {
+        resolve: resolve as (d: unknown) => void,
+        reject,
+        timer,
+      });
       try {
-        this.proc?.stdin?.write(JSON.stringify({ id, type, ...payload }) + "\n");
+        this.proc?.stdin?.write(
+          JSON.stringify({ id, type, ...payload }) + "\n"
+        );
       } catch (err) {
         clearTimeout(timer);
         this.pending.delete(id);

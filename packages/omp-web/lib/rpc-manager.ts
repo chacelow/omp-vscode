@@ -70,9 +70,15 @@ export class AgentSessionWrapper {
   private bashRunning = false;
   private compacting = false;
   private autoRetryEnabled: boolean | null = null;
-  private queuedMessages: { steering: string[]; followUp: string[] } = { steering: [], followUp: [] };
+  private queuedMessages: { steering: string[]; followUp: string[] } = {
+    steering: [],
+    followUp: [],
+  };
   private extensionStatuses = new Map<string, string>();
-  private extensionWidgets = new Map<string, { key: string; lines: string[]; placement: string }>();
+  private extensionWidgets = new Map<
+    string,
+    { key: string; lines: string[]; placement: string }
+  >();
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private _sessionId: string;
   private _sessionFile: string;
@@ -85,7 +91,7 @@ export class AgentSessionWrapper {
     tempKey: string,
     sessionFile: string,
     cwd: string,
-    options: RpcSessionStartOptions = {},
+    options: RpcSessionStartOptions = {}
   ) {
     this.tempKey = tempKey;
     this.sessionCwd = cwd;
@@ -128,7 +134,9 @@ export class AgentSessionWrapper {
   }
 
   isRunning(): boolean {
-    return this._alive && (this.promptRunning || this.bashRunning || this.compacting);
+    return (
+      this._alive && (this.promptRunning || this.bashRunning || this.compacting)
+    );
   }
 
   /** Wait for the RPC process to become ready, then snapshot its session id. */
@@ -145,8 +153,13 @@ export class AgentSessionWrapper {
           // best-effort — get_state below reveals the actual session
         }
       }
-      const state = await this.rpc.send<Record<string, unknown>>("get_state", {}, 30_000);
-      if (typeof state?.sessionId === "string") this._sessionId = state.sessionId;
+      const state = await this.rpc.send<Record<string, unknown>>(
+        "get_state",
+        {},
+        30_000
+      );
+      if (typeof state?.sessionId === "string")
+        this._sessionId = state.sessionId;
       if (typeof state?.sessionFile === "string") {
         this._sessionFile = state.sessionFile;
         // Let resolveSessionPath() find this session without a file scan.
@@ -154,7 +167,8 @@ export class AgentSessionWrapper {
           cacheSessionPath(this._sessionId, this._sessionFile);
         }
       }
-      if (typeof state?.isCompacting === "boolean") this.compacting = state.isCompacting;
+      if (typeof state?.isCompacting === "boolean")
+        this.compacting = state.isCompacting;
     } catch {
       // session id stays the temp key; commands will surface real errors
     }
@@ -217,25 +231,37 @@ export class AgentSessionWrapper {
         this.compacting = false;
         break;
       case "queue_update": {
-        const steering = Array.isArray(event.steering) ? (event.steering as string[]) : [];
-        const followUp = Array.isArray(event.followUp) ? (event.followUp as string[]) : [];
+        const steering = Array.isArray(event.steering)
+          ? (event.steering as string[])
+          : [];
+        const followUp = Array.isArray(event.followUp)
+          ? (event.followUp as string[])
+          : [];
         this.queuedMessages = { steering, followUp };
         break;
       }
       case "extension_ui_request": {
         const method = event.method;
         if (method === "setStatus" && typeof event.statusKey === "string") {
-          const text = typeof event.statusText === "string" ? event.statusText : undefined;
-          if (text === undefined) this.extensionStatuses.delete(event.statusKey);
+          const text =
+            typeof event.statusText === "string" ? event.statusText : undefined;
+          if (text === undefined)
+            this.extensionStatuses.delete(event.statusKey);
           else this.extensionStatuses.set(event.statusKey, text);
-        } else if (method === "setWidget" && typeof event.widgetKey === "string") {
+        } else if (
+          method === "setWidget" &&
+          typeof event.widgetKey === "string"
+        ) {
           if (event.widgetLines === undefined || event.widgetLines === null) {
             this.extensionWidgets.delete(event.widgetKey);
           } else if (Array.isArray(event.widgetLines)) {
             this.extensionWidgets.set(event.widgetKey, {
               key: event.widgetKey,
               lines: event.widgetLines as string[],
-              placement: event.widgetPlacement === "belowEditor" ? "belowEditor" : "aboveEditor",
+              placement:
+                event.widgetPlacement === "belowEditor"
+                  ? "belowEditor"
+                  : "aboveEditor",
             });
           }
         }
@@ -253,15 +279,18 @@ export class AgentSessionWrapper {
 
   private resetIdleTimer(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => {
-      if (this.isRunning()) {
-        this.resetIdleTimer();
-        return;
-      }
-      void this.shutdown().catch(() => {
-        // best-effort idle cleanup
-      });
-    }, 10 * 60 * 1000);
+    this.idleTimer = setTimeout(
+      () => {
+        if (this.isRunning()) {
+          this.resetIdleTimer();
+          return;
+        }
+        void this.shutdown().catch(() => {
+          // best-effort idle cleanup
+        });
+      },
+      10 * 60 * 1000
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -275,10 +304,14 @@ export class AgentSessionWrapper {
     switch (type) {
       case "prompt": {
         if (this.bashRunning) {
-          throw new Error("Cannot send a prompt while a shell command is running");
+          throw new Error(
+            "Cannot send a prompt while a shell command is running"
+          );
         }
-        const images = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        const streamingBehavior = command.streamingBehavior as "steer" | "followUp" | undefined;
+        const images = command.images as
+          Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+        const streamingBehavior = command.streamingBehavior as
+          "steer" | "followUp" | undefined;
         // RPC responds once the prompt is accepted; events stream afterwards.
         await this.rpc.send("prompt", {
           message: command.message as string,
@@ -289,7 +322,8 @@ export class AgentSessionWrapper {
       }
 
       case "steer": {
-        const images = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+        const images = command.images as
+          Array<{ type: "image"; data: string; mimeType: string }> | undefined;
         await this.rpc.send("steer", {
           message: command.message as string,
           ...(images?.length ? { images } : {}),
@@ -298,7 +332,8 @@ export class AgentSessionWrapper {
       }
 
       case "follow_up": {
-        const images = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+        const images = command.images as
+          Array<{ type: "image"; data: string; mimeType: string }> | undefined;
         await this.rpc.send("follow_up", {
           message: command.message as string,
           ...(images?.length ? { images } : {}),
@@ -313,7 +348,8 @@ export class AgentSessionWrapper {
         return null;
 
       case "get_state": {
-        const state = (await this.rpc.send<Record<string, unknown>>("get_state")) ?? {};
+        const state =
+          (await this.rpc.send<Record<string, unknown>>("get_state")) ?? {};
         return {
           ...state,
           sessionId: this.sessionId,
@@ -321,10 +357,14 @@ export class AgentSessionWrapper {
           isPromptRunning: this.promptRunning,
           isBashRunning: this.bashRunning,
           isCompacting: this.compacting,
-          autoRetryEnabled: this.autoRetryEnabled ?? state.autoRetryEnabled ?? undefined,
+          autoRetryEnabled:
+            this.autoRetryEnabled ?? state.autoRetryEnabled ?? undefined,
           pendingMessageCount: state.queuedMessageCount ?? 0,
           queuedMessages: this.queuedMessages,
-          extensionStatuses: Array.from(this.extensionStatuses, ([key, text]) => ({ key, text })),
+          extensionStatuses: Array.from(
+            this.extensionStatuses,
+            ([key, text]) => ({ key, text })
+          ),
           extensionWidgets: Array.from(this.extensionWidgets.values()),
         };
       }
@@ -332,10 +372,16 @@ export class AgentSessionWrapper {
       case "set_model": {
         const provider = (command.provider as string) || "";
         const modelId = (command.modelId as string) || "";
-        const data = await this.rpc.send<Record<string, unknown>>("set_model", { provider, modelId });
+        const data = await this.rpc.send<Record<string, unknown>>("set_model", {
+          provider,
+          modelId,
+        });
         invalidateSessionListCache(); // model_change entry lands in the file
-        const model = (data?.model ?? data) as { id?: string; provider?: string } | undefined;
-        return model ? { id: model.id ?? modelId, provider: model.provider ?? provider } : null;
+        const model = (data?.model ?? data) as
+          { id?: string; provider?: string } | undefined;
+        return model
+          ? { id: model.id ?? modelId, provider: model.provider ?? provider }
+          : null;
       }
 
       case "set_thinking_level": {
@@ -349,7 +395,9 @@ export class AgentSessionWrapper {
       }
 
       case "set_auto_compaction": {
-        await this.rpc.send("set_auto_compaction", { enabled: command.enabled });
+        await this.rpc.send("set_auto_compaction", {
+          enabled: command.enabled,
+        });
         return null;
       }
 
@@ -362,7 +410,9 @@ export class AgentSessionWrapper {
       case "compact": {
         try {
           return await this.rpc.send("compact", {
-            ...(typeof command.customInstructions === "string" ? { customInstructions: command.customInstructions } : {}),
+            ...(typeof command.customInstructions === "string"
+              ? { customInstructions: command.customInstructions }
+              : {}),
           });
         } finally {
           this.compacting = false;
@@ -373,7 +423,9 @@ export class AgentSessionWrapper {
       case "bash": {
         const result = await this.rpc.send<Record<string, unknown>>("bash", {
           command: command.command,
-          ...(command.excludeFromContext !== undefined ? { excludeFromContext: command.excludeFromContext } : {}),
+          ...(command.excludeFromContext !== undefined
+            ? { excludeFromContext: command.excludeFromContext }
+            : {}),
         });
         // A leading bash command persists its own session file (header-only
         // session). Register it for resolveSessionPath and refresh the list.
@@ -419,27 +471,32 @@ export class AgentSessionWrapper {
         return this.rpc.send("get_last_assistant_text");
 
       case "get_commands": {
-        const data = await this.rpc.send<{ commands?: Array<Record<string, unknown>> }>("get_available_commands");
+        const data = await this.rpc.send<{
+          commands?: Array<Record<string, unknown>>;
+        }>("get_available_commands");
         // Map OMP command sources to the webview's slash palette groups:
         // builtin/skill pass through; OMP "file" (prompt templates) → "prompt";
         // "custom" and anything else → "extension".
         const commands = (data?.commands ?? []).map((c) => ({
           name: c.name,
           description: c.description,
-          source: c.source === "builtin"
-            ? "builtin"
-            : c.source === "skill"
-              ? "skill"
-              : c.source === "file"
-                ? "prompt"
-                : "extension",
+          source:
+            c.source === "builtin"
+              ? "builtin"
+              : c.source === "skill"
+                ? "skill"
+                : c.source === "file"
+                  ? "prompt"
+                  : "extension",
         }));
         return { commands };
       }
 
       case "get_tools": {
         const state = await this.rpc.send<Record<string, unknown>>("get_state");
-        const dump = Array.isArray(state?.dumpTools) ? (state.dumpTools as Array<Record<string, unknown>>) : [];
+        const dump = Array.isArray(state?.dumpTools)
+          ? (state.dumpTools as Array<Record<string, unknown>>)
+          : [];
         return dump.map((t) => ({
           name: t.name,
           description: t.description,
@@ -509,7 +566,12 @@ export class AgentSessionWrapper {
 
 declare global {
   var __piSessions: Map<string, AgentSessionWrapper> | undefined;
-  var __piStartLocks: Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> | undefined;
+  var __piStartLocks:
+    | Map<
+        string,
+        Promise<{ session: AgentSessionWrapper; realSessionId: string }>
+      >
+    | undefined;
   var __piStartingSessionCwds: Map<string, number> | undefined;
   var __piRunningListeners: Set<(ids: string[]) => void> | undefined;
 }
@@ -525,7 +587,10 @@ function getRegistry(): Map<string, AgentSessionWrapper> {
   return globalThis.__piSessions;
 }
 
-function getLocks(): Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> {
+function getLocks(): Map<
+  string,
+  Promise<{ session: AgentSessionWrapper; realSessionId: string }>
+> {
   if (!globalThis.__piStartLocks) globalThis.__piStartLocks = new Map();
   return globalThis.__piStartLocks;
 }
@@ -535,7 +600,8 @@ function normalizeRpcCwd(cwd: string): string {
 }
 
 function getStartingSessionCwds(): Map<string, number> {
-  if (!globalThis.__piStartingSessionCwds) globalThis.__piStartingSessionCwds = new Map();
+  if (!globalThis.__piStartingSessionCwds)
+    globalThis.__piStartingSessionCwds = new Map();
   return globalThis.__piStartingSessionCwds;
 }
 
@@ -550,7 +616,9 @@ function trackStartingSession(cwd: string): () => void {
   };
 }
 
-export function getRpcSession(sessionId: string): AgentSessionWrapper | undefined {
+export function getRpcSession(
+  sessionId: string
+): AgentSessionWrapper | undefined {
   return getRegistry().get(sessionId);
 }
 
@@ -558,14 +626,15 @@ export function hasBusyRpcSessionForCwd(cwd: string): boolean {
   const targetCwd = normalizeRpcCwd(cwd);
   if (getStartingSessionCwds().has(targetCwd)) return true;
   return Array.from(getRegistry().values()).some(
-    (session) => normalizeRpcCwd(session.cwd) === targetCwd && session.isRunning(),
+    (session) =>
+      normalizeRpcCwd(session.cwd) === targetCwd && session.isRunning()
   );
 }
 
 export async function destroyRpcSessionsForCwd(cwd: string): Promise<number> {
   const targetCwd = normalizeRpcCwd(cwd);
   const sessions = Array.from(getRegistry().values()).filter(
-    (session) => normalizeRpcCwd(session.cwd) === targetCwd,
+    (session) => normalizeRpcCwd(session.cwd) === targetCwd
   );
   await Promise.all(sessions.map((session) => session.shutdown()));
   return sessions.length;
@@ -584,15 +653,20 @@ export function getRunningRpcSessionIds(): string[] {
 // ----------------------------------------------------------------------------
 
 function getRunningListeners(): Set<(ids: string[]) => void> {
-  if (!globalThis.__piRunningListeners) globalThis.__piRunningListeners = new Set();
+  if (!globalThis.__piRunningListeners)
+    globalThis.__piRunningListeners = new Set();
   return globalThis.__piRunningListeners;
 }
 
 /** Subscribe to running-session-id changes. Returns an unsubscribe function. */
-export function subscribeRunningSessions(listener: (ids: string[]) => void): () => void {
+export function subscribeRunningSessions(
+  listener: (ids: string[]) => void
+): () => void {
   const listeners = getRunningListeners();
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 let lastRunningSnapshot = "";
@@ -608,7 +682,11 @@ export function notifyRunningChange(): void {
   if (snapshot === lastRunningSnapshot) return;
   lastRunningSnapshot = snapshot;
   for (const listener of listeners) {
-    try { listener(ids); } catch { /* ignore listener errors */ }
+    try {
+      listener(ids);
+    } catch {
+      /* ignore listener errors */
+    }
   }
 }
 
@@ -626,21 +704,29 @@ export async function startRpcSession(
   sessionId: string,
   sessionFile: string,
   cwd: string | undefined,
-  options: RpcSessionStartOptions = {},
+  options: RpcSessionStartOptions = {}
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const locks = getLocks();
 
   const existing = registry.get(sessionId);
-  if (existing?.isAlive()) return { session: existing, realSessionId: existing.sessionId };
+  if (existing?.isAlive())
+    return { session: existing, realSessionId: existing.sessionId };
 
   const inflight = locks.get(sessionId);
   if (inflight) return inflight;
 
-  const sessionCwd = sessionFile ? dirnameOf(sessionFile) : cwd || process.cwd();
+  const sessionCwd = sessionFile
+    ? dirnameOf(sessionFile)
+    : cwd || process.cwd();
   const finishStartingSession = trackStartingSession(sessionCwd);
   const starting = (async () => {
-    const wrapper = new AgentSessionWrapper(sessionId, sessionFile, sessionCwd, options);
+    const wrapper = new AgentSessionWrapper(
+      sessionId,
+      sessionFile,
+      sessionCwd,
+      options
+    );
     try {
       await wrapper.start();
     } catch (err) {

@@ -1,52 +1,54 @@
 .preview {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 100%;
   z-index: 100;
+  top: 0;
+  right: 100%;
+  bottom: 0;
   width: 320px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-  background: var(--bg);
   border-left: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  box-shadow: -10px 0 26px rgba(0, 0, 0, 0.07);
-  pointer-events: auto;
+  background: var(--bg);
+  box-shadow: -10px 0 26px rgb(0 0 0 / 7%);
   cursor: default;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
   user-select: text;
 }
 
 .turn {
   position: relative;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
   padding: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
   background: transparent;
-  transition: background 120ms ease, box-shadow 120ms ease;
+  grid-template-columns: 34px minmax(0, 1fr);
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .turn[data-located="true"] {
   background: color-mix(in srgb, var(--text) 4%, var(--bg));
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--text-muted) 70%, transparent);
+  box-shadow: inset 2px 0 0
+    color-mix(in srgb, var(--text-muted) 70%, transparent);
 }
 
 .number {
   position: relative;
   z-index: 1;
-  grid-column: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 34px;
   height: 32px;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+  grid-column: 1;
   line-height: 18px;
   text-align: center;
 }
@@ -56,40 +58,40 @@
 }
 
 .content {
-  grid-column: 2;
   min-width: 0;
+  grid-column: 2;
 }
 
 .user {
   display: block;
+  overflow: hidden;
   width: calc(100% + 34px);
   min-height: 32px;
   max-height: 86px;
-  margin: 0 0 0 -34px;
   padding: 7px 10px 7px 40px;
   border: 0;
   border-radius: 0;
+  margin: 0 0 0 -34px;
   background: transparent;
   color: var(--text);
+  cursor: pointer;
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;
   line-height: 18px;
   text-align: left;
-  cursor: pointer;
-  overflow: hidden;
   transition: background 100ms ease;
 }
 
 .userText {
   display: -webkit-box;
   overflow: hidden;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
   line-clamp: 4;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .user:hover {
@@ -109,28 +111,30 @@
 
 .assistantJump {
   position: absolute;
+  z-index: 2;
   top: 0;
   left: -29px;
-  z-index: 2;
   width: 24px;
   height: 26px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text-dim);
+  cursor: pointer;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 26px;
   text-align: center;
-  cursor: pointer;
-  transition: color 100ms ease, background 100ms ease;
+  transition:
+    color 100ms ease,
+    background 100ms ease;
 }
 
 .assistantJump:hover {
-  color: var(--text);
   background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .outline {
@@ -142,23 +146,25 @@
 .heading,
 .paragraph {
   display: block;
+  overflow: hidden;
   width: calc(100% + 34px);
-  min-height: 26px;
   min-width: 0;
-  margin-left: -34px;
+  min-height: 26px;
   padding: 4px 10px 4px 40px;
   border: 0;
   border-radius: 0;
+  margin-left: -34px;
   background: transparent;
+  cursor: pointer;
   font-family: inherit;
   letter-spacing: 0;
   line-height: 18px;
-  overflow: hidden;
   text-align: left;
   text-overflow: ellipsis;
+  transition:
+    background 100ms ease,
+    color 100ms ease;
   white-space: nowrap;
-  cursor: pointer;
-  transition: background 100ms ease, color 100ms ease;
 }
 
 .heading:hover,
@@ -212,9 +218,10 @@
 .user:focus-visible,
 .heading:focus-visible,
 .paragraph:focus-visible {
-  outline: 0;
   background: color-mix(in srgb, var(--text) 6%, transparent);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--text-muted) 65%, transparent);
+  box-shadow: inset 2px 0 0
+    color-mix(in srgb, var(--text-muted) 65%, transparent);
+  outline: 0;
 }
 
 .assistantJump:focus-visible {

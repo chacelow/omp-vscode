@@ -24,14 +24,14 @@ test("sorts status text by hidden key like the Pi CLI footer", () => {
 
   assert.equal(
     formatExtensionStatusLine(statuses),
-    "ponytail permissions memory notify",
+    "ponytail permissions memory notify"
   );
 });
 
 test("sanitizes status text for a single-line display", () => {
   assert.equal(
     sanitizeExtensionStatusText("  first\tsecond \r\n third  "),
-    "first second third",
+    "first second third"
   );
 });
 
@@ -42,7 +42,7 @@ test("renders a single status line without identifier keys", () => {
         { key: "20-memory", text: "\x1b[32mmemory\x1b[0m" },
         { key: "05-ponytail", text: "ponytail" },
       ],
-    }),
+    })
   );
 
   assert.match(html, /aria-label="ponytail memory"/);

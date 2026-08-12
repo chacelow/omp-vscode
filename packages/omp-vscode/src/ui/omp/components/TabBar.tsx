@@ -69,7 +69,14 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
               transition: "background 0.1s, color 0.1s",
             }}
           >
-            <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.7, display: "flex", alignItems: "center" }}>
+            <span
+              style={{
+                flexShrink: 0,
+                opacity: isActive ? 1 : 0.7,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
               {getFileIcon(tab.label, 13)}
             </span>
             <span
@@ -84,25 +91,42 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
               {tab.label}
             </span>
             <button
-              onClick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseTab(tab.id);
+              }}
               onMouseEnter={() => setHoveredClose(tab.id)}
               onMouseLeave={() => setHoveredClose(null)}
               style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                width: 24, height: 24,
-                background: hoveredClose === tab.id ? "var(--bg-hover)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                background:
+                  hoveredClose === tab.id ? "var(--bg-hover)" : "transparent",
                 border: "none",
                 borderRadius: 4,
-                color: hoveredClose === tab.id ? "var(--text)" : "var(--text-dim)",
+                color:
+                  hoveredClose === tab.id ? "var(--text)" : "var(--text-dim)",
                 cursor: "pointer",
                 padding: 0,
                 flexShrink: 0,
                 transition: "background 0.1s, color 0.1s",
               }}
-               title={t("i18n.close")}
-               aria-label={`${t("i18n.close")} ${tab.label}`}
+              title={t("i18n.close")}
+              aria-label={`${t("i18n.close")} ${tab.label}`}
             >
-              <svg width="11" height="11" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 10 10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
                 <line x1="2" y1="2" x2="8" y2="8" />
                 <line x1="8" y1="2" x2="2" y2="8" />
               </svg>

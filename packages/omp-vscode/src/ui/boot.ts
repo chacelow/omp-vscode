@@ -11,7 +11,9 @@ declare function acquireVsCodeApi(): { postMessage: (msg: unknown) => void };
 // instance globally so other modules (e.g. ChatWindow) can post without
 // calling it again.
 const vscode = acquireVsCodeApi();
-(globalThis as { __ompVscode?: { postMessage: (msg: unknown) => void } }).__ompVscode = vscode;
+(
+  globalThis as { __ompVscode?: { postMessage: (msg: unknown) => void } }
+).__ompVscode = vscode;
 
 export function ompPost(msg: unknown): void {
   try {
@@ -35,7 +37,10 @@ window.addEventListener("error", (e) => {
 });
 
 window.addEventListener("unhandledrejection", (e) => {
-  const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? "unhandled rejection");
+  const msg =
+    e.reason instanceof Error
+      ? e.reason.message
+      : String(e.reason ?? "unhandled rejection");
   ompPost({
     type: "log",
     level: "error",
@@ -45,4 +50,6 @@ window.addEventListener("unhandledrejection", (e) => {
 });
 
 // Make `process` safe for any bundled code that references it on dead paths.
-(globalThis as { process?: unknown }).process ??= { env: {} as Record<string, string> };
+(globalThis as { process?: unknown }).process ??= {
+  env: {} as Record<string, string>,
+};

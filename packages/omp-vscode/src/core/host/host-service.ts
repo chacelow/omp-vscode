@@ -15,7 +15,7 @@ export class HostService {
 
   async dispatch<M extends HostMethod>(
     method: M,
-    params: unknown,
+    params: unknown
   ): Promise<HostMethods[M]["result"]> {
     const handler = handlers[method];
     if (!handler) throw new Error(`Unknown host method: ${method}`);

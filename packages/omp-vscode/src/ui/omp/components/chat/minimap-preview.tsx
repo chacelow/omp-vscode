@@ -5,7 +5,12 @@ import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import { markdownPreviewRemarkPlugins } from "@/lib/markdown";
 import { splitFinalAssistantBlocks } from "@/lib/message-display";
-import type { AgentMessage, AssistantMessage, TextContent, UserMessage } from "@/lib/types";
+import type {
+  AgentMessage,
+  AssistantMessage,
+  TextContent,
+  UserMessage,
+} from "@/lib/types";
 import { styles } from "./minimap-styles";
 
 export interface AssistantPreview {
@@ -28,9 +33,13 @@ export function getUserPreview(message: UserMessage): string {
     .trim();
 }
 
-function getAssistantAnswerMarkdown(message: AgentMessage | Partial<AgentMessage>): string {
+function getAssistantAnswerMarkdown(
+  message: AgentMessage | Partial<AgentMessage>
+): string {
   if (message.role !== "assistant") return "";
-  const { answerBlocks } = splitFinalAssistantBlocks(message as AssistantMessage);
+  const { answerBlocks } = splitFinalAssistantBlocks(
+    message as AssistantMessage
+  );
   return answerBlocks
     .filter((block): block is TextContent => block.type === "text")
     .map((block) => block.text)
@@ -77,9 +86,12 @@ interface PreviewAstNode {
 function remarkPreviewOutline() {
   return (tree: { children?: PreviewAstNode[] }) => {
     if (!Array.isArray(tree.children)) return;
-    const headings = tree.children.filter((node) => (
-      node.type === "heading" && typeof node.depth === "number" && node.depth <= 3
-    ));
+    const headings = tree.children.filter(
+      (node) =>
+        node.type === "heading" &&
+        typeof node.depth === "number" &&
+        node.depth <= 3
+    );
     if (headings.length > 0) {
       headings.forEach((node, headingIndex) => {
         node.data = {
@@ -93,7 +105,9 @@ function remarkPreviewOutline() {
       tree.children = headings;
       return;
     }
-    const firstParagraph = tree.children.find((node) => node.type === "paragraph");
+    const firstParagraph = tree.children.find(
+      (node) => node.type === "paragraph"
+    );
     tree.children = firstParagraph ? [firstParagraph] : [];
   };
 }
@@ -104,8 +118,12 @@ const previewRemarkPlugins = [
 ];
 
 function getPreviewHeadingIndex(node: unknown): number | null {
-  const properties = (node as { properties?: Record<string, unknown> } | undefined)?.properties;
-  const value = properties?.dataPreviewHeadingIndex ?? properties?.["data-preview-heading-index"];
+  const properties = (
+    node as { properties?: Record<string, unknown> } | undefined
+  )?.properties;
+  const value =
+    properties?.dataPreviewHeadingIndex ??
+    properties?.["data-preview-heading-index"];
   if (typeof value === "number") return value;
   if (typeof value === "string" && /^\d+$/.test(value)) return Number(value);
   return null;
@@ -127,9 +145,33 @@ export const AssistantOutline = memo(function AssistantOutline({
       <ReactMarkdown
         remarkPlugins={previewRemarkPlugins}
         components={{
-          h1: ({ children, node }) => <PreviewHeading level={1} headingIndex={getPreviewHeadingIndex(node)} onClick={onHeadingClick}>{children}</PreviewHeading>,
-          h2: ({ children, node }) => <PreviewHeading level={2} headingIndex={getPreviewHeadingIndex(node)} onClick={onHeadingClick}>{children}</PreviewHeading>,
-          h3: ({ children, node }) => <PreviewHeading level={3} headingIndex={getPreviewHeadingIndex(node)} onClick={onHeadingClick}>{children}</PreviewHeading>,
+          h1: ({ children, node }) => (
+            <PreviewHeading
+              level={1}
+              headingIndex={getPreviewHeadingIndex(node)}
+              onClick={onHeadingClick}
+            >
+              {children}
+            </PreviewHeading>
+          ),
+          h2: ({ children, node }) => (
+            <PreviewHeading
+              level={2}
+              headingIndex={getPreviewHeadingIndex(node)}
+              onClick={onHeadingClick}
+            >
+              {children}
+            </PreviewHeading>
+          ),
+          h3: ({ children, node }) => (
+            <PreviewHeading
+              level={3}
+              headingIndex={getPreviewHeadingIndex(node)}
+              onClick={onHeadingClick}
+            >
+              {children}
+            </PreviewHeading>
+          ),
           h4: () => null,
           h5: () => null,
           h6: () => null,
@@ -161,7 +203,7 @@ export const AssistantOutline = memo(function AssistantOutline({
 /** Build the preview content for one turn (user brief + assistant outlines). */
 export function buildAssistantPreviews(
   message: AgentMessage | Partial<AgentMessage>,
-  element: HTMLDivElement | null,
+  element: HTMLDivElement | null
 ): AssistantPreview[] {
   const markdown = getAssistantAnswerMarkdown(message);
   return markdown ? [{ markdown, element }] : [];

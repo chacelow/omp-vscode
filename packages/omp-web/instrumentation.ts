@@ -11,9 +11,15 @@ export async function register(): Promise<void> {
     const defaultDir = join(homedir(), ".omp", "agent");
     process.env.OMP_CODING_AGENT_DIR = defaultDir;
     process.env.PI_CODING_AGENT_DIR = defaultDir;
-  } else if (process.env.OMP_CODING_AGENT_DIR && !process.env.PI_CODING_AGENT_DIR) {
+  } else if (
+    process.env.OMP_CODING_AGENT_DIR &&
+    !process.env.PI_CODING_AGENT_DIR
+  ) {
     process.env.PI_CODING_AGENT_DIR = process.env.OMP_CODING_AGENT_DIR;
-  } else if (process.env.PI_CODING_AGENT_DIR && !process.env.OMP_CODING_AGENT_DIR) {
+  } else if (
+    process.env.PI_CODING_AGENT_DIR &&
+    !process.env.OMP_CODING_AGENT_DIR
+  ) {
     process.env.OMP_CODING_AGENT_DIR = process.env.PI_CODING_AGENT_DIR;
   }
 

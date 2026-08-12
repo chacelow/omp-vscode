@@ -23,7 +23,7 @@ function buildCss() {
   console.log("[css] compiling webview.css with Tailwind v4…");
   execSync(
     `pnpm exec tailwindcss -i src/ui/webview.css -o dist/webview.css ${production ? "--minify" : ""}`,
-    { cwd: __dirname, stdio: "inherit" },
+    { cwd: __dirname, stdio: "inherit" }
   );
 }
 
@@ -57,12 +57,17 @@ async function main() {
     platform: "browser",
     alias: {
       "@": path.join(__dirname, "src/ui/omp"),
-      "next/navigation": path.join(__dirname, "src/ui/shims/next-navigation.ts"),
+      "next/navigation": path.join(
+        __dirname,
+        "src/ui/shims/next-navigation.ts"
+      ),
       os: path.join(__dirname, "src/ui/shims/os.ts"),
       path: path.join(__dirname, "src/ui/shims/path.ts"),
     },
     // mermaid + syntax highlighter pull in node builtins; stub them.
-    define: { "process.env.NODE_ENV": production ? '"production"' : '"development"' },
+    define: {
+      "process.env.NODE_ENV": production ? '"production"' : '"development"',
+    },
   });
 
   if (watch) {

@@ -12,7 +12,11 @@ export const RIGHT_PANEL_MAX_WIDTH = 1200;
 const COMPACT_CHAT_MIN_WIDTH = 320;
 const DESKTOP_CHAT_MIN_WIDTH = 420;
 
-export function clampPanelWidth(width: number, minWidth: number, maxWidth: number): number {
+export function clampPanelWidth(
+  width: number,
+  minWidth: number,
+  maxWidth: number
+): number {
   const finiteWidth = Number.isFinite(width) ? width : minWidth;
   const effectiveMax = Math.max(minWidth, maxWidth);
   return Math.round(Math.max(minWidth, Math.min(effectiveMax, finiteWidth)));
@@ -32,8 +36,12 @@ export function getSidebarMaxWidth(options: {
 
   const compact = viewportWidth < SPLIT_PANEL_MIN_WIDTH;
   const chatWidth = compact ? COMPACT_CHAT_MIN_WIDTH : DESKTOP_CHAT_MIN_WIDTH;
-  const visibleRightPanelWidth = !compact && rightPanelOpen ? rightPanelWidth : 0;
-  return Math.min(SIDEBAR_MAX_WIDTH, viewportWidth - chatWidth - visibleRightPanelWidth);
+  const visibleRightPanelWidth =
+    !compact && rightPanelOpen ? rightPanelWidth : 0;
+  return Math.min(
+    SIDEBAR_MAX_WIDTH,
+    viewportWidth - chatWidth - visibleRightPanelWidth
+  );
 }
 
 export function getRightPanelMaxWidth(options: {
@@ -47,6 +55,6 @@ export function getRightPanelMaxWidth(options: {
   const visibleSidebarWidth = sidebarOpen ? sidebarWidth : 0;
   return Math.min(
     RIGHT_PANEL_MAX_WIDTH,
-    viewportWidth - DESKTOP_CHAT_MIN_WIDTH - visibleSidebarWidth,
+    viewportWidth - DESKTOP_CHAT_MIN_WIDTH - visibleSidebarWidth
   );
 }

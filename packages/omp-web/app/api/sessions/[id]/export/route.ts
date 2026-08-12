@@ -22,7 +22,8 @@ type ExportHtmlModule = {
 
 async function getPiPackageDir(): Promise<string | null> {
   try {
-    const { getPackageDir } = (await import("@earendil-works/pi-coding-agent")) as PiCodingAgentModule;
+    const { getPackageDir } =
+      (await import("@earendil-works/pi-coding-agent")) as PiCodingAgentModule;
     return getPackageDir();
   } catch {
     return null;
@@ -30,13 +31,15 @@ async function getPiPackageDir(): Promise<string | null> {
 }
 
 function encodeHeaderValue(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) =>
-    `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
   );
 }
 
 function getContentDisposition(fileName: string, inline: boolean): string {
-  const fallback = fileName.replace(/[^\x20-\x7E]|["\\;\r\n]/g, "_") || "session.html";
+  const fallback =
+    fileName.replace(/[^\x20-\x7E]|["\\;\r\n]/g, "_") || "session.html";
   const disposition = inline ? "inline" : "attachment";
   return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeHeaderValue(fileName)}`;
 }
@@ -50,9 +53,11 @@ async function getPiCliPath(): Promise<string | null> {
   }
 
   try {
-    const resolver = (import.meta as ImportMeta & {
-      resolve?: (specifier: string) => string | Promise<string>;
-    }).resolve;
+    const resolver = (
+      import.meta as ImportMeta & {
+        resolve?: (specifier: string) => string | Promise<string>;
+      }
+    ).resolve;
     if (typeof resolver === "function") {
       const indexUrl = await resolver("@earendil-works/pi-coding-agent");
       candidates.add(join(dirname(fileURLToPath(indexUrl)), "cli.js"));
@@ -127,12 +132,19 @@ function patchExportHtml(html: string): string {
   const n = (s: string) => s.replace(/\r\n/g, "\n");
   html = n(html);
 
-  const replaceRequired = (source: string, name: string, search: string, replacement: string) => {
+  const replaceRequired = (
+    source: string,
+    name: string,
+    search: string,
+    replacement: string
+  ) => {
     const normalizedSearch = n(search);
     const normalizedReplacement = n(replacement);
     const matches = source.split(normalizedSearch).length - 1;
     if (matches !== 1) {
-      throw new Error(`Failed to patch exported HTML: ${name} expected 1 match, found ${matches}`);
+      throw new Error(
+        `Failed to patch exported HTML: ${name} expected 1 match, found ${matches}`
+      );
     }
     return source.replace(normalizedSearch, normalizedReplacement);
   };
@@ -222,7 +234,9 @@ function ensureSessionHeaderFirstLine(filePath: string): string {
     const sessionIdx = lines.findIndex((line) => {
       try {
         const obj = JSON.parse(line.trim()) as { type?: unknown };
-        return Boolean(obj && typeof obj === "object" && obj.type === "session");
+        return Boolean(
+          obj && typeof obj === "object" && obj.type === "session"
+        );
       } catch {
         return false;
       }
@@ -248,27 +262,36 @@ function ensureSessionHeaderFirstLine(filePath: string): string {
   return filePath;
 }
 
-async function exportSession(filePath: string, outputPath: string): Promise<void> {
+async function exportSession(
+  filePath: string,
+  outputPath: string
+): Promise<void> {
   const targetPath = ensureSessionHeaderFirstLine(filePath);
   const cliPath = await getPiCliPath();
   if (cliPath) {
-    await execFileAsync(process.execPath, [cliPath, "--export", targetPath, outputPath], {
-      cwd: process.cwd(),
-      timeout: 30_000,
-      env: {
-        ...process.env,
-        PI_OFFLINE: "1",
-        PI_SKIP_VERSION_CHECK: "1",
-      },
-      maxBuffer: 1024 * 1024,
-    });
+    await execFileAsync(
+      process.execPath,
+      [cliPath, "--export", targetPath, outputPath],
+      {
+        cwd: process.cwd(),
+        timeout: 30_000,
+        env: {
+          ...process.env,
+          PI_OFFLINE: "1",
+          PI_SKIP_VERSION_CHECK: "1",
+        },
+        maxBuffer: 1024 * 1024,
+      }
+    );
     return;
   }
 
   const packageDir = await getPiPackageDir();
   if (!packageDir) throw new Error("pi CLI not found");
 
-  const exporterUrl = pathToFileURL(join(packageDir, "dist", "core", "export-html", "index.js")).href;
+  const exporterUrl = pathToFileURL(
+    join(packageDir, "dist", "core", "export-html", "index.js")
+  ).href;
   const { exportFromFile } = (await import(exporterUrl)) as ExportHtmlModule;
   await exportFromFile(targetPath, outputPath);
 }

@@ -10,7 +10,8 @@ import type {
   ToolCall,
 } from "@agentclientprotocol/sdk";
 
-export type AcpConnectionState = "idle" | "starting" | "ready" | "unavailable" | "shutting_down";
+export type AcpConnectionState =
+  "idle" | "starting" | "ready" | "unavailable" | "shutting_down";
 
 export interface AcpSessionInfo {
   sessionId: string;
@@ -21,7 +22,12 @@ export interface AcpSessionInfo {
 }
 
 export type AcpMessage =
-  | { id: string; role: "user" | "assistant" | "thought"; content: ContentBlock[]; local?: boolean }
+  | {
+      id: string;
+      role: "user" | "assistant" | "thought";
+      content: ContentBlock[];
+      local?: boolean;
+    }
   | { id: string; role: "toolCall"; toolCallId: string; content: [] };
 
 export interface AcpSessionState extends AcpSessionInfo {
@@ -76,7 +82,12 @@ export interface AcpConnectionSnapshot {
 export interface AcpPermissionRequest {
   resolverId: string;
   sessionId: string;
-  toolCall: { toolCallId: string; title?: string; kind?: string; status?: string };
+  toolCall: {
+    toolCallId: string;
+    title?: string;
+    kind?: string;
+    status?: string;
+  };
   options: Array<{ optionId: string; name: string; kind: string }>;
 }
 
@@ -98,9 +109,19 @@ export type AcpRequest =
   | { type: "acp/prompt"; sessionId: string; prompt: ContentBlock[] }
   | { type: "acp/cancel"; sessionId: string }
   | { type: "acp/setMode"; sessionId: string; modeId: string }
-  | { type: "acp/setConfigOption"; sessionId: string; configId: string; value: string | boolean }
+  | {
+      type: "acp/setConfigOption";
+      sessionId: string;
+      configId: string;
+      value: string | boolean;
+    }
   | { type: "acp/respondPermission"; resolverId: string; optionId?: string }
-  | { type: "acp/respondElicitation"; resolverId: string; action: "accept" | "decline" | "cancel"; content?: Record<string, ElicitationContentValue> }
+  | {
+      type: "acp/respondElicitation";
+      resolverId: string;
+      action: "accept" | "decline" | "cancel";
+      content?: Record<string, ElicitationContentValue>;
+    }
   | { type: "acp/subscribeSession"; sessionId: string }
   | { type: "acp/unsubscribeSession"; sessionId: string }
   | { type: "acp/deleteSession"; sessionId: string }
@@ -108,13 +129,19 @@ export type AcpRequest =
 
 // ---- Typed response envelope ----
 export interface AcpRequestError {
-  code: "unavailable" | "invalid-request" | "not-found" | "conflict" | "internal";
+  code:
+    "unavailable" | "invalid-request" | "not-found" | "conflict" | "internal";
   message: string;
 }
 
 export type AcpResponseEnvelope =
   | { type: "acp/response"; requestId: number; ok: true; data: unknown }
-  | { type: "acp/response"; requestId: number; ok: false; error: AcpRequestError };
+  | {
+      type: "acp/response";
+      requestId: number;
+      ok: false;
+      error: AcpRequestError;
+    };
 
 // ---- Typed event union (Host → Webview) ----
 export type AcpHostEvent =
@@ -123,7 +150,12 @@ export type AcpHostEvent =
   | { type: "acp/runningSessions"; sessionIds: string[] }
   | { type: "acp/permissionRequest"; request: AcpPermissionRequest }
   | { type: "acp/elicitationRequest"; request: AcpElicitationRequest }
-  | { type: "acp/notice"; sessionId?: string; level: "info" | "success" | "warning" | "error"; message: string }
+  | {
+      type: "acp/notice";
+      sessionId?: string;
+      level: "info" | "success" | "warning" | "error";
+      message: string;
+    }
   | { type: "acp/error"; message: string };
 
 // ---- Webview → Host message union ----

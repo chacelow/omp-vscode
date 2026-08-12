@@ -13,10 +13,14 @@ const { normalizeDisplayMath } = await jiti.import("../lib/markdown.ts");
 
 function renderMarkdown(markdown) {
   return renderToStaticMarkup(
-    React.createElement(MarkdownBody, {
-      cwd: "/home/me/project",
-      onOpenFile() {},
-    }, markdown),
+    React.createElement(
+      MarkdownBody,
+      {
+        cwd: "/home/me/project",
+        onOpenFile() {},
+      },
+      markdown
+    )
   );
 }
 
@@ -25,7 +29,7 @@ test("opens non-file markdown links in a safe new tab", () => {
 
   assert.match(
     html,
-    /<a (?=[^>]*href="https:\/\/example\.com\/docs")(?=[^>]*target="_blank")(?=[^>]*rel="noopener noreferrer")[^>]*>docs<\/a>/,
+    /<a (?=[^>]*href="https:\/\/example\.com\/docs")(?=[^>]*target="_blank")(?=[^>]*rel="noopener noreferrer")[^>]*>docs<\/a>/
   );
   assert.doesNotMatch(html, /\snode=/);
 });
@@ -48,7 +52,9 @@ test("renders paired LaTeX bracket delimiters as display math", () => {
   const html = renderMarkdown(String.raw`\[
 P(\lambda)=o_b+\lambda r_b
 \]`);
-  const oneLineHtml = renderMarkdown(String.raw`\[P(\lambda)=o_b+\lambda r_b\]`);
+  const oneLineHtml = renderMarkdown(
+    String.raw`\[P(\lambda)=o_b+\lambda r_b\]`
+  );
 
   assert.match(html, /class="katex-display"/);
   assert.match(html, /lambda/);
@@ -65,7 +71,8 @@ after`;
 });
 
 test("does not normalize LaTeX delimiters inside Markdown code", () => {
-  const markdown = "    \\(indented\\)\n\n`code\n\\(inline\\)`\n\n```text\n\\[\nfenced\n\\]\n```";
+  const markdown =
+    "    \\(indented\\)\n\n`code\n\\(inline\\)`\n\n```text\n\\[\nfenced\n\\]\n```";
 
   assert.equal(normalizeDisplayMath(markdown), markdown);
 });

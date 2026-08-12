@@ -46,9 +46,15 @@ function normalizeLocalPath(filePath: string): string {
 function isPathInside(candidate: string, root: string): boolean {
   const normalizedCandidate = normalizeLocalPath(candidate).replace(/\/+$/, "");
   const normalizedRoot = normalizeLocalPath(root).replace(/\/+$/, "");
-  const useCaseInsensitive = /^[a-zA-Z]:\//.test(normalizedCandidate) || /^[a-zA-Z]:\//.test(normalizedRoot);
-  const filePath = useCaseInsensitive ? normalizedCandidate.toLowerCase() : normalizedCandidate;
-  const rootPath = useCaseInsensitive ? normalizedRoot.toLowerCase() : normalizedRoot;
+  const useCaseInsensitive =
+    /^[a-zA-Z]:\//.test(normalizedCandidate) ||
+    /^[a-zA-Z]:\//.test(normalizedRoot);
+  const filePath = useCaseInsensitive
+    ? normalizedCandidate.toLowerCase()
+    : normalizedCandidate;
+  const rootPath = useCaseInsensitive
+    ? normalizedRoot.toLowerCase()
+    : normalizedRoot;
   return filePath === rootPath || filePath.startsWith(`${rootPath}/`);
 }
 
@@ -77,7 +83,7 @@ function fileUrlToPath(href: string): string | null {
 export function resolveLocalFileHref(
   href: string | undefined,
   baseDir?: string,
-  relativeRoot = baseDir,
+  relativeRoot = baseDir
 ): string | null {
   if (!href) return null;
 
@@ -91,9 +97,14 @@ export function resolveLocalFileHref(
   const normalizedHref = normalizeFilePathSlashes(decodedHref);
   const lowerHref = normalizedHref.toLowerCase();
 
-  if (lowerHref.startsWith("/api/") || lowerHref.startsWith("/_next/")) return null;
+  if (lowerHref.startsWith("/api/") || lowerHref.startsWith("/_next/"))
+    return null;
   if (!isBackslashUncPath && normalizedHref.startsWith("//")) return null;
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(normalizedHref) && !lowerHref.startsWith("file:") && !/^[a-zA-Z]:\//.test(normalizedHref)) {
+  if (
+    /^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(normalizedHref) &&
+    !lowerHref.startsWith("file:") &&
+    !/^[a-zA-Z]:\//.test(normalizedHref)
+  ) {
     return null;
   }
 
@@ -114,6 +125,11 @@ export function resolveLocalFileHref(
   if (!candidate) return null;
 
   const filePath = stripLineSuffix(normalizeLocalPath(candidate));
-  if (candidateKind === "relative" && relativeRoot && !isPathInside(filePath, relativeRoot)) return null;
+  if (
+    candidateKind === "relative" &&
+    relativeRoot &&
+    !isPathInside(filePath, relativeRoot)
+  )
+    return null;
   return filePath;
 }

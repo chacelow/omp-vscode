@@ -1,5 +1,6 @@
 const CACHE_PREFIX = "pi-web";
-const CACHE_VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE_VERSION =
+  new URL(self.location.href).searchParams.get("v") || "dev";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
@@ -15,7 +16,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(STATIC_CACHE)
       .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting()),
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -26,11 +27,14 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith(`${CACHE_PREFIX}-`) && key !== STATIC_CACHE)
-            .map((key) => caches.delete(key)),
-        ),
+            .filter(
+              (key) =>
+                key.startsWith(`${CACHE_PREFIX}-`) && key !== STATIC_CACHE
+            )
+            .map((key) => caches.delete(key))
+        )
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
   );
 });
 
@@ -49,7 +53,7 @@ self.addEventListener("fetch", (event) => {
       fetch(request).catch(async () => {
         const fallback = await caches.match(OFFLINE_URL);
         return fallback ?? Response.error();
-      }),
+      })
     );
     return;
   }

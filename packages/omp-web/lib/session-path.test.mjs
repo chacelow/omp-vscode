@@ -10,7 +10,7 @@ test("normalizes Windows separators and casing for session identity", async () =
 
   assert.equal(
     sessionPathKey("C:\\Users\\Alex\\.pi\\sessions\\Parent.jsonl", "win32"),
-    sessionPathKey("c:/Users/Alex/.pi/sessions/parent.jsonl", "win32"),
+    sessionPathKey("c:/Users/Alex/.pi/sessions/parent.jsonl", "win32")
   );
 });
 
@@ -19,6 +19,6 @@ test("preserves case when session paths are case-sensitive", async () => {
 
   assert.notEqual(
     sessionPathKey("/var/lib/pi/Parent.jsonl", "linux"),
-    sessionPathKey("/var/lib/pi/parent.jsonl", "linux"),
+    sessionPathKey("/var/lib/pi/parent.jsonl", "linux")
   );
 });

@@ -21,8 +21,8 @@ function renderMermaid(props) {
     React.createElement(
       I18nProvider,
       null,
-      React.createElement(MermaidBlock, props),
-    ),
+      React.createElement(MermaidBlock, props)
+    )
   );
 }
 
@@ -43,7 +43,11 @@ test("MermaidBlock can render preview by default", () => {
 });
 
 test("MermaidBlock with isStreaming falls back to source view", () => {
-  const html = renderMermaid({ code: mermaidSrc, isStreaming: true, defaultPreview: true });
+  const html = renderMermaid({
+    code: mermaidSrc,
+    isStreaming: true,
+    defaultPreview: true,
+  });
 
   assert.match(html, /disabled/);
   assert.match(html, />Preview</);

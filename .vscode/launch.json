@@ -5,7 +5,9 @@
       "name": "Run Extension (omp-vscode)",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/omp-vscode"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/omp-vscode"
+      ],
       "outFiles": ["${workspaceFolder}/packages/omp-vscode/dist/**/*.js"],
       "preLaunchTask": "pnpm: build"
     }

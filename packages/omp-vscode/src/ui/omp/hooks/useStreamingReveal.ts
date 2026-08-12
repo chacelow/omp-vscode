@@ -4,13 +4,18 @@ const FRAME_INTERVAL_MS = 1000 / 30;
 const CATCHUP_FRAMES = 8;
 const MIN_STEP = 3;
 
-function graphemeSlice(text: string, count: number, segmenter: Intl.Segmenter): string {
+function graphemeSlice(
+  text: string,
+  count: number,
+  segmenter: Intl.Segmenter
+): string {
   if (count <= 0 || text.length === 0) return "";
 
   let seen = 0;
   for (const segment of segmenter.segment(text)) {
     seen += 1;
-    if (seen >= count) return text.slice(0, segment.index + segment.segment.length);
+    if (seen >= count)
+      return text.slice(0, segment.index + segment.segment.length);
   }
   return text;
 }
@@ -27,8 +32,15 @@ function graphemeCount(text: string, segmenter: Intl.Segmenter): number {
  * the block changes kind. Consumers may pass `snapToEnd` for transcript-order
  * boundaries such as a following tool call.
  */
-export function useStreamingReveal(text: string, thinking = false, snapToEnd = false): { displayText: string } {
-  const segmenter = useMemo(() => new Intl.Segmenter(undefined, { granularity: "grapheme" }), []);
+export function useStreamingReveal(
+  text: string,
+  thinking = false,
+  snapToEnd = false
+): { displayText: string } {
+  const segmenter = useMemo(
+    () => new Intl.Segmenter(undefined, { granularity: "grapheme" }),
+    []
+  );
   const targetRef = useRef(text);
   const revealedRef = useRef(0);
   const kindRef = useRef(thinking);
@@ -68,7 +80,10 @@ export function useStreamingReveal(text: string, thinking = false, snapToEnd = f
         return;
       }
 
-      const step = Math.max(MIN_STEP, Math.ceil((total - revealedRef.current) / CATCHUP_FRAMES));
+      const step = Math.max(
+        MIN_STEP,
+        Math.ceil((total - revealedRef.current) / CATCHUP_FRAMES)
+      );
       revealedRef.current = Math.min(total, revealedRef.current + step);
       setRevealed(revealedRef.current);
       frameRef.current = requestAnimationFrame(tick);
@@ -82,6 +97,9 @@ export function useStreamingReveal(text: string, thinking = false, snapToEnd = f
     };
   }, [segmenter, snapToEnd, text]);
 
-  const displayText = useMemo(() => graphemeSlice(text, revealed, segmenter), [revealed, segmenter, text]);
+  const displayText = useMemo(
+    () => graphemeSlice(text, revealed, segmenter),
+    [revealed, segmenter, text]
+  );
   return useMemo(() => ({ displayText }), [displayText]);
 }

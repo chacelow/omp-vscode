@@ -6,15 +6,17 @@ const { parseArgs } = require("util");
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
 function isEnabled(value) {
-  return typeof value === "string" && TRUE_VALUES.has(value.trim().toLowerCase());
+  return (
+    typeof value === "string" && TRUE_VALUES.has(value.trim().toLowerCase())
+  );
 }
 
 function parseLaunchOptions(args = process.argv.slice(2), env = process.env) {
   const { values: cliArgs } = parseArgs({
     args,
     options: {
-      port:      { type: "string", short: "p" },
-      hostname:  { type: "string", short: "H" },
+      port: { type: "string", short: "p" },
+      hostname: { type: "string", short: "H" },
       "no-open": { type: "boolean" },
     },
     strict: false,

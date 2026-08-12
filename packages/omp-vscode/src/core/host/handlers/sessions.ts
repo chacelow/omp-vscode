@@ -29,7 +29,9 @@ export const sessionsListAllHandler: Handler<"sessionsListAll"> = () => ({
   runningSessionIds: [],
 });
 
-export const sessionDetailHandler: Handler<"sessionDetail"> = ({ sessionId }) => {
+export const sessionDetailHandler: Handler<"sessionDetail"> = ({
+  sessionId,
+}) => {
   const filePath = resolveSessionPath(sessionId);
   if (!filePath) return null;
   const ctx = loadSessionContext(filePath);
@@ -64,7 +66,10 @@ export const sessionDetailHandler: Handler<"sessionDetail"> = ({ sessionId }) =>
   };
 };
 
-export const sessionRewindHandler: Handler<"sessionRewind"> = ({ sessionId, entryId }) => {
+export const sessionRewindHandler: Handler<"sessionRewind"> = ({
+  sessionId,
+  entryId,
+}) => {
   const filePath = resolveSessionPath(sessionId);
   if (!filePath) throw new Error("Session not found");
   if (!anchorSessionAt(filePath, entryId)) {
@@ -73,33 +78,52 @@ export const sessionRewindHandler: Handler<"sessionRewind"> = ({ sessionId, entr
   return { success: true };
 };
 
-export const sessionNavigateLeafHandler: Handler<"sessionNavigateLeaf"> = ({ sessionId, entryId }) => {
+export const sessionNavigateLeafHandler: Handler<"sessionNavigateLeaf"> = ({
+  sessionId,
+  entryId,
+}) => {
   const filePath = resolveSessionPath(sessionId);
   if (!filePath) throw new Error("Session not found");
   if (!resumeSessionAt(filePath, entryId)) throw new Error("Entry not found");
   return { success: true };
 };
 
-export const sessionRenameHandler: Handler<"sessionRename"> = ({ sessionId, name }) => {
+export const sessionRenameHandler: Handler<"sessionRename"> = ({
+  sessionId,
+  name,
+}) => {
   const filePath = resolveSessionPath(sessionId);
   if (!filePath) throw new Error("Session not found");
-  if (!fileRenameSession(filePath, name)) throw new Error("Failed to write rename entry");
+  if (!fileRenameSession(filePath, name))
+    throw new Error("Failed to write rename entry");
   return { success: true };
 };
 
-export const sessionRenameEntryHandler: Handler<"sessionRenameEntry"> = ({ sessionId, entryId, label }) => {
+export const sessionRenameEntryHandler: Handler<"sessionRenameEntry"> = ({
+  sessionId,
+  entryId,
+  label,
+}) => {
   const filePath = resolveSessionPath(sessionId);
-  if (!filePath || !renameSessionEntry(filePath, entryId, label.trim())) throw new Error("Unable to save entry label");
+  if (!filePath || !renameSessionEntry(filePath, entryId, label.trim()))
+    throw new Error("Unable to save entry label");
   return { success: true, path: filePath };
 };
 
-export const sessionAppendSummaryHandler: Handler<"sessionAppendSummary"> = ({ sessionId, entryId, summary }) => {
+export const sessionAppendSummaryHandler: Handler<"sessionAppendSummary"> = ({
+  sessionId,
+  entryId,
+  summary,
+}) => {
   const filePath = resolveSessionPath(sessionId);
-  if (!filePath || !appendSessionSummary(filePath, entryId, summary.trim())) throw new Error("Unable to save branch summary");
+  if (!filePath || !appendSessionSummary(filePath, entryId, summary.trim()))
+    throw new Error("Unable to save branch summary");
   return { success: true, path: filePath };
 };
 
-export const sessionDeleteHandler: Handler<"sessionDelete"> = ({ sessionId }) => {
+export const sessionDeleteHandler: Handler<"sessionDelete"> = ({
+  sessionId,
+}) => {
   const filePath = resolveSessionPath(sessionId);
   if (!filePath) return { success: true }; // already gone
   fileDeleteSession(filePath);
@@ -107,21 +131,33 @@ export const sessionDeleteHandler: Handler<"sessionDelete"> = ({ sessionId }) =>
   return { success: true };
 };
 
-export const sessionEntryThinkingHandler: Handler<"sessionEntryThinking"> = ({ sessionId, entryId, blockIndex }) => {
+export const sessionEntryThinkingHandler: Handler<"sessionEntryThinking"> = ({
+  sessionId,
+  entryId,
+  blockIndex,
+}) => {
   const filePath = resolveSessionPath(sessionId);
   if (!filePath) return { thinking: null };
   return { thinking: readEntryThinking(filePath, entryId, blockIndex) };
 };
 
-export const sessionBashOutputHandler: Handler<"sessionBashOutput"> = ({ path }) => {
+export const sessionBashOutputHandler: Handler<"sessionBashOutput"> = ({
+  path,
+}) => {
   try {
     const stats = statSync(path);
     if (stats.size > MAX_BASH_OUTPUT_BYTES) {
-      return { success: false, error: `Output too large (${stats.size} bytes)` };
+      return {
+        success: false,
+        error: `Output too large (${stats.size} bytes)`,
+      };
     }
     const output = readFileSync(path, "utf8");
     return { success: true, data: { output } };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 };

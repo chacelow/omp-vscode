@@ -7,7 +7,12 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
-const LANG_OPTIONS: { id: "en" | "zh-CN"; label: string; sub: string; flag: string }[] = [
+const LANG_OPTIONS: {
+  id: "en" | "zh-CN";
+  label: string;
+  sub: string;
+  flag: string;
+}[] = [
   { id: "en", label: "English", sub: "English", flag: "🇺🇸" },
   { id: "zh-CN", label: "中文", sub: "Chinese (Simplified)", flag: "🇨🇳" },
 ];
@@ -41,7 +46,10 @@ export function LanguagePicker(): JSX.Element {
       <Button
         variant="ghost"
         size="toolbar"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
         title={`Language: ${activeLabel}`}
         aria-label="Switch language"
         aria-haspopup="listbox"
@@ -49,7 +57,7 @@ export function LanguagePicker(): JSX.Element {
         className={cn(
           "text-[var(--text-muted)]",
           isStarfield && "text-[#d99b26]",
-          open && "bg-[var(--bg-selected)] text-[var(--text)]",
+          open && "bg-[var(--bg-selected)] text-[var(--text)]"
         )}
       >
         <Globe />
@@ -68,10 +76,13 @@ export function LanguagePicker(): JSX.Element {
             minWidth: 170,
             background: "var(--bg-panel)",
             border: "1px solid var(--border)",
-            boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.28))",
+            boxShadow:
+              "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.28))",
             borderRadius: isStarfield ? 0 : 8,
             overflow: "hidden",
-            borderTop: isStarfield ? "2px solid #d99b26" : "1px solid var(--border)",
+            borderTop: isStarfield
+              ? "2px solid #d99b26"
+              : "1px solid var(--border)",
           }}
         >
           {isStarfield && (
@@ -120,7 +131,8 @@ export function LanguagePicker(): JSX.Element {
                   transition: "background 0.1s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+                  if (!isActive)
+                    e.currentTarget.style.background = "var(--bg-hover)";
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) e.currentTarget.style.background = "none";
@@ -132,8 +144,11 @@ export function LanguagePicker(): JSX.Element {
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
-                      color: isStarfield && isActive ? "#d99b26" : "var(--text)",
-                      fontFamily: isStarfield ? "var(--font-mono, monospace)" : "inherit",
+                      color:
+                        isStarfield && isActive ? "#d99b26" : "var(--text)",
+                      fontFamily: isStarfield
+                        ? "var(--font-mono, monospace)"
+                        : "inherit",
                     }}
                   >
                     {opt.label}
@@ -142,7 +157,9 @@ export function LanguagePicker(): JSX.Element {
                     style={{
                       fontSize: 10,
                       color: "var(--text-dim)",
-                      fontFamily: isStarfield ? "var(--font-mono, monospace)" : "inherit",
+                      fontFamily: isStarfield
+                        ? "var(--font-mono, monospace)"
+                        : "inherit",
                     }}
                   >
                     {opt.sub}

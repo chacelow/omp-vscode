@@ -16,13 +16,10 @@ import type {
   AssistantMessage,
   BashExecutionMessage,
   CustomMessage,
-  ExtensionUiRequest,
   SessionInfo,
   SessionTreeNode,
   ToolResultMessage,
 } from "@/lib/types";
-import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
-import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import {
   countToolCallBlocks,
   getAssistantErrorMessage,
@@ -38,7 +35,6 @@ import {
 import { ChatFooterBar } from "./chat/ChatFooterBar";
 import { ChatMinimap } from "./chat/ChatMinimap";
 import { Shimmer } from "./ai-elements/shimmer";
-import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { InteractionDialog } from "./InteractionDialog";
 import { PlanReviewOverlay } from "./panels/PlanReviewOverlay";
 import { ModelHub } from "./ModelHub";
@@ -82,7 +78,6 @@ interface Props {
     activeLeafId: string | null,
     onLeafChange: (leafId: string | null) => Promise<void>
   ) => void;
-  onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsChange?: (stats: SessionStatsInfo | null) => void;
   onOpenSettings?: () => void;
   onOpenResumeDialog?: () => void;
@@ -234,7 +229,9 @@ function ProcessDetailsGroup({
     const formatted = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
     parts.push(`Worked for ${formatted}`);
   }
-  parts.push(`${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`);
+  parts.push(
+    `${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`
+  );
   if (toolCallCount > 0)
     parts.push(
       `${toolCallCount} ${t(toolCallCount === 1 ? "chat.toolCall" : "chat.toolCalls")}`
@@ -371,7 +368,6 @@ export function ChatWindow({
   modelsRefreshKey,
   chatInputRef,
   onBranchDataChange,
-  onSystemPromptChange,
   onSessionStatsChange,
   onOpenSettings,
   onOpenResumeDialog,
@@ -393,7 +389,6 @@ export function ChatWindow({
   playDoneSoundRef.current = playDoneSound;
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
-  const soundedExtensionDialogIdRef = useRef<string | null>(null);
   const wrappedOnAgentEnd = useCallback(() => {
     if (soundEnabledRef.current) {
       playDoneSoundRef.current();
@@ -436,6 +431,7 @@ export function ChatWindow({
     contextUsage,
     forkingEntryId,
     compactionBoundary,
+    imageSupported,
     isCompacting,
     compactError,
     compactResult,
@@ -443,15 +439,8 @@ export function ChatWindow({
     sessionStats,
     currentModel,
     slashCommands,
-    slashCommandsLoading,
-    queuedMessages,
     notices,
-    extensionDialog,
-    extensionCustomUi,
-    extensionStatuses,
-    extensionWidgets,
-    respondToExtensionUi,
-    sendExtensionCustomInput,
+    slashCommandsLoading,
     interactionDialog,
     respondInteraction,
     isAutoModelSelection,
@@ -475,7 +464,6 @@ export function ChatWindow({
     handleFollowUp,
     handlePromptWithStreamingBehavior,
     handleAbortCompaction,
-    handleRecallQueue,
     handleBuiltinSlashCommand,
     handleToolPresetChange,
     handleThinkingLevelChange,
@@ -489,7 +477,6 @@ export function ChatWindow({
     modelsRefreshKey,
     chatInputRef,
     onBranchDataChange,
-    onSystemPromptChange,
     onOpenSettings,
     onOpenResumeDialog,
   });
@@ -502,7 +489,8 @@ export function ChatWindow({
   const messages = useMemo(() => {
     if (!pendingUserMessage) return rawMessages;
     const last = rawMessages[rawMessages.length - 1];
-    const streamingTail = (agentRunning || streamState.isStreaming) && last?.role === "assistant";
+    const streamingTail =
+      (agentRunning || streamState.isStreaming) && last?.role === "assistant";
     if (streamingTail) {
       return [...rawMessages.slice(0, -1), pendingUserMessage, last];
     }
@@ -511,12 +499,23 @@ export function ChatWindow({
   const paddedEntryIds = useMemo(() => {
     if (!pendingUserMessage) return entryIds;
     const last = rawMessages[rawMessages.length - 1];
-    const streamingTail = (agentRunning || streamState.isStreaming) && last?.role === "assistant";
+    const streamingTail =
+      (agentRunning || streamState.isStreaming) && last?.role === "assistant";
     if (streamingTail) {
-      return [...entryIds.slice(0, -1), "__pending__", entryIds[entryIds.length - 1] ?? ""];
+      return [
+        ...entryIds.slice(0, -1),
+        "__pending__",
+        entryIds[entryIds.length - 1] ?? "",
+      ];
     }
     return [...entryIds, "__pending__"];
-  }, [entryIds, rawMessages, pendingUserMessage, agentRunning, streamState.isStreaming]);
+  }, [
+    entryIds,
+    rawMessages,
+    pendingUserMessage,
+    agentRunning,
+    streamState.isStreaming,
+  ]);
   const sessionBusy = agentRunning || bashRunning;
   const [modelHubOpen, setModelHubOpen] = useState(false);
   const [temporaryModelPickerOpen, setTemporaryModelPickerOpen] =
@@ -527,21 +526,13 @@ export function ChatWindow({
   const [displayResetKey, setDisplayResetKey] = useState(0);
   const [agentHubOpen, setAgentHubOpen] = useState(false);
   const [historySearchOpen, setHistorySearchOpen] = useState(false);
-  const [hoveredMeta, setHoveredMeta] = useState<AssistantHoverMeta | null>(null);
+  const [hoveredMeta, setHoveredMeta] = useState<AssistantHoverMeta | null>(
+    null
+  );
   const handleHoverMeta = useCallback(
     (meta: AssistantHoverMeta | null) => setHoveredMeta(meta),
-    [],
+    []
   );
-
-  useEffect(() => {
-    if (
-      !extensionDialog ||
-      soundedExtensionDialogIdRef.current === extensionDialog.id
-    )
-      return;
-    soundedExtensionDialogIdRef.current = extensionDialog.id;
-    playDoneSoundRef.current();
-  }, [extensionDialog]);
 
   // Register the abort handler for the global Esc shortcut
   useEffect(() => {
@@ -886,11 +877,10 @@ export function ChatWindow({
     availableThinkingLevels,
     thinkingLevelMap: currentThinkingLevelMap,
     retryInfo,
-    queuedMessages,
+    imageSupported,
     contextUsage,
     stats: sessionStats,
     inputHistory,
-    onRecallQueue: handleRecallQueue,
     onOpenHistorySearch: () => setHistorySearchOpen(true),
     slashCommands,
     slashCommandsLoading,
@@ -999,13 +989,6 @@ export function ChatWindow({
       onRoleChange={handleRoleChange}
       hoveredMeta={hoveredMeta}
     />
-  );
-
-  const aboveEditorWidgets = extensionWidgets.filter(
-    (widget) => widget.placement !== "belowEditor"
-  );
-  const belowEditorWidgets = extensionWidgets.filter(
-    (widget) => widget.placement === "belowEditor"
   );
 
   if (loading) {
@@ -1124,20 +1107,6 @@ export function ChatWindow({
         </div>
       )}
 
-      {extensionDialog && (
-        <ExtensionDialog
-          request={extensionDialog}
-          onRespond={respondToExtensionUi}
-        />
-      )}
-
-      {extensionCustomUi && (
-        <ExtensionCustomPanel
-          request={extensionCustomUi}
-          onInput={sendExtensionCustomInput}
-        />
-      )}
-
       {interactionDialog && planReviewSchema(interactionDialog) ? (
         <PlanReviewOverlay
           plan={planReviewDefault(planReviewSchema(interactionDialog)!, "plan")}
@@ -1221,14 +1190,19 @@ export function ChatWindow({
                     <span>
                       omp{" "}
                       <span style={{ color: "var(--text)" }}>
-                        {serviceVersions.cli ? `v${serviceVersions.cli}` : "unavailable"}
+                        {serviceVersions.cli
+                          ? `v${serviceVersions.cli}`
+                          : "unavailable"}
                       </span>
                     </span>
                     {serviceVersions.pi && (
                       <>
                         <span style={{ opacity: 0.6 }}>·</span>
                         <span>
-                          pi <span style={{ color: "var(--text)" }}>v{serviceVersions.pi}</span>
+                          pi{" "}
+                          <span style={{ color: "var(--text)" }}>
+                            v{serviceVersions.pi}
+                          </span>
                         </span>
                       </>
                     )}
@@ -1236,14 +1210,21 @@ export function ChatWindow({
                     <span>
                       ext{" "}
                       <span style={{ color: "var(--text)" }}>
-                        {serviceVersions.omp ? `v${serviceVersions.omp}` : "unavailable"}
+                        {serviceVersions.omp
+                          ? `v${serviceVersions.omp}`
+                          : "unavailable"}
                       </span>
                     </span>
                   </>
                 ) : versionsUnavailable ? (
                   <span>Versions unavailable</span>
                 ) : (
-                  <Shimmer as="span" className="text-[11px]" duration={2.5} spread={1}>
+                  <Shimmer
+                    as="span"
+                    className="text-[11px]"
+                    duration={2.5}
+                    spread={1}
+                  >
                     Loading versions…
                   </Shimmer>
                 )}
@@ -1299,7 +1280,6 @@ export function ChatWindow({
                     margin: "0 auto",
                   }}
                 >
-                  <ExtensionWidgets widgets={aboveEditorWidgets} />
                   {(() => {
                     const toolResultsMap = new Map<string, ToolResultMessage>();
                     for (const msg of messages) {
@@ -1393,7 +1373,10 @@ export function ChatWindow({
                       }
                       if (options.showTimestamp !== undefined)
                         showTimestamp = options.showTimestamp;
-                      const isStreamingTail = streamState.isStreaming && msg.role === "assistant" && idx === messages.length - 1;
+                      const isStreamingTail =
+                        streamState.isStreaming &&
+                        msg.role === "assistant" &&
+                        idx === messages.length - 1;
                       const view = (
                         <MessageView
                           key={`${keyPrefix}-view-${idx}`}
@@ -1701,7 +1684,11 @@ export function ChatWindow({
                               className="size-1.5 animate-pulse rounded-full bg-current"
                               aria-hidden="true"
                             />
-                            <Shimmer className="text-[12px]" duration={2.5} spread={1}>
+                            <Shimmer
+                              className="text-[12px]"
+                              duration={2.5}
+                              spread={1}
+                            >
                               {t("chat.loadEarlier", { count: startIndex })}
                             </Shimmer>
                           </div>
@@ -1786,19 +1773,8 @@ export function ChatWindow({
           </div>
 
           <div className="relative">
-            <div
-              style={{
-                padding: `0 ${CHAT_COLUMN_PADDING}px`,
-                paddingRight: CHAT_INPUT_RIGHT_PADDING,
-              }}
-            >
-              <div style={{ maxWidth: 820, margin: "0 auto" }}>
-                <ExtensionWidgets widgets={belowEditorWidgets} />
-              </div>
-            </div>
             {chatInputElement}
             {chatFooterElement}
-            <ExtensionStatusBar statuses={extensionStatuses} />
           </div>
         </>
       )}
@@ -1818,61 +1794,6 @@ export function ChatWindow({
   );
 }
 
-function ExtensionWidgets({
-  widgets,
-}: {
-  widgets: Array<{ key: string; lines: string[] }>;
-}) {
-  if (widgets.length === 0) return null;
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        marginBottom: 10,
-      }}
-    >
-      {widgets.map((widget) => (
-        <div
-          key={widget.key}
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 7,
-            background: "var(--bg-panel)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "5px 9px",
-              borderBottom: "1px solid var(--border)",
-              color: "var(--text-dim)",
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {widget.key}
-          </div>
-          <pre
-            style={{
-              margin: 0,
-              padding: "8px 9px",
-              color: "var(--text-muted)",
-              fontSize: 12,
-              lineHeight: 1.5,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {widget.lines.join("\n")}
-          </pre>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function NoticeShelf({
   notices,
@@ -1962,392 +1883,3 @@ function NoticeShelf({
   );
 }
 
-type ExtensionDialogRequest = Extract<
-  ExtensionUiRequest,
-  { method: "select" | "confirm" | "input" | "editor" }
->;
-
-function ExtensionDialog({
-  request,
-  onRespond,
-}: {
-  request: ExtensionDialogRequest;
-  onRespond: (
-    request: ExtensionDialogRequest,
-    response: { value: string } | { confirmed: boolean } | { cancelled: true }
-  ) => void;
-}) {
-  const { t } = useI18n();
-  const [value, setValue] = useState(
-    request.method === "editor" ? (request.prefill ?? "") : ""
-  );
-
-  useEffect(() => {
-    setValue(request.method === "editor" ? (request.prefill ?? "") : "");
-  }, [request]);
-
-  const submitValue = () => {
-    if (request.method === "confirm") {
-      onRespond(request, { confirmed: true });
-    } else {
-      onRespond(request, { value });
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 90,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        style={{
-          width: "min(560px, 100%)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--bg)",
-          boxShadow:
-            "0 20px 60px var(--vscode-widget-shadow, rgba(0,0,0,0.28))",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "12px 14px",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 650 }}>
-            {request.title}
-          </div>
-          <div
-            style={{
-              marginTop: 3,
-              color: "var(--text-dim)",
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {t("chat.extensionRequest")}
-          </div>
-        </div>
-
-        <div style={{ padding: 14 }}>
-          {request.method === "confirm" && (
-            <div
-              style={{
-                color: "var(--text-muted)",
-                fontSize: 13,
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {request.message}
-            </div>
-          )}
-          {request.method === "select" && (
-            <div style={{ display: "grid", gap: 8 }}>
-              {request.options.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => onRespond(request, { value: option })}
-                  style={{
-                    width: "100%",
-                    padding: "9px 10px",
-                    borderRadius: 7,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg-panel)",
-                    color: "var(--text)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    fontSize: 13,
-                  }}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
-          {request.method === "input" && (
-            <input
-              autoFocus
-              value={value}
-              placeholder={request.placeholder}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitValue();
-                if (e.key === "Escape") onRespond(request, { cancelled: true });
-              }}
-              style={{
-                width: "100%",
-                padding: "9px 10px",
-                borderRadius: 7,
-                border: "1px solid var(--border)",
-                background: "var(--bg-panel)",
-                color: "var(--text)",
-                outline: "none",
-                fontSize: 13,
-              }}
-            />
-          )}
-          {request.method === "editor" && (
-            <textarea
-              autoFocus
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") onRespond(request, { cancelled: true });
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter")
-                  submitValue();
-              }}
-              style={{
-                width: "100%",
-                minHeight: 220,
-                padding: 10,
-                borderRadius: 7,
-                border: "1px solid var(--border)",
-                background: "var(--bg-panel)",
-                color: "var(--text)",
-                outline: "none",
-                resize: "vertical",
-                fontSize: 13,
-                lineHeight: 1.55,
-                fontFamily: "var(--font-mono)",
-              }}
-            />
-          )}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 8,
-            padding: "10px 14px",
-            borderTop: "1px solid var(--border)",
-            background: "var(--bg-panel)",
-          }}
-        >
-          <button
-            onClick={() => onRespond(request, { cancelled: true })}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: "var(--bg)",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-            }}
-          >
-            {t("chat.cancel")}
-          </button>
-          {request.method === "confirm" ? (
-            <button
-              onClick={submitValue}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 6,
-                border: "1px solid var(--accent)",
-                background: "var(--accent)",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              {t("chat.confirm")}
-            </button>
-          ) : request.method !== "select" ? (
-            <button
-              onClick={submitValue}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 6,
-                border: "1px solid var(--accent)",
-                background: "var(--accent)",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              {t("chat.submit")}
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type ExtensionCustomRequest = Extract<ExtensionUiRequest, { method: "custom" }>;
-
-function renderAnsiLine(line: string, keyPrefix: string): ReactNode[] {
-  return parseAnsiLine(line).map((segment, index) =>
-    Object.keys(segment.style).length > 0 ? (
-      <span key={`${keyPrefix}-${index}`} style={segment.style}>
-        {segment.text}
-      </span>
-    ) : (
-      segment.text
-    )
-  );
-}
-
-function ExtensionCustomPanel({
-  request,
-  onInput,
-}: {
-  request: ExtensionCustomRequest;
-  onInput: (request: ExtensionCustomRequest, data: string) => void;
-}) {
-  const { t } = useI18n();
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const composingRef = useRef(false);
-  const displayLines = normalizeCustomPanelLines(request.lines);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [request.id]);
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 95,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        background: "var(--vscode-widget-shadow, rgba(0,0,0,0.18))",
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(event) => {
-          if (!(event.target as HTMLElement).closest("button"))
-            inputRef.current?.focus();
-        }}
-        style={{
-          position: "relative",
-          width: "min(920px, 100%)",
-          maxHeight: "min(760px, calc(100vh - 40px))",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          background: "var(--bg)",
-          boxShadow:
-            "0 20px 60px var(--vscode-widget-shadow, rgba(0,0,0,0.28))",
-          overflow: "hidden",
-          outline: "none",
-        }}
-      >
-        <textarea
-          ref={inputRef}
-          aria-label={t("chat.extensionInput")}
-          autoCapitalize="off"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          onKeyDown={(event) => {
-            if (composingRef.current || event.nativeEvent.isComposing) return;
-            const data = toTerminalKeyData(event);
-            if (!data) return;
-            event.preventDefault();
-            event.stopPropagation();
-            onInput(request, data);
-          }}
-          onInput={(event) => {
-            if (composingRef.current || event.nativeEvent.isComposing) return;
-            const text = event.currentTarget.value;
-            event.currentTarget.value = "";
-            if (text) onInput(request, text);
-          }}
-          onCompositionStart={() => {
-            composingRef.current = true;
-          }}
-          onCompositionEnd={(event) => {
-            composingRef.current = false;
-            const input = event.currentTarget;
-            queueMicrotask(() => {
-              const text = input.value;
-              input.value = "";
-              if (text) onInput(request, text);
-            });
-          }}
-          onPaste={(event) => {
-            event.preventDefault();
-            const text = event.clipboardData.getData("text");
-            if (text) onInput(request, asBracketedPaste(text));
-          }}
-          style={{
-            position: "absolute",
-            width: 1,
-            height: 1,
-            padding: 0,
-            border: 0,
-            opacity: 0,
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            padding: "10px 12px",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 650 }}>
-            {t("chat.extensionPanel")}
-          </div>
-          <button
-            onClick={() => onInput(request, "\x03")}
-            style={{
-              padding: "5px 9px",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: "var(--bg-panel)",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-            {t("chat.close")}
-          </button>
-        </div>
-        <pre
-          style={{
-            margin: 0,
-            padding: 14,
-            maxHeight: "calc(min(760px, 100vh - 40px) - 48px)",
-            overflow: "auto",
-            background: "var(--bg-panel)",
-            color: "var(--text)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 13,
-            lineHeight: 1.45,
-            whiteSpace: "pre",
-          }}
-        >
-          {(displayLines.length ? displayLines : [""]).map(
-            (line, index, allLines) => (
-              <Fragment key={index}>
-                {renderAnsiLine(line, `line-${index}`)}
-                {index < allLines.length - 1 ? "\n" : null}
-              </Fragment>
-            )
-          )}
-        </pre>
-      </div>
-    </div>
-  );
-}

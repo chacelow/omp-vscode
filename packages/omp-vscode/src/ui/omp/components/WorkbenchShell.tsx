@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type JSX,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";

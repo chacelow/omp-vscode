@@ -11,9 +11,18 @@ interface TranscriptEntry {
 interface Props {
   focused: boolean;
   sessionId: string | null;
-  onMetrics?: (metrics: { messages: number; inputTokens: number; outputTokens: number; cost: number }) => void;
+  onMetrics?: (metrics: {
+    messages: number;
+    inputTokens: number;
+    outputTokens: number;
+    cost: number;
+  }) => void;
 }
-export function AgentTranscriptViewer({ focused, sessionId, onMetrics }: Props) {
+export function AgentTranscriptViewer({
+  focused,
+  sessionId,
+  onMetrics,
+}: Props) {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const revisionRef = useRef<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -29,11 +38,16 @@ export function AgentTranscriptViewer({ focused, sessionId, onMetrics }: Props) 
     const load = async () => {
       const isInitialLoad = revisionRef.current === null;
       try {
-        const update = await hostCall("sessionTail", { sessionId, sinceRevision: revisionRef.current });
+        const update = await hostCall("sessionTail", {
+          sessionId,
+          sinceRevision: revisionRef.current,
+        });
         if (!active || !update) return;
         revisionRef.current = update.revision;
         if (update.entries.length > 0) {
-          setEntries((current) => isInitialLoad ? update.entries : [...current, ...update.entries]);
+          setEntries((current) =>
+            isInitialLoad ? update.entries : [...current, ...update.entries]
+          );
         }
       } catch {
         // The session may be deleted while the hub is open.
@@ -64,12 +78,33 @@ export function AgentTranscriptViewer({ focused, sessionId, onMetrics }: Props) 
   }, [entries]);
 
   if (!sessionId) {
-    return <div className="flex h-full items-center justify-center p-6 text-sm text-[var(--text-muted)]">Select an agent session to inspect its transcript.</div>;
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-sm text-[var(--text-muted)]">
+        Select an agent session to inspect its transcript.
+      </div>
+    );
   }
 
   return (
-    <div className="h-full overflow-y-auto px-5 py-4" aria-label="Agent transcript">
-      {entries.length === 0 ? <div className="py-12 text-center text-sm text-[var(--text-muted)]">No transcript entries yet.</div> : entries.map(({ id, message }) => <MessageView key={id} message={message} entryId={id} sessionId={sessionId} hideFork />)}
+    <div
+      className="h-full overflow-y-auto px-5 py-4"
+      aria-label="Agent transcript"
+    >
+      {entries.length === 0 ? (
+        <div className="py-12 text-center text-sm text-[var(--text-muted)]">
+          No transcript entries yet.
+        </div>
+      ) : (
+        entries.map(({ id, message }) => (
+          <MessageView
+            key={id}
+            message={message}
+            entryId={id}
+            sessionId={sessionId}
+            hideFork
+          />
+        ))
+      )}
       <div ref={endRef} />
     </div>
   );

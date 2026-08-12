@@ -7,7 +7,8 @@ const localePlugins = new Map<string, LocalePlugin>();
 /** 注册一个语言包；重复注册会抛出异常，避免静默覆盖翻译。 */
 export function registerLocale(plugin: LocalePlugin): void {
   if (!plugin.id.trim()) throw new Error("Locale id must not be empty");
-  if (localePlugins.has(plugin.id)) throw new Error(`Locale already registered: ${plugin.id}`);
+  if (localePlugins.has(plugin.id))
+    throw new Error(`Locale already registered: ${plugin.id}`);
   localePlugins.set(plugin.id, plugin);
 }
 

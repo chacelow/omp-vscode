@@ -18,15 +18,27 @@ test("enables password authentication only for a non-empty configured password",
 
 test("accepts only the fixed pi username and configured password", async () => {
   const { isValidBasicAuthorization } = await loadSubject();
-  assert.equal(isValidBasicAuthorization(authorization("pi", "secret"), "secret"), true);
-  assert.equal(isValidBasicAuthorization(authorization("admin", "secret"), "secret"), false);
-  assert.equal(isValidBasicAuthorization(authorization("pi", "wrong"), "secret"), false);
+  assert.equal(
+    isValidBasicAuthorization(authorization("pi", "secret"), "secret"),
+    true
+  );
+  assert.equal(
+    isValidBasicAuthorization(authorization("admin", "secret"), "secret"),
+    false
+  );
+  assert.equal(
+    isValidBasicAuthorization(authorization("pi", "wrong"), "secret"),
+    false
+  );
 });
 
 test("supports UTF-8 passwords and colons in the password", async () => {
   const { isValidBasicAuthorization } = await loadSubject();
   const password = "口令:with:colons";
-  assert.equal(isValidBasicAuthorization(authorization("pi", password), password), true);
+  assert.equal(
+    isValidBasicAuthorization(authorization("pi", password), password),
+    true
+  );
 });
 
 test("rejects missing, malformed, and non-canonical authorization values", async () => {
@@ -37,14 +49,20 @@ test("rejects missing, malformed, and non-canonical authorization values", async
   assert.equal(isValidBasicAuthorization("Bearer token", "secret"), false);
   assert.equal(isValidBasicAuthorization("Basic !!!", "secret"), false);
   assert.equal(isValidBasicAuthorization(`${valid}!`, "secret"), false);
-  assert.equal(isValidBasicAuthorization(
-    `Basic ${Buffer.from("missing-separator", "utf8").toString("base64")}`,
-    "secret",
-  ), false);
+  assert.equal(
+    isValidBasicAuthorization(
+      `Basic ${Buffer.from("missing-separator", "utf8").toString("base64")}`,
+      "secret"
+    ),
+    false
+  );
 });
 
 test("does not authenticate when password protection is disabled", async () => {
   const { isValidBasicAuthorization } = await loadSubject();
   assert.equal(isValidBasicAuthorization(authorization("pi", ""), ""), false);
-  assert.equal(isValidBasicAuthorization(authorization("pi", "secret"), undefined), false);
+  assert.equal(
+    isValidBasicAuthorization(authorization("pi", "secret"), undefined),
+    false
+  );
 });

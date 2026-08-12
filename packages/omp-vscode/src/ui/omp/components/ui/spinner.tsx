@@ -4,7 +4,13 @@ import { cn } from "@/lib/utils";
 
 // Shared loading spinner (lucide Loader2 + Tailwind spin animation).
 
-export function Spinner({ className, size = 14 }: { className?: string; size?: number }) {
+export function Spinner({
+  className,
+  size = 14,
+}: {
+  className?: string;
+  size?: number;
+}) {
   return <Loader2 size={size} className={cn("animate-spin", className)} />;
 }
 
@@ -26,7 +32,7 @@ export function LoadingState({
       role="status"
       className={cn(
         "flex h-full flex-col items-center justify-center gap-2.5 p-6 text-center text-[var(--text-muted)]",
-        className,
+        className
       )}
     >
       <Spinner size={spinnerSize} className="text-[var(--text-muted)]" />

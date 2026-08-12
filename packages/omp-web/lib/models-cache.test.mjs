@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { invalidateModelsCache, loadModelsWithCache, withModelRuntimeError } from "./models-cache.ts";
+import {
+  invalidateModelsCache,
+  loadModelsWithCache,
+  withModelRuntimeError,
+} from "./models-cache.ts";
 
 function modelsData(id) {
   return {
@@ -42,7 +46,9 @@ test("shares one loader between concurrent requests for the same cwd", async () 
   let finishLoad;
   const loader = () => {
     loads += 1;
-    return new Promise((resolve) => { finishLoad = resolve; });
+    return new Promise((resolve) => {
+      finishLoad = resolve;
+    });
   };
 
   const first = loadModelsWithCache("/shared", loader);
@@ -57,7 +63,13 @@ test("shares one loader between concurrent requests for the same cwd", async () 
 test("does not cache a stale load that finishes after invalidation", async () => {
   invalidateModelsCache();
   let finishOldLoad;
-  const oldLoad = loadModelsWithCache("/stale", () => new Promise((resolve) => { finishOldLoad = resolve; }));
+  const oldLoad = loadModelsWithCache(
+    "/stale",
+    () =>
+      new Promise((resolve) => {
+        finishOldLoad = resolve;
+      })
+  );
   await Promise.resolve();
 
   invalidateModelsCache();
@@ -80,8 +92,10 @@ test("does not cache a stale load that finishes after invalidation", async () =>
 test("retries after a model load fails", async () => {
   invalidateModelsCache();
   await assert.rejects(
-    loadModelsWithCache("/failed", async () => { throw new Error("load failed"); }),
-    /load failed/,
+    loadModelsWithCache("/failed", async () => {
+      throw new Error("load failed");
+    }),
+    /load failed/
   );
 
   let retries = 0;

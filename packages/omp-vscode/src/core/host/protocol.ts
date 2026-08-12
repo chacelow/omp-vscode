@@ -228,7 +228,12 @@ export interface ModelsConfigTestResult {
 
 export interface ModelsResult {
   models: Record<string, string>;
-  modelList: Array<{ id: string; name: string; provider: string; contextWindow?: number }>;
+  modelList: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    contextWindow?: number;
+  }>;
   defaultModel: { provider: string; modelId: string } | null;
   currentModel: { provider: string; modelId: string } | null;
   fastModeEnabled: boolean;

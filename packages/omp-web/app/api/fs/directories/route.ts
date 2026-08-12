@@ -7,7 +7,8 @@ import { allowFileRoot } from "@/lib/file-access";
 function getWindowsDrives(): string[] {
   if (platform() !== "win32") return [];
   const drives: string[] = [];
-  for (let i = 67; i <= 90; i++) { // C to Z
+  for (let i = 67; i <= 90; i++) {
+    // C to Z
     const drive = `${String.fromCharCode(i)}:\\`;
     try {
       if (existsSync(drive)) drives.push(drive);
@@ -36,25 +37,38 @@ export async function GET(req: Request) {
     const targetPath = normalizePath(rawPath);
 
     if (!existsSync(targetPath)) {
-      return NextResponse.json({ error: `Directory does not exist: ${targetPath}` }, { status: 404 });
+      return NextResponse.json(
+        { error: `Directory does not exist: ${targetPath}` },
+        { status: 404 }
+      );
     }
 
     const stat = statSync(targetPath);
     if (!stat.isDirectory()) {
-      return NextResponse.json({ error: `Path is not a directory: ${targetPath}` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Path is not a directory: ${targetPath}` },
+        { status: 400 }
+      );
     }
 
     const drives = getWindowsDrives();
-    const parentPath = dirname(targetPath) !== targetPath ? dirname(targetPath) : null;
+    const parentPath =
+      dirname(targetPath) !== targetPath ? dirname(targetPath) : null;
 
-    const entries: Array<{ name: string; path: string; modified?: string }> = [];
+    const entries: Array<{ name: string; path: string; modified?: string }> =
+      [];
     try {
       const dirents = readdirSync(targetPath, { withFileTypes: true });
       for (const dirent of dirents) {
         if (!dirent.isDirectory()) continue;
         const name = dirent.name;
         // Skip system/hidden system folders on Windows/Unix
-        if (name === "$RECYCLE.BIN" || name === "System Volume Information" || name === "DumpStack.log.tmp") continue;
+        if (
+          name === "$RECYCLE.BIN" ||
+          name === "System Volume Information" ||
+          name === "DumpStack.log.tmp"
+        )
+          continue;
 
         const fullPath = join(targetPath, name);
         let modified: string | undefined;
@@ -67,11 +81,21 @@ export async function GET(req: Request) {
         entries.push({ name, path: fullPath, modified });
       }
     } catch (e) {
-      return NextResponse.json({ error: `Failed to read directory: ${e instanceof Error ? e.message : String(e)}` }, { status: 403 });
+      return NextResponse.json(
+        {
+          error: `Failed to read directory: ${e instanceof Error ? e.message : String(e)}`,
+        },
+        { status: 403 }
+      );
     }
 
     // Sort subdirectories alphabetically
-    entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+    entries.sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
 
     return NextResponse.json({
       currentPath: targetPath,
@@ -88,17 +112,26 @@ export async function GET(req: Request) {
 // POST /api/fs/directories — create a new folder
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { parentPath?: string; folderName?: string };
+    const body = (await req.json()) as {
+      parentPath?: string;
+      folderName?: string;
+    };
     const parentPath = normalizePath(body.parentPath);
     const folderName = body.folderName?.trim();
 
     if (!folderName) {
-      return NextResponse.json({ error: "Folder name is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Folder name is required" },
+        { status: 400 }
+      );
     }
 
     const newPath = join(parentPath, folderName);
     if (existsSync(newPath)) {
-      return NextResponse.json({ error: `Folder already exists: ${newPath}` }, { status: 409 });
+      return NextResponse.json(
+        { error: `Folder already exists: ${newPath}` },
+        { status: 409 }
+      );
     }
 
     mkdirSync(newPath, { recursive: true });
