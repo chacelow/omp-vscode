@@ -64,6 +64,9 @@ async function main() {
       os: path.join(__dirname, "src/ui/shims/os.ts"),
       path: path.join(__dirname, "src/ui/shims/path.ts"),
     },
+    loader: {
+      ".svg": "text",
+    },
     // mermaid + syntax highlighter pull in node builtins; stub them.
     define: {
       "process.env.NODE_ENV": production ? '"production"' : '"development"',

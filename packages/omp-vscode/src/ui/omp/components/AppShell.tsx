@@ -1390,6 +1390,11 @@ function AppShellContent() {
                 label={translate("workspace.opening")}
                 subtitle={initialNavigation.requestedCwd ?? undefined}
               />
+            ) : !initialSessionRestored && initialNavigation.sessionId ? (
+              <AppLoading
+                label={translate("chat.loadingSession")}
+                subtitle={initialNavigation.sessionId}
+              />
             ) : initialCwdStatus === "error" ? (
               <div
                 role="alert"

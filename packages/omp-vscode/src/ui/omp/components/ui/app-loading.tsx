@@ -2,14 +2,16 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { StarfieldEmblem } from "../StarfieldEmblem";
 import { Shimmer } from "../ai-elements/shimmer";
+// The real brand mark. esbuild's `text` loader inlines the file contents
+// (see esbuild.js) so we can render it via dangerouslySetInnerHTML and
+// keep `fill="currentColor"` themable.
+import ompLogoSvg from "../../../../../media/omp.svg";
 
-/** Unified full-panel loading state — the emblem breathes and a Shimmer
- *  label announces what's being loaded. Used for both the initial
- *  workspace-opening state and the session-detail load. Replaces the old
- *  Loader2 spinner in `LoadingState` for these two top-level cases so the
- *  brand shows through instead of a generic ring. */
+/** Unified full-panel loading state — the OMP logo pulses while a
+ *  Shimmer-animated label announces what's being loaded. Used for the
+ *  initial workspace-opening state, the session-detail load, and the
+ *  session-list boot page. */
 export function AppLoading({
   label,
   subtitle,
@@ -21,7 +23,7 @@ export function AppLoading({
   /** Optional secondary line — WHAT is loading (session title / id / path). Mono, dim. */
   subtitle?: ReactNode;
   className?: string;
-  /** Emblem pixel size. */
+  /** Logo pixel size. */
   size?: number;
 }) {
   return (
@@ -33,9 +35,11 @@ export function AppLoading({
         className
       )}
     >
-      <div className="omp-app-loading-emblem" style={{ width: size, height: size }}>
-        <StarfieldEmblem size={size} />
-      </div>
+      <div
+        className="omp-app-loading-logo text-[var(--text-muted)]"
+        style={{ width: size, height: size }}
+        dangerouslySetInnerHTML={{ __html: ompLogoSvg }}
+      />
       <Shimmer className="text-sm text-[var(--text)]" duration={2} spread={1}>
         {label}
       </Shimmer>

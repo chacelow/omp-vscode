@@ -168,7 +168,13 @@ export class ChatProvider implements vscode.WebviewViewProvider {
 </head>
 <body class="notranslate">
   <div id="app" data-cwd="${cwd.replace(/"/g, "&quot;")}" data-panel="${kind}">
-    <div style="padding:20px;font-family:monospace;font-size:12px;color:var(--vscode-descriptionForeground,#999)">Loading OMP…</div>
+    <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-family:var(--vscode-font-family,sans-serif);font-size:13px;color:var(--vscode-descriptionForeground,#999)">
+      <svg width="56" height="56" viewBox="0 0 2455 2449" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="color:currentColor;animation:omp-boot-pulse 1.6s ease-in-out infinite">
+        <path d="M2455 777.771H2045.99V2122.09L1381.8 2449V777.771H1079.65V1937.72L415.462 1553.45V777.771H0V0H2455V777.771Z" fill="currentColor"/>
+      </svg>
+      <div>Loading OMP…</div>
+      <style>@keyframes omp-boot-pulse{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion:reduce){svg{animation:none!important;opacity:1!important}}</style>
+    </div>
   </div>
   <script src="${scriptUri}"></script>
 </body>
