@@ -8,7 +8,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { Collapse } from "./ui/collapse";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
@@ -1133,29 +1133,19 @@ function ThinkingBlock({
           </span>
         )}
       </button>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div
-              ref={contentRef}
-              className={cn(
-                "ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
-                error ? "text-[#f87171]" : "text-[var(--text-muted)]"
-              )}
-            >
-              {loading
-                ? t("i18n.loadingThinking")
-                : (error ?? (block.deferred ? content : displayText))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Collapse open={expanded}>
+        <div
+          ref={contentRef}
+          className={cn(
+            "ml-[5px] max-h-[200px] overflow-y-auto border-l border-[color-mix(in_srgb,var(--border)_60%,transparent)] py-0.5 pl-3 text-[12px] leading-[1.65] whitespace-pre-wrap",
+            error ? "text-[#f87171]" : "text-[var(--text-muted)]"
+          )}
+        >
+          {loading
+            ? t("i18n.loadingThinking")
+            : (error ?? (block.deferred ? content : displayText))}
+        </div>
+      </Collapse>
     </div>
   );
 }
@@ -1448,52 +1438,39 @@ function ToolCallBlock({
         />
       </button>
 
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="overflow-hidden"
+      <Collapse open={isExpanded}>
+        {!isEditTool && (
+          <pre
+            style={{
+              margin: 0,
+              padding: "8px 10px",
+              color: "var(--text-muted)",
+              fontSize: 12,
+              lineHeight: 1.5,
+              overflow: "auto",
+              background: "var(--bg-subtle)",
+              borderTop: isError
+                ? "1px solid color-mix(in srgb, var(--border) 65%, transparent)"
+                : "1px solid color-mix(in srgb, var(--border) 55%, transparent)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+            }}
           >
-            {/* ── Expanded: input args ── */}
-            {!isEditTool && (
-              <pre
-                style={{
-                  margin: 0,
-                  padding: "8px 10px",
-                  color: "var(--text-muted)",
-                  fontSize: 12,
-                  lineHeight: 1.5,
-                  overflow: "auto",
-                  background: "var(--bg-subtle)",
-                  borderTop: isError
-                    ? "1px solid color-mix(in srgb, var(--border) 65%, transparent)"
-                    : "1px solid color-mix(in srgb, var(--border) 55%, transparent)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
-                }}
-              >
-                {inputStr}
-              </pre>
-            )}
-
-            {/* ── Paired result — only shown when expanded ── */}
-            {result &&
-              (resultDiff ? (
-                <PairedDiffResult diff={resultDiff} />
-              ) : (
-                <PairedResult
-                  text={resultText ?? ""}
-                  isEmpty={resultIsEmpty}
-                  isError={isError}
-                  terminalMode={block.toolName === "bash"}
-                />
-              ))}
-          </motion.div>
+            {inputStr}
+          </pre>
         )}
-      </AnimatePresence>
+        {result &&
+          (resultDiff ? (
+            <PairedDiffResult diff={resultDiff} />
+          ) : (
+            <PairedResult
+              text={resultText ?? ""}
+              isEmpty={resultIsEmpty}
+              isError={isError}
+              terminalMode={block.toolName === "bash"}
+            />
+          ))}
+      </Collapse>
     </div>
   );
 }
@@ -1914,36 +1891,26 @@ function CompactionMessageView({ message }: { message: CustomMessage }) {
           )}
         />
       </button>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pt-2.5 pb-3">
-              <p className="mb-2 text-sm leading-5 text-[var(--text-muted)]">
-                {t("i18n.compactionDescription")}
-              </p>
-              {parsedSummary.body ? (
-                <MarkdownBody className="markdown-compaction-message">
-                  {parsedSummary.body}
-                </MarkdownBody>
-              ) : (
-                <span className="text-xs text-[var(--text-dim)]">
-                  {t("i18n.noSummary")}
-                </span>
-              )}
-              <CompactionFileMetadata
-                readFiles={parsedSummary.readFiles}
-                modifiedFiles={parsedSummary.modifiedFiles}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Collapse open={expanded}>
+        <div className="px-3 pt-2.5 pb-3">
+          <p className="mb-2 text-sm leading-5 text-[var(--text-muted)]">
+            {t("i18n.compactionDescription")}
+          </p>
+          {parsedSummary.body ? (
+            <MarkdownBody className="markdown-compaction-message">
+              {parsedSummary.body}
+            </MarkdownBody>
+          ) : (
+            <span className="text-xs text-[var(--text-dim)]">
+              {t("i18n.noSummary")}
+            </span>
+          )}
+          <CompactionFileMetadata
+            readFiles={parsedSummary.readFiles}
+            modifiedFiles={parsedSummary.modifiedFiles}
+          />
+        </div>
+      </Collapse>
       {!hasDetails && <span className="sr-only">{t("i18n.noSummary")}</span>}
     </section>
   );

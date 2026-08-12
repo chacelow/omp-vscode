@@ -1,5 +1,51 @@
 @import "tailwindcss";
 
+/* ── Global motion tokens ─────────────────────────────────────────────
+   One place to tune the "everything moves the same amount" feel of the
+   chat. Motion components read the same numbers by importing the values
+   at their callsite; utility classes below cover the plain-CSS cases
+   (opacity fades, color transitions on hover) so no component has to
+   invent its own duration.                                            */
+:root {
+  --omp-motion-fast: 120ms;
+  --omp-motion-base: 160ms;
+  --omp-motion-slow: 240ms;
+  --omp-motion-ease: cubic-bezier(0.2, 0.0, 0.0, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --omp-motion-fast: 0ms;
+    --omp-motion-base: 0ms;
+    --omp-motion-slow: 0ms;
+  }
+}
+
+/* Interactive elements — hover, focus, disabled state changes — animate
+   colour/opacity uniformly. Applied to everything the user can touch;
+   layout-shifting properties (height, width, transform) intentionally
+   stay out of the * selector so we don't animate layout changes we
+   didn't opt into.                                                    */
+button, a, [role="button"], [role="tab"], [role="menuitem"] {
+  transition:
+    color var(--omp-motion-fast) var(--omp-motion-ease),
+    background-color var(--omp-motion-fast) var(--omp-motion-ease),
+    border-color var(--omp-motion-fast) var(--omp-motion-ease),
+    opacity var(--omp-motion-fast) var(--omp-motion-ease);
+}
+
+/* One-shot fade-in for mount events that don't need a full Motion
+   component. Add `data-omp-mount` to any element and it fades in on
+   first paint. Cheap: pure CSS, GPU-composited.                       */
+@keyframes omp-mount-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+[data-omp-mount] {
+  animation: omp-mount-in var(--omp-motion-base) var(--omp-motion-ease) both;
+}
+
+@import "tailwindcss";
+
 /* The webview iframe is width/height 100%; the app must fill it exactly
    or the body background shows below the chat page. Scrolling happens
    inside the app's own containers; the page itself must never scroll,
