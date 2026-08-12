@@ -1,4 +1,4 @@
-@import url("tailwindcss");
+@import "tailwindcss";
 
 /* ── Global motion tokens ─────────────────────────────────────────────
    One place to tune the "everything moves the same amount" feel of the
