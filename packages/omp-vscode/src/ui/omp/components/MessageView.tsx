@@ -854,6 +854,7 @@ function AssistantMessageView({
                   block={block}
                   result={toolResults?.get(block.toolCallId)}
                   duration={toolCallDurations?.get(block.toolCallId)}
+                  cwd={cwd}
                   onOpenFile={onOpenFile}
                 />
               );

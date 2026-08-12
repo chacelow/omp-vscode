@@ -437,7 +437,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (tokens.total === 0 && messages.length === 0) return null;
     const matched = displayModel ? modelList.find((model) => model.provider === displayModel.provider && (model.id === displayModel.modelId || displayModel.modelId.includes(model.id))) : null;
     const contextWindow = contextUsage?.contextWindow || matched?.contextWindow || 128000;
-    const currentTokens = contextUsage?.tokens ?? null;
+    // Live turns report context tokens via ACP usage_update. A freshly
+    // loaded session has no live usage — derive it from the LAST assistant
+    // message's persisted usage (input+output+cache ≈ the context the last
+    // turn consumed), same as the TUI footer after /resume.
+    let lastTurnTokens: number | null = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message.role !== "assistant" || !message.usage) continue;
+      const { input, output, cacheRead, cacheWrite } = message.usage;
+      lastTurnTokens = (input ?? 0) + (output ?? 0) + (cacheRead ?? 0) + (cacheWrite ?? 0);
+      break;
+    }
+    const currentTokens = contextUsage?.tokens ?? lastTurnTokens;
     return { sessionFile: data?.filePath || undefined, sessionId: sessionIdRef.current ?? session?.id ?? "", sessionName: session?.name, userMessages, assistantMessages, toolCalls, toolResults, totalMessages: messages.length, tokens, cost, contextUsage: { percent: currentTokens === null ? null : (currentTokens / contextWindow) * 100, contextWindow, tokens: currentTokens } } satisfies SessionStatsInfo;
   }, [contextUsage, data?.filePath, displayModel, messages, modelList, session?.id, session?.name, sessionStatsOverride]);
 

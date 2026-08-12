@@ -10,6 +10,7 @@ import {
 } from "../ui/popover";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
+import { resolveLocalFileHref } from "@/lib/file-links";
 import type {
   TextContent,
   ToolCallContent,
@@ -146,66 +147,53 @@ function resultLines(result: ToolResultMessage | undefined): string[] {
   return text.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
-/** Parse `<path>:<line>` matches. Ripgrep default output. */
-function parseGrepMatches(result: ToolResultMessage | undefined): Array<{
+interface FileMatchGroup {
   path: string;
-  line?: number;
-  preview: string;
-}> {
-  const lines = resultLines(result);
-  const out: Array<{ path: string; line?: number; preview: string }> = [];
-  for (const raw of lines) {
-    const match = raw.match(/^(?<path>[^\s:]+):(?<line>\d+):(?<rest>.*)$/);
-    if (match?.groups) {
-      out.push({
-        path: match.groups.path,
-        line: Number.parseInt(match.groups.line, 10),
-        preview: match.groups.rest.trim(),
-      });
-      continue;
-    }
-    out.push({ path: raw, preview: "" });
-  }
-  return out;
+  matches: number;
+  firstLine?: number;
+}
+
+interface GrepResultSummary {
+  fileGroups: FileMatchGroup[];
+  fileCount: number;
+  matchCount: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- * Aggregate grep results from a tool's structured `details` payload when the
- * agent supplies one. Recognises the shape produced by omp's grep tool:
- *
- *   details.fileMatches = [{ path, count }]
- *   details.files       = ["path", ...]         (fallback when no per-file count)
- */
-function fileGroupsFromDetails(result: ToolResultMessage | undefined): FileMatchGroup[] | null {
+/** Read grep's structured result. ACP rawOutput wraps tool details once. */
+function grepResultSummary(result: ToolResultMessage | undefined): GrepResultSummary | null {
   if (!result || !isRecord(result.details)) return null;
-  const details = result.details;
+  const rawDetails = result.details;
+  const details = isRecord(rawDetails.details) ? rawDetails.details : rawDetails;
+  const fileGroups: FileMatchGroup[] = [];
   const fileMatches = details.fileMatches;
+
   if (Array.isArray(fileMatches)) {
-    const out: FileMatchGroup[] = [];
     for (const entry of fileMatches) {
       if (!isRecord(entry) || typeof entry.path !== "string") continue;
-      out.push({
+      fileGroups.push({
         path: entry.path,
         matches: typeof entry.count === "number" ? entry.count : 1,
         firstLine: typeof entry.line === "number" ? entry.line : undefined,
       });
     }
-    return out;
-  }
-  const files = details.files;
-  if (Array.isArray(files)) {
-    const out: FileMatchGroup[] = [];
-    for (const entry of files) {
-      if (typeof entry !== "string") continue;
-      out.push({ path: entry, matches: 1 });
+  } else if (Array.isArray(details.files)) {
+    for (const path of details.files) {
+      if (typeof path === "string") fileGroups.push({ path, matches: 1 });
     }
-    return out;
+  } else {
+    return null;
   }
-  return null;
+
+  const groupedMatchCount = fileGroups.reduce((sum, group) => sum + group.matches, 0);
+  return {
+    fileGroups,
+    fileCount: typeof details.fileCount === "number" ? details.fileCount : fileGroups.length,
+    matchCount: typeof details.matchCount === "number" ? details.matchCount : groupedMatchCount,
+  };
 }
 
 /** Split a POSIX path into `{ dir, base }`. Missing dir → empty string. */
@@ -216,28 +204,6 @@ function splitPath(path: string): { dir: string; base: string } {
   return { dir: clean.slice(0, lastSlash), base: clean.slice(lastSlash + 1) };
 }
 
-/** Aggregate ripgrep-style matches into one row per file. */
-interface FileMatchGroup {
-  path: string;
-  matches: number;
-  firstLine?: number;
-}
-function groupMatchesByFile(
-  matches: Array<{ path: string; line?: number; preview: string }>,
-): FileMatchGroup[] {
-  const order: string[] = [];
-  const byPath = new Map<string, FileMatchGroup>();
-  for (const match of matches) {
-    let bucket = byPath.get(match.path);
-    if (!bucket) {
-      bucket = { path: match.path, matches: 0, firstLine: match.line };
-      byPath.set(match.path, bucket);
-      order.push(match.path);
-    }
-    bucket.matches += 1;
-  }
-  return order.map((path) => byPath.get(path)!);
-}
 
 /* -------------------------------------------------------------------------- */
 /* Base line primitive                                                        */
@@ -490,29 +456,24 @@ function ReadLine({ block, result, duration, onOpenFile }: {
   );
 }
 
-function GrepLine({ block, result, duration, onOpenFile }: {
+function GrepLine({ block, result, duration, cwd, onOpenFile }: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
+  cwd?: string;
   onOpenFile?: (path: string) => void;
 }) {
   const pattern = readGrepPattern(block);
   const scope = readGrepPath(block);
   const isError = result?.isError === true;
   const isPending = !result;
-  const fileGroups = useMemo(() => {
-    if (!result) return [] as FileMatchGroup[];
-    const structured = fileGroupsFromDetails(result);
-    if (structured && structured.length > 0) return structured;
-    return groupMatchesByFile(parseGrepMatches(result));
-  }, [result]);
-  const totalMatches = useMemo(
-    () => fileGroups.reduce((sum, group) => sum + group.matches, 0),
-    [fileGroups],
-  );
+  const summary = useMemo(() => grepResultSummary(result), [result]);
+  const fileGroups = summary?.fileGroups ?? [];
+  const totalMatches = summary?.matchCount ?? 0;
+  const totalFiles = summary?.fileCount ?? 0;
 
-  const hint = fileGroups.length > 0
-    ? `${fileGroups.length} ${fileGroups.length === 1 ? "file" : "files"} · ${totalMatches} ${totalMatches === 1 ? "match" : "matches"}`
+  const hint = summary
+    ? `${totalFiles} ${totalFiles === 1 ? "file" : "files"} · ${totalMatches} ${totalMatches === 1 ? "match" : "matches"}`
     : scope
       ? `in ${scope}`
       : "no matches";
@@ -527,12 +488,17 @@ function GrepLine({ block, result, duration, onOpenFile }: {
       <div className="max-h-72 overflow-y-auto rounded border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
         {fileGroups.slice(0, 100).map((entry) => {
           const { dir, base } = splitPath(entry.path);
+          const resolvedPath = resolveLocalFileHref(entry.path, cwd);
+          const openPath = resolvedPath
+            ? (entry.firstLine ? `${resolvedPath}:${entry.firstLine}` : resolvedPath)
+            : null;
           return (
             <button
               key={entry.path}
               type="button"
-              onClick={() => onOpenFile?.(entry.firstLine ? `${entry.path}:${entry.firstLine}` : entry.path)}
-              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)]"
+              disabled={!openPath}
+              onClick={() => openPath && onOpenFile?.(openPath)}
+              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-0.5 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default"
             >
               <FileText size={11} className="shrink-0 text-[var(--text-dim)]" />
               <span className="shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)]">
@@ -543,7 +509,7 @@ function GrepLine({ block, result, duration, onOpenFile }: {
                   {dir}
                 </span>
               )}
-              <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--text-dim)]">
+              <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
                 {entry.matches} {entry.matches === 1 ? "match" : "matches"}
               </span>
             </button>
@@ -908,11 +874,13 @@ export function ToolLine({
   block,
   result,
   duration,
+  cwd,
   onOpenFile,
 }: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   duration?: number;
+  cwd?: string;
   onOpenFile?: (path: string) => void;
 }) {
   const name = (block.toolName || "").toLowerCase();
@@ -920,7 +888,7 @@ export function ToolLine({
     return <ReadLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
   }
   if (name === "grep" || name === "grepped") {
-    return <GrepLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+    return <GrepLine block={block} result={result} duration={duration} cwd={cwd} onOpenFile={onOpenFile} />;
   }
   if (name === "glob") {
     return <GlobLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
@@ -939,7 +907,7 @@ export function ToolLine({
   }
   // Search kind without a known name: reuse grep line as a reasonable default.
   if (block.toolKind === "search") {
-    return <GrepLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
+    return <GrepLine block={block} result={result} duration={duration} cwd={cwd} onOpenFile={onOpenFile} />;
   }
   return null;
 }
@@ -960,12 +928,14 @@ export function ExploringGroup({
   blocks,
   toolResults,
   toolCallDurations,
+  cwd,
   onOpenFile,
   variant = "exploring",
 }: {
   blocks: ToolCallContent[];
   toolResults?: Map<string, ToolResultMessage>;
   toolCallDurations?: Map<string, number>;
+  cwd?: string;
   onOpenFile?: (path: string) => void;
   variant?: "exploring" | "bash" | "changes";
 }) {
@@ -1041,6 +1011,7 @@ export function ExploringGroup({
               block={block}
               result={toolResults?.get(block.toolCallId)}
               duration={toolCallDurations?.get(block.toolCallId)}
+              cwd={cwd}
               onOpenFile={onOpenFile}
             />
           ))}
