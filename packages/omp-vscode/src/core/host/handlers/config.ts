@@ -91,19 +91,72 @@ export const cwdBrowseHandler: Handler<"cwdBrowse"> = ({ path }) => {
 
 export const cwdGitBranchHandler: Handler<"cwdGitBranch"> = async ({ cwd }) => {
   if (!cwd || !existsSync(cwd)) return { branch: null };
-  type GitRepository = { rootUri: vscode.Uri; state: { HEAD?: { name?: string } } };
-  type GitApi = { repositories: GitRepository[]; getRepository(uri: vscode.Uri): GitRepository | null };
+  type Disposable = { dispose(): void };
+  type Event<T> = (listener: (e: T) => void) => Disposable;
+  type GitRepository = {
+    rootUri: vscode.Uri;
+    state: { HEAD?: { name?: string }; onDidChange: Event<void> };
+  };
+  type GitApi = {
+    state: "uninitialized" | "initialized";
+    onDidChangeState: Event<"uninitialized" | "initialized">;
+    onDidOpenRepository: Event<GitRepository>;
+    repositories: GitRepository[];
+    getRepository(uri: vscode.Uri): GitRepository | null;
+  };
   type GitExtension = { getAPI(version: 1): GitApi };
+
+  // Wait for `predicate` to fire on `event`, or resolve `null` after `timeoutMs`.
+  const waitFor = <T>(event: Event<T>, timeoutMs: number, predicate: (value: T) => boolean): Promise<T | null> =>
+    new Promise((resolve) => {
+      let done = false;
+      const finish = (value: T | null): void => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        sub.dispose();
+        resolve(value);
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      const sub = event((value: T) => { if (predicate(value)) finish(value); });
+    });
+
+  const findRepo = (api: GitApi): GitRepository | null =>
+    api.getRepository(vscode.Uri.file(cwd)) ??
+    api.repositories.find((r) => cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`)) ??
+    null;
 
   try {
     const ext = vscode.extensions.getExtension<GitExtension>("vscode.git");
     if (!ext) return { branch: null };
     const git = ext.isActive ? ext.exports : await ext.activate();
     const api = git.getAPI(1);
-    const repo =
-      api.getRepository(vscode.Uri.file(cwd)) ??
-      api.repositories.find((r) => cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`));
-    return { branch: repo?.state.HEAD?.name ?? (repo ? "detached" : null) };
+
+    // vscode.git scans workspace folders lazily; api.state flips to
+    // "initialized" only after the first scan pass completes. Repos discovered
+    // afterwards fire onDidOpenRepository. Wait a bounded window so the branch
+    // resolves on cold webview loads instead of returning null.
+    if (api.state !== "initialized") {
+      await waitFor(api.onDidChangeState, 2500, (s) => s === "initialized");
+    }
+
+    let repo = findRepo(api);
+    if (!repo) {
+      const opened = await waitFor(
+        api.onDidOpenRepository,
+        2500,
+        (r) => cwd === r.rootUri.fsPath || cwd.startsWith(`${r.rootUri.fsPath}/`),
+      );
+      repo = opened ?? findRepo(api);
+    }
+    if (!repo) return { branch: null };
+
+    // HEAD populates after the first state refresh; if it's not there yet,
+    // wait one state tick.
+    if (!repo.state.HEAD) {
+      await waitFor(repo.state.onDidChange, 1500, () => Boolean(repo?.state.HEAD));
+    }
+    return { branch: repo.state.HEAD?.name ?? "detached" };
   } catch {
     return { branch: null };
   }
