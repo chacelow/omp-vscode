@@ -94,6 +94,15 @@ export interface AssistantMessage {
       total: number;
     };
   };
+  /** Per-turn context breakdown persisted by omp's session-stats. The
+   *  canonical source for the context ring after a turn ends — same field
+   *  `getContextUsage()` reads internally (session-stats.ts
+   *  `correctedPromptTokens`). Not present on error/aborted turns. */
+  contextSnapshot?: {
+    promptTokens: number;
+    nonMessageTokens?: number;
+    historyRewriteTokensRemoved?: number;
+  };
 }
 
 export interface ToolResultMessage {

@@ -435,26 +435,41 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     tokens.total = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
     if (tokens.total === 0 && messages.length === 0) return null;
-    const matched = displayModel ? modelList.find((model) => model.provider === displayModel.provider && (model.id === displayModel.modelId || displayModel.modelId.includes(model.id))) : null;
-    const contextWindow = contextUsage?.contextWindow || matched?.contextWindow || 128000;
-    // Live turns report context tokens via ACP usage_update. A freshly
-    // loaded session has no live usage — derive it from the newest
-    // assistant message with a NON-ZERO usage row (input+output+cache).
-    // Error/aborted turns get persisted with all-zero usage; skip those
-    // and walk backwards to the last successful turn, same as the TUI
-    // footer after /resume.
-    let lastTurnTokens: number | null = null;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      if (message.role !== "assistant" || !message.usage) continue;
-      const { input, output, cacheRead, cacheWrite } = message.usage;
-      const total = (input ?? 0) + (output ?? 0) + (cacheRead ?? 0) + (cacheWrite ?? 0);
-      if (total <= 0) continue;
-      lastTurnTokens = total;
-      break;
+    // Context ring — canonical, no guessing:
+    //   1. Live turn ended → ACP `usage_update`: `used` + `size`, both
+    //      guaranteed non-optional numbers per SDK schema. `size` IS the
+    //      real model.contextWindow at the agent side.
+    //   2. No live usage yet (session loaded from disk, no turn this
+    //      process) → walk assistants backward for the newest
+    //      contextSnapshot.promptTokens — same field omp's session-stats
+    //      reads via `correctedPromptTokens`. Errored/aborted turns don't
+    //      write the snapshot so they get skipped naturally.
+    //   3. contextWindow at load time comes from modelList lookup, which
+    //      is populated from omp's own model registry (same source omp
+    //      uses internally). Falls back to null when unknown — the ring
+    //      then shows tokens without a percentage rather than fabricating
+    //      one against 128k.
+    let currentTokens: number | null = null;
+    let contextWindow: number | null = null;
+    if (contextUsage) {
+      currentTokens = contextUsage.tokens;
+      contextWindow = contextUsage.contextWindow > 0 ? contextUsage.contextWindow : null;
+    } else {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const message = messages[i];
+        if (message.role !== "assistant" || !message.contextSnapshot) continue;
+        currentTokens = message.contextSnapshot.promptTokens;
+        break;
+      }
     }
-    const currentTokens = contextUsage?.tokens ?? lastTurnTokens;
-    return { sessionFile: data?.filePath || undefined, sessionId: sessionIdRef.current ?? session?.id ?? "", sessionName: session?.name, userMessages, assistantMessages, toolCalls, toolResults, totalMessages: messages.length, tokens, cost, contextUsage: { percent: currentTokens === null ? null : (currentTokens / contextWindow) * 100, contextWindow, tokens: currentTokens } } satisfies SessionStatsInfo;
+    if (contextWindow === null) {
+      const matched = displayModel ? modelList.find((model) => model.provider === displayModel.provider && (model.id === displayModel.modelId || displayModel.modelId.includes(model.id))) : null;
+      contextWindow = matched?.contextWindow ?? null;
+    }
+    const percent = currentTokens !== null && contextWindow !== null && contextWindow > 0
+      ? (currentTokens / contextWindow) * 100
+      : null;
+    return { sessionFile: data?.filePath || undefined, sessionId: sessionIdRef.current ?? session?.id ?? "", sessionName: session?.name, userMessages, assistantMessages, toolCalls, toolResults, totalMessages: messages.length, tokens, cost, contextUsage: { percent, contextWindow: contextWindow ?? 0, tokens: currentTokens } } satisfies SessionStatsInfo;
   }, [contextUsage, data?.filePath, displayModel, messages, modelList, session?.id, session?.name, sessionStatsOverride]);
 
   const promoteNewSession = useCallback((messageCount = 0, firstMessage = "(no messages)") => {
@@ -518,17 +533,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setAgentPhase(activeTools.length > 0 ? { kind: "running_tools", tools: activeTools } : state.promptPending ? { kind: "waiting_model" } : null);
     setSlashCommands(state.availableCommands.map((command) => ({ name: command.name, description: command.description, inputHint: command.input?.hint, source: "prompt" })));
     setSlashCommandsLoading(false);
+    // ACP `usage_update` maps to `state.usage`. Both `used` and
+    // contextWindow are required numbers when the field exists — no
+    // defensive nullish/zero filtering needed here. Absence of `usage`
+    // means "no usage_update has arrived", not "0 tokens": leave the
+    // slot null and let sessionStats fall back to the JSONL snapshot.
     const usage = state.usage;
-    // ACP publishes usage_update with used=0 during session/load
-    // completion (bootstrap anchor). If we let that overwrite
-    // contextUsage to {tokens: 0}, the ring gets stuck at 0% because
-    // the fallback path (last assistant's persisted usage from the
-    // JSONL) uses `??` and can't override a valid 0. Only trust live
-    // usage when it's an actual number > 0.
-    const nextUsed = typeof usage?.totalTokens === "number" && usage.totalTokens > 0 ? usage.totalTokens : null;
+    const nextUsed = usage ? usage.used : null;
     const preCompactUsed = preCompactUsedRef.current;
     latestUsedRef.current = nextUsed;
-    setContextUsage(nextUsed !== null ? { percent: null, contextWindow: 0, tokens: nextUsed } : null);
+    setContextUsage(usage ? { percent: null, contextWindow: usage.contextWindow, tokens: usage.used } : null);
     if (isCompacting && (state.stopReason || (preCompactUsed !== null && nextUsed !== null && nextUsed < preCompactUsed))) {
       if (preCompactUsed !== null && nextUsed !== null && nextUsed < preCompactUsed) setCompactionBoundary({ at: Date.now(), messageIndex: nextMessages.length });
       preCompactUsedRef.current = null;

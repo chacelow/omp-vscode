@@ -103,6 +103,11 @@ export interface AssistantMessage {
       total: number;
     };
   };
+  contextSnapshot?: {
+    promptTokens: number;
+    nonMessageTokens?: number;
+    historyRewriteTokensRemoved?: number;
+  };
 }
 
 export interface ToolResultMessage {

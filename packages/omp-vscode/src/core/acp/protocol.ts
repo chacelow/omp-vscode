@@ -33,7 +33,14 @@ export interface AcpSessionState extends AcpSessionInfo {
   plan: PlanEntry[];
   // Internal snapshot revision — never exposed to UI.
   revision: number;
-  usage?: { totalTokens: number; inputTokens: number; outputTokens: number };
+  // ACP `usage_update` payload: `used` (tokens in context) + `size` (context
+  // window). Both are REQUIRED numbers per the SDK schema. omp emits this
+  // only at end-of-turn — never at bootstrap — so absence of `usage` means
+  // "no live turn has completed since we attached to this session", not "0
+  // tokens".
+  usage?: { used: number; contextWindow: number };
+  // Legacy input/output fields carried from PromptResponse.usage; kept for
+  // now but should not drive the context ring (see acp-service.prompt()).
   turnUsage?: { totalTokens: number; inputTokens: number; outputTokens: number };
   stopReason?: string;
   loaded: boolean;

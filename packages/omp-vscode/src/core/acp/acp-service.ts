@@ -343,18 +343,15 @@ export class AcpService {
     try {
       const promptResponse = await ctx.agent.request(methods.agent.session.prompt, { sessionId, prompt }) as {
         stopReason?: string;
-        usage?: { totalTokens?: number; inputTokens?: number; outputTokens?: number };
+        // PromptResponse.usage exists but is CUMULATIVE session totals with
+        // input/output token counts — NOT the context-window usage the
+        // ring displays. That comes from the `usage_update` session-update
+        // event only. Ignore this field to avoid two writers stomping the
+        // same state.usage slot.
       };
       this.updateSession(sessionId, {
         promptPending: false,
         stopReason: promptResponse.stopReason,
-        usage: promptResponse.usage
-          ? {
-              totalTokens: promptResponse.usage.totalTokens ?? 0,
-              inputTokens: promptResponse.usage.inputTokens ?? 0,
-              outputTokens: promptResponse.usage.outputTokens ?? 0,
-            }
-          : session.usage,
       });
     } catch (error) {
       this.updateSession(sessionId, {
@@ -765,8 +762,14 @@ export class AcpService {
         break;
       }
       case "usage_update": {
+        // Ground truth from SDK schema + omp emitter (acp-agent.ts
+        // #emitEndOfTurnUpdates):
+        //   used: number (tokens currently in context)
+        //   size: number (model.contextWindow)
+        // Both fields are guaranteed by the schema and by omp's use of
+        // `getContextUsage()` — no need for optional/`?? 0` defaults here.
         const uu = update as import("@agentclientprotocol/sdk").UsageUpdate & { sessionUpdate: "usage_update" };
-        patch.usage = { totalTokens: uu.used, inputTokens: 0, outputTokens: 0 };
+        patch.usage = { used: uu.used, contextWindow: uu.size };
         break;
       }
     }
