@@ -113,6 +113,15 @@ function readGrepPattern(block: ToolCallContent): string {
   return readStringField(block.input, "pattern") || readStringField(block.input, "query");
 }
 
+/** Extract the structured file list from an omp glob tool result. Matches
+ *  omp's GlobToolDetails.files (see reference glob.ts buildResult()). */
+function readGlobFiles(details: unknown): string[] | null {
+  if (!details || typeof details !== "object" || !("files" in details)) return null;
+  const files = (details as { files: unknown }).files;
+  if (!Array.isArray(files)) return null;
+  return files.filter((file): file is string => typeof file === "string");
+}
+
 function readWebQuery(block: ToolCallContent): string {
   return readStringField(block.input, "query") || readStringField(block.input, "q");
 }
@@ -546,7 +555,20 @@ function GlobLine({ block, result, duration, onOpenFile }: {
   onOpenFile?: (path: string) => void;
 }) {
   const pattern = readGrepPattern(block) || readInputPath(block);
-  const files = useMemo(() => resultLines(result), [result]);
+  // omp's glob tool ships two payloads:
+  //   • text() — a human-readable markdown tree (`# dir / ## sub / file`)
+  //     built by `formatGroupedPaths` — meant for the model to read.
+  //   • details.files — the CANONICAL string[] of matched paths.
+  // Read the structured field directly; splitting the markdown on
+  // newlines treated `# .agents` and `## zoey-project` as filenames
+  // and produced a 150-line grid of headings that weren't files.
+  const files = useMemo(() => {
+    const detailFiles = readGlobFiles(result?.details);
+    if (detailFiles) return detailFiles;
+    // Legacy sessions may not carry `details` (older JSONL). Fall back
+    // to newline-splitting only when there's genuinely no structure.
+    return resultLines(result);
+  }, [result]);
   const isError = result?.isError === true;
   const isPending = !result;
 
