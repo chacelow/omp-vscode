@@ -211,16 +211,21 @@ function ProcessDetailsGroup({
   messageCount,
   toolCallCount,
   durationSec,
+  defaultExpanded = false,
   children,
   t,
 }: {
   messageCount: number;
   toolCallCount: number;
   durationSec?: number;
+  /** Start expanded when there's no separate final answer to follow —
+   *  otherwise the whole turn (thinking / tool calls) is invisible behind
+   *  a collapsed summary. */
+  defaultExpanded?: boolean;
   children: ReactNode;
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [overflowing, setOverflowing] = useState(false);
   const parts = [t("chat.processDetails")];
   if (durationSec !== undefined && durationSec > 0) {
@@ -1612,6 +1617,7 @@ export function ChatWindow({
                               countToolCallBlocks(finalSplit.processBlocks)
                             }
                             durationSec={groupDuration}
+                            defaultExpanded={!finalAnswerMessage}
                           >
                             {visibleProcessIndices.map((processIdx) =>
                               renderMessage(processIdx, {
