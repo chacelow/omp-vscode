@@ -515,10 +515,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setSlashCommands(state.availableCommands.map((command) => ({ name: command.name, description: command.description, inputHint: command.input?.hint, source: "prompt" })));
     setSlashCommandsLoading(false);
     const usage = state.usage;
-    const nextUsed = usage?.totalTokens ?? null;
+    // ACP publishes usage_update with used=0 during session/load
+    // completion (bootstrap anchor). If we let that overwrite
+    // contextUsage to {tokens: 0}, the ring gets stuck at 0% because
+    // the fallback path (last assistant's persisted usage from the
+    // JSONL) uses `??` and can't override a valid 0. Only trust live
+    // usage when it's an actual number > 0.
+    const nextUsed = typeof usage?.totalTokens === "number" && usage.totalTokens > 0 ? usage.totalTokens : null;
     const preCompactUsed = preCompactUsedRef.current;
     latestUsedRef.current = nextUsed;
-    setContextUsage(usage ? { percent: null, contextWindow: 0, tokens: nextUsed } : null);
+    setContextUsage(nextUsed !== null ? { percent: null, contextWindow: 0, tokens: nextUsed } : null);
     if (isCompacting && (state.stopReason || (preCompactUsed !== null && nextUsed !== null && nextUsed < preCompactUsed))) {
       if (preCompactUsed !== null && nextUsed !== null && nextUsed < preCompactUsed) setCompactionBoundary({ at: Date.now(), messageIndex: nextMessages.length });
       preCompactUsedRef.current = null;
