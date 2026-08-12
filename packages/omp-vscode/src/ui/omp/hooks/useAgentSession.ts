@@ -4,9 +4,6 @@ import { useState, useCallback, useRef, useEffect, useMemo, useReducer } from "r
 import type {
   AgentMessage,
   AssistantMessage,
-  ExtensionStatusItem,
-  ExtensionUiRequest,
-  ExtensionWidgetItem,
   SessionInfo,
   SessionTreeNode,
   ToolCallKind,
@@ -18,6 +15,7 @@ import { getToolNamesForPreset } from "@/lib/tool-presets";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 import { acpRequest, hostCall, subscribeAcp } from "../../bridge";
 import type {
+  AcpCapabilitySnapshot,
   AcpElicitationRequest,
   AcpHostEvent,
   AcpMessage,
@@ -61,7 +59,6 @@ function streamReducer(state: StreamingState, action: StreamAction): StreamingSt
   }
 }
 
-export interface QueuedMessages { steering: string[]; followUp: string[]; }
 export type NoticeType = "info" | "success" | "warning" | "error";
 export type NoticeItem = { id: string; message: string; type: NoticeType; exiting?: boolean };
 type NoticeState = { visible: NoticeItem[]; pending: NoticeItem[] };
@@ -101,7 +98,6 @@ export interface UseAgentSessionOptions {
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
   onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => Promise<void>) => void;
-  onSystemPromptChange?: (prompt: string | null) => void;
   onOpenSettings?: () => void;
   /** Opens the webview-native full session picker for the local `/resume` command. */
   onOpenResumeDialog?: () => void;
@@ -318,7 +314,7 @@ function contentFor(message: string, images?: AttachedImage[]): ContentBlock[] {
 }
 
 export function useAgentSession(opts: UseAgentSessionOptions) {
-  const { session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onOpenSettings, onOpenResumeDialog } = opts;
+  const { session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, onBranchDataChange, onOpenSettings, onOpenResumeDialog } = opts;
   const isNew = session === null && newSessionCwd !== null;
   const [data, setData] = useState<SessionData | null>(null);
   // Loading only applies to opening an EXISTING session (JSONL fetch).
@@ -351,7 +347,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
   const [contextUsage, setContextUsage] = useState<{ percent: number | null; contextWindow: number; tokens: number | null } | null>(null);
-  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
@@ -364,7 +359,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; errorMessage?: string } | null>(null);
   const [compactionBoundary, setCompactionBoundary] = useState<{ at: number; messageIndex: number } | null>(null);
   const [sessionStatsOverride, setSessionStatsOverride] = useState<SessionStatsInfo | null>(null);
-  const [queuedMessages, setQueuedMessages] = useState<QueuedMessages>({ steering: [], followUp: [] });
+  const [capabilities, setCapabilities] = useState<AcpCapabilitySnapshot | null>(null);
   const [snapshot, setSnapshot] = useState<AcpSessionState | null>(null);
   const [pendingRestoreModel, setPendingRestoreModel] = useState<SelectedModel | null>(null);
   // Optimistic model override: shows immediately on picker click and clears
@@ -415,11 +410,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const bashRunning = false;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
   const pendingBash = null as { command: string; excludeFromContext?: boolean } | null;
-  // Intentional: ACP has no status bar, widget, or custom extension-UI transport; retain empty placeholders rather than inventing state.
-  const extensionDialog = null as Extract<ExtensionUiRequest, { method: "select" | "confirm" | "input" | "editor" }> | null;
-  const extensionCustomUi = null as Extract<ExtensionUiRequest, { method: "custom" }> | null;
-  const extensionStatuses: ExtensionStatusItem[] = [];
-  const extensionWidgets: ExtensionWidgetItem[] = [];
   const sessionStats = useMemo(() => {
     if (sessionStatsOverride) return sessionStatsOverride;
     const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
@@ -700,13 +690,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [addNotice, beginCompaction, ensureNewSession, promoteNewSession]);
 
   const handleAbort = useCallback(async () => { const sid = sessionIdRef.current; if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid }); }, []);
-  const handleFork = useCallback(async (_entryId: string) => {
+  const handleFork = useCallback(async (entryId: string) => {
     const sid = sessionIdRef.current;
     if (!sid) return;
-    setForkingEntryId(_entryId);
-    try { const response = await acpRequest({ type: "acp/forkSession", sessionId: sid, cwd: newSessionCwd ?? session?.cwd ?? "" }); const newId = responseSessionId(response); if (newId) onSessionForked?.(newId); }
-    finally { setForkingEntryId(null); }
-  }, [newSessionCwd, onSessionForked, session?.cwd]);
+    const cwd = newSessionCwd ?? session?.cwd ?? "";
+    setForkingEntryId(entryId);
+    try {
+      await acpRequest({ type: "acp/closeSession", sessionId: sid });
+      await hostCall("sessionNavigateLeaf", { sessionId: sid, entryId });
+      const response = await acpRequest({ type: "acp/forkSession", sessionId: sid, cwd });
+      const newId = responseSessionId(response);
+      if (newId) onSessionForked?.(newId);
+    } catch (cause) {
+      addNotice({ type: "error", message: cause instanceof Error ? cause.message : "Failed to fork session" });
+    } finally {
+      setForkingEntryId(null);
+    }
+  }, [addNotice, newSessionCwd, onSessionForked, session?.cwd]);
   const reloadAfterFileChange = useCallback(async (sid: string) => {
     await acpRequest({ type: "acp/loadSession", sessionId: sid, cwd: newSessionCwd ?? session?.cwd ?? "" });
     await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
@@ -772,11 +772,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [ensureNewSession, handleModelChange, modelRoles.default, sendPrompt, snapshot?.availableModes]);
   const handleCompact = useCallback(async () => { beginCompaction(); try { await sendPrompt("/compact"); } catch (cause) { setIsCompacting(false); setCompactError(cause instanceof Error ? cause.message : String(cause)); } }, [beginCompaction, sendPrompt]);
   const handleAbortCompaction = useCallback(async () => { const sid = sessionIdRef.current; if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid }); }, []);
-  const steeringPrompt = useCallback(async (message: string, images?: AttachedImage[]) => { try { await sendPrompt(message, images); } catch { addNotice({ type: "warning", message: "Steering not supported in this omp version" }); } }, [addNotice, sendPrompt]);
+  const steeringPrompt = useCallback(
+    (message: string, images?: AttachedImage[]) => sendPrompt(message, images),
+    [sendPrompt],
+  );
   const handleSteer = steeringPrompt;
   const handleFollowUp = steeringPrompt;
-  const handlePromptWithStreamingBehavior = useCallback(async (message: string, _behavior: "steer" | "followUp", images?: AttachedImage[]) => steeringPrompt(message, images), [steeringPrompt]);
-  const handleRecallQueue = useCallback(async () => { setQueuedMessages({ steering: [], followUp: [] }); try { await sendPrompt("/clear-queue"); } catch { addNotice({ type: "warning", message: "Queue cannot be recalled in ACP mode" }); } }, [addNotice, sendPrompt]);
+  const handlePromptWithStreamingBehavior = useCallback(
+    (message: string, _behavior: "steer" | "followUp", images?: AttachedImage[]) => steeringPrompt(message, images),
+    [steeringPrompt],
+  );
 
   // In-flight dedupe: multiple effects (session change, modelsRefreshKey,
   // isNew path) all fire loadModels on the same tick. Coalesce into one
@@ -854,9 +859,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     else await acpRequest({ type: "acp/respondElicitation", resolverId: request.resolverId, action: response.action ?? "cancel", content: response.content });
     setInteractionDialog(null);
   }, []);
-  // ACP has no status/widget/custom UI transport; keep extension UI dark instead of inventing state.
-  const respondToExtensionUi = useCallback(async () => {}, []);
-  const sendExtensionCustomInput = useCallback(async () => {}, []);
   const handleDeleteSession = useCallback(async (sid: string) => { await acpRequest({ type: "acp/deleteSession", sessionId: sid }); await hostCall("sessionDelete", { sessionId: sid }); }, []);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => { ignoreProgrammaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS; messagesEndRef.current?.scrollIntoView({ behavior }); }, []);
@@ -866,6 +868,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   useEffect(() => subscribeAcp((event: AcpHostEvent) => {
     if (event.type === "acp/sessionSnapshot") applySnapshot(event.state);
+    else if (event.type === "acp/connection") setCapabilities(event.snapshot.capabilities);
     else if (event.type === "acp/notice") {
       if (event.sessionId && event.sessionId !== sessionIdRef.current) return;
       addNotice({ type: event.level, message: event.message });
@@ -873,9 +876,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         const attemptMatch = /attempt (\d+)\/(\d+)/i.exec(event.message);
         setRetryInfo({ attempt: attemptMatch ? Number(attemptMatch[1]) : 1, maxAttempts: attemptMatch ? Number(attemptMatch[2]) : 1, errorMessage: event.message });
       }
-    }
-    // IRC peer messaging is intentionally absent from the ACP event mapper.
-    else if (event.type === "acp/permissionRequest") setInteractionDialog(event.request);
+    } else if (event.type === "acp/permissionRequest") setInteractionDialog(event.request);
     else if (event.type === "acp/elicitationRequest") setInteractionDialog(event.request);
     else if (event.type === "acp/error") setError(event.message);
   }), [addNotice, applySnapshot]);
@@ -905,7 +906,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     void loadModels();
     setLoading(false);
   }, [isNew, loadModels, newSessionCwd, session]);
-  useEffect(() => { onSystemPromptChange?.(systemPrompt); }, [onSystemPromptChange, systemPrompt]);
   useEffect(() => { if (onBranchDataChange) onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange); }, [activeLeafId, data?.tree, handleLeafChange, onBranchDataChange]);
   useEffect(() => { window.addEventListener("keydown", markUserScrollIntent); window.addEventListener("pointerdown", markUserScrollIntent, { passive: true }); return () => { window.removeEventListener("keydown", markUserScrollIntent); window.removeEventListener("pointerdown", markUserScrollIntent); }; }, [markUserScrollIntent]);
   useEffect(() => { const container = scrollContainerRef.current; if (!container) return; container.addEventListener("wheel", markUserScrollIntent, { passive: true }); container.addEventListener("touchstart", markUserScrollIntent, { passive: true }); container.addEventListener("scroll", handleScrollPositionChange, { passive: true }); return () => { container.removeEventListener("wheel", markUserScrollIntent); container.removeEventListener("touchstart", markUserScrollIntent); container.removeEventListener("scroll", handleScrollPositionChange); }; }, [handleScrollPositionChange, loading, markUserScrollIntent, messages.length]);
@@ -969,18 +969,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   return {
     data, loading, error, activeLeafId, messages, pendingUserMessage, entryIds, streamState,
     agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, modelRoles, fastMode, newSessionModel, toolPreset, thinkingLevel, pendingRestoreModel,
-    retryInfo, contextUsage: sessionStats?.contextUsage ?? contextUsage, systemPrompt, forkingEntryId, compactionBoundary,
+    retryInfo, contextUsage: sessionStats?.contextUsage ?? contextUsage, imageSupported: capabilities?.prompts.image ?? false, forkingEntryId, compactionBoundary,
     isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,
     agentPhase, liveTps, isNew, activeModes,
-    notices: noticeState.visible, extensionDialog, extensionCustomUi, extensionStatuses, extensionWidgets, respondToExtensionUi, sendExtensionCustomInput,
+    notices: noticeState.visible,
     isAutoModelSelection: isNew && newSessionModel === null,
-    slashCommands, slashCommandsLoading, queuedMessages,
+    slashCommands, slashCommandsLoading,
     
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     handleSend, handleAbort, handleFork, handleEditResend, handleNavigate, handleModelChange, setPendingRestoreModel,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
-    handleRecallQueue, handleBuiltinSlashCommand,
+    handleBuiltinSlashCommand,
     handleToolPresetChange, handleThinkingLevelChange, handleRoleChange, loadModels, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     bashRunning, pendingBash,

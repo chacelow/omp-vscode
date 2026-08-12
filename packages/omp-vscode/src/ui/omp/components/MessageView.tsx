@@ -40,7 +40,7 @@ import {
 import { useI18n } from "@/hooks/useI18n";
 import { usePreferences } from "@/hooks/usePreferences";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
-import { ToolLine, isLineStyleTool } from "./chat/ToolLine";
+import { ToolLine, TodoCard, isLineStyleTool, isTodoTool } from "./chat/ToolLine";
 import {
   getAssistantErrorMessage,
   isEmptyThinkingBlock,
@@ -843,10 +843,26 @@ function AssistantMessageView({
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {(() => {
           const rendered: ReactNode[] = [];
+          const todoItems = blockItems.filter(({ block: candidate }) => candidate.type === "toolCall" && isTodoTool(candidate));
+          const firstTodoId = todoItems[0]?.block.type === "toolCall" ? todoItems[0].block.toolCallId : null;
+          const latestTodo = [...todoItems].reverse().find(({ block: candidate }) => candidate.type === "toolCall" && (toolResults?.has(candidate.toolCallId) || Array.isArray(candidate.input.list))) ?? todoItems[0];
           let index = 0;
           while (index < blockItems.length) {
             const item = blockItems[index];
             const { block, originalIndex } = item;
+            if (block.type === "toolCall" && isTodoTool(block)) {
+              if (block.toolCallId === firstTodoId && latestTodo?.block.type === "toolCall") {
+                rendered.push(
+                  <TodoCard
+                    key={`${entryId ?? "stream"}-todo`}
+                    block={latestTodo.block}
+                    result={toolResults?.get(latestTodo.block.toolCallId)}
+                  />
+                );
+              }
+              index += 1;
+              continue;
+            }
             if (block.type === "toolCall" && isLineStyleTool(block)) {
               rendered.push(
                 <ToolLine
@@ -911,7 +927,10 @@ function AssistantMessageView({
         </div>
       )}
       {(!isStreaming && (time || canFork)) ? (
-        <div className="assistant-message-meta mt-1 flex min-w-0 flex-nowrap items-center justify-end gap-3 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
+        <div
+          data-omp-mount
+          className="assistant-message-meta group/meta mt-1 flex min-w-0 flex-nowrap items-center justify-end gap-2 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums"
+        >
           {canFork && (
             <Button
               type="button"
@@ -923,8 +942,13 @@ function AssistantMessageView({
                 forking ? t("i18n.creatingSession") : t("i18n.newSessionTitle")
               }
               className={cn(
-                "assistant-meta-action h-[18px] shrink-0 gap-1 px-1.5 text-[10px] font-normal",
-                forking && "cursor-not-allowed text-[var(--accent)]"
+                // Reserve slot but hide by default — reveal on message
+                // hover. Reference (zoeymind) keeps the completed-state
+                // footer weight-symmetric with the streaming spinner so
+                // there's no visible pop; a persistent fork button was
+                // too much visual mass to just materialize.
+                "assistant-meta-action h-[18px] shrink-0 gap-1 px-1.5 text-[10px] font-normal opacity-0 transition-opacity group-hover/meta:opacity-100 focus-visible:opacity-100",
+                forking && "cursor-not-allowed text-[var(--accent)] opacity-100"
               )}
             >
               <GitBranch size={10} strokeWidth={1.8} />

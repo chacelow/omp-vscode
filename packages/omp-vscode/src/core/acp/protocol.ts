@@ -1,4 +1,5 @@
 import type {
+  AuthMethod,
   AvailableCommand,
   ContentBlock,
   CreateElicitationRequest,
@@ -39,9 +40,6 @@ export interface AcpSessionState extends AcpSessionInfo {
   // "no live turn has completed since we attached to this session", not "0
   // tokens".
   usage?: { used: number; contextWindow: number };
-  // Legacy input/output fields carried from PromptResponse.usage; kept for
-  // now but should not drive the context ring (see acp-service.prompt()).
-  turnUsage?: { totalTokens: number; inputTokens: number; outputTokens: number };
   stopReason?: string;
   loaded: boolean;
   replaying: boolean;
@@ -49,13 +47,30 @@ export interface AcpSessionState extends AcpSessionInfo {
   error?: string;
 }
 
+export interface AcpCapabilitySnapshot {
+  protocolVersion: number;
+  agentInfo: { name: string; title?: string; version: string } | null;
+  authMethods: AuthMethod[];
+  loadSession: boolean;
+  prompts: { image: boolean; audio: boolean; embeddedContext: boolean };
+  sessions: {
+    list: boolean;
+    delete: boolean;
+    fork: boolean;
+    resume: boolean;
+    close: boolean;
+    additionalDirectories: boolean;
+  };
+  mcp: { http: boolean; sse: boolean };
+  elicitation: { form: boolean; url: boolean };
+}
+
 export interface AcpConnectionSnapshot {
   state: AcpConnectionState;
   executable: string;
   version?: string;
   error?: string;
-  imageSupported: boolean;
-  embeddedContextSupported: boolean;
+  capabilities: AcpCapabilitySnapshot | null;
 }
 
 export interface AcpPermissionRequest {

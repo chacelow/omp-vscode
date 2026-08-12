@@ -412,15 +412,11 @@ export class ChatProvider implements vscode.WebviewViewProvider {
         }
 
         case "acp/subscribeSession": {
+          this.sessionSubs.get(request.sessionId)?.();
           const unsub = this.acp.subscribeSession(request.sessionId, (state) => {
             this.post({ type: "acp/sessionSnapshot", sessionId: request.sessionId, state });
           });
           this.sessionSubs.set(request.sessionId, unsub);
-          // Send current snapshot
-          const current = this.acp.getSessionSnapshot(request.sessionId);
-          if (current) {
-            this.post({ type: "acp/sessionSnapshot", sessionId: request.sessionId, state: current });
-          }
           this.replyToWebview(requestId, { type: "acp/response", requestId, ok: true, data: null });
           break;
         }

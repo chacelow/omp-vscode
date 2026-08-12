@@ -1,19 +1,21 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import {
   client,
   methods,
   ndJsonStream,
+  PROTOCOL_VERSION,
   type ClientApp,
   type ClientConnection,
   type ContentBlock,
-  type CreateElicitationRequest,
   type CreateElicitationResponse,
+  type InitializeResponse,
   type SessionMode,
   type ToolCall,
-  type ToolCallUpdate,
+  type ToolCallUpdate
 } from "@agentclientprotocol/sdk";
+import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { resolveOmpBinary } from "../omp-binary";
 import type {
+  AcpCapabilitySnapshot,
   AcpConnectionSnapshot,
   AcpConnectionState,
   AcpElicitationRequest,
@@ -23,7 +25,7 @@ import type {
 } from "./protocol";
 
 const GRACEFUL_SHUTDOWN_MS = 2_000;
-const ACP_BOOTSTRAP_RACE_GUARD_MS = 50;
+
 
 export class AcpUnavailableError extends Error {
   constructor(message: string) {
@@ -131,6 +133,7 @@ export class AcpService {
   private readonly runningListeners = new Set<RunningListener>();
   private readonly permissionListeners = new Set<PermissionListener>();
   private readonly elicitationListeners = new Set<ElicitationListener>();
+  private readonly messageIndex = new Map<string, Map<string, number>>();
   private readonly noticeListeners = new Set<NoticeListener>();
   private readonly pendingPermissions = new Map<string, PendingPermission>();
   private readonly pendingElicitations = new Map<string, PendingElicitation>();
@@ -141,8 +144,7 @@ export class AcpService {
   private state: AcpConnectionState = "idle";
   private unavailableError: AcpUnavailableError | null = null;
   private cliVersion?: string;
-  private imageSupported = false;
-  private embeddedContextSupported = false;
+  private capabilities: AcpCapabilitySnapshot | null = null;
 
   constructor(private readonly options: AcpServiceOptions) {}
 
@@ -150,11 +152,14 @@ export class AcpService {
     return {
       state: this.state,
       executable: this.executable,
-      version: this.cliVersion,
+      version: this.capabilities?.agentInfo?.version ?? this.cliVersion,
       error: this.unavailableError?.message,
-      imageSupported: this.imageSupported,
-      embeddedContextSupported: this.embeddedContextSupported,
+      capabilities: this.capabilities,
     };
+  }
+
+  getCapabilities(): AcpCapabilitySnapshot | null {
+    return this.capabilities;
   }
 
   subscribeConnection(listener: ConnectionListener): Unsubscribe {
@@ -223,6 +228,7 @@ export class AcpService {
   }
 
   async listSessions(cwd = this.options.cwd): Promise<AcpSessionInfo[]> {
+    this.requireCapability((c) => c.sessions.list, "session/list");
     const ctx = await this.ensureReady();
     const result = await ctx.agent.request(methods.agent.session.list, { cwd }) as { sessions: Array<{ sessionId: string; cwd: string; title?: string | null; updatedAt?: string | null }> };
     return (result.sessions ?? []).map((s) => ({
@@ -250,6 +256,7 @@ export class AcpService {
   }
 
   async loadSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
+    this.requireCapability((c) => c.loadSession, "session/load");
     const ctx = await this.ensureReady();
     // Preserve any existing messages/toolCalls in the clearing snapshot.
     // omp's `session/load` replays historical events; before those arrive
@@ -266,7 +273,6 @@ export class AcpService {
       availableCommands: existing?.availableCommands ?? [],
       plan: existing?.plan ?? [],
       usage: existing?.usage,
-      turnUsage: existing?.turnUsage,
       replaying: true,
       revision: (existing?.revision ?? 0) + 1,
     });
@@ -285,6 +291,7 @@ export class AcpService {
   }
 
   async resumeSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
+    this.requireCapability((c) => c.sessions.resume, "session/resume");
     const ctx = await this.ensureReady();
     const response = await ctx.agent.request(methods.agent.session.resume, { sessionId, cwd, mcpServers: [] } as never) as {
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
@@ -298,6 +305,7 @@ export class AcpService {
   }
 
   async forkSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
+    this.requireCapability((c) => c.sessions.fork, "session/fork");
     const ctx = await this.ensureReady();
     const response = await ctx.agent.request(methods.agent.session.fork, { sessionId, cwd }) as {
       sessionId: string;
@@ -307,6 +315,7 @@ export class AcpService {
   }
 
   async closeSession(sessionId: string): Promise<void> {
+    this.requireCapability((c) => c.sessions.close, "session/close");
     const ctx = await this.ensureReady();
     this.cancelInteractionsForSession(sessionId);
     await ctx.agent.request(methods.agent.session.close, { sessionId });
@@ -317,42 +326,36 @@ export class AcpService {
 
   async prompt(sessionId: string, prompt: ContentBlock[]): Promise<void> {
     const ctx = await this.ensureReady();
+    if (prompt.some((block) => block.type === "image")) {
+      this.requireCapability((c) => c.prompts.image, "image prompts (promptCapabilities.image)");
+    }
+    if (prompt.some((block) => block.type === "audio")) {
+      this.requireCapability((c) => c.prompts.audio, "audio prompts (promptCapabilities.audio)");
+    }
+    if (prompt.some((block) => block.type === "resource" || block.type === "resource_link")) {
+      this.requireCapability((c) => c.prompts.embeddedContext, "embedded context (promptCapabilities.embeddedContext)");
+    }
     // Self-heal: if this session isn't registered (the background attach
     // failed — e.g. it raced the connection startup — or the omp process
     // was restarted and lost its in-memory sessions), load it now instead
     // of failing the send with "Session … not found". session/load is
     // idempotent for an already-open session.
     let session = this.sessions.get(sessionId);
-    if (!session) {
-      session = await this.loadSession(sessionId, this.options.cwd);
-    }
-    if (session.promptPending) throw new AcpUnavailableError("A prompt is already running for this session");
-    // omp does NOT echo the user's prompt back as a user_message_chunk for
-    // a live turn (verified against acp-event-mapper: chunks only replay
-    // during session/load). Append it to the canonical transcript here —
-    // same as the TUI, which paints the user message immediately on
-    // submit. This guarantees ordering (user row precedes the streaming
-    // assistant) and lets the webview clear its optimistic slot as soon as
-    // this snapshot lands.
-    this.updateSession(sessionId, {
+    if (!session) session = await this.loadSession(sessionId, this.options.cwd);
+    const patch: Partial<AcpSessionState> = {
       promptPending: true,
       error: undefined,
       stopReason: undefined,
-      messages: [...session.messages, { id: crypto.randomUUID(), role: "user", content: prompt }],
-    });
+    };
+    // OMP echoes queued user messages. Avoid a duplicate local row while
+    // an existing prompt is still in flight.
+    if (!session.promptPending) {
+      patch.messages = [...session.messages, { id: crypto.randomUUID(), role: "user", content: prompt }];
+    }
+    this.updateSession(sessionId, patch);
     try {
-      const promptResponse = await ctx.agent.request(methods.agent.session.prompt, { sessionId, prompt }) as {
-        stopReason?: string;
-        // PromptResponse.usage exists but is CUMULATIVE session totals with
-        // input/output token counts — NOT the context-window usage the
-        // ring displays. That comes from the `usage_update` session-update
-        // event only. Ignore this field to avoid two writers stomping the
-        // same state.usage slot.
-      };
-      this.updateSession(sessionId, {
-        promptPending: false,
-        stopReason: promptResponse.stopReason,
-      });
+      const promptResponse = await ctx.agent.request(methods.agent.session.prompt, { sessionId, prompt }) as { stopReason?: string };
+      this.updateSession(sessionId, { promptPending: false, stopReason: promptResponse.stopReason });
     } catch (error) {
       this.updateSession(sessionId, {
         promptPending: false,
@@ -369,6 +372,7 @@ export class AcpService {
     this.sessions.delete(sessionId);
     this.sessionListeners.delete(sessionId);
     this.publishRunning();
+    this.messageIndex.delete(sessionId);
   }
 
   async cancelPrompt(sessionId: string): Promise<void> {
@@ -571,89 +575,84 @@ export class AcpService {
     const conn = app.connect(stream);
     this.connection = conn;
 
-    // Initialize and collect session info
-    try {
-      const initResult = await conn.agent.request(methods.agent.initialize, {}) as {
-        serverInfo?: { version?: string };
-        capabilities?: { attachments?: { read?: boolean }; context?: { embed?: boolean } };
-        sessions?: Record<string, { cwd?: string; title?: string | null; updatedAt?: string | null }>;
-      };
-      this.cliVersion = initResult.serverInfo?.version;
-      this.imageSupported = !!initResult.capabilities?.attachments?.read;
-      this.embeddedContextSupported = !!initResult.capabilities?.context?.embed;
+    const initResponse = await conn.agent.request(methods.agent.initialize, {
+      protocolVersion: PROTOCOL_VERSION,
+      clientInfo: {
+        name: this.options.clientName,
+        version: this.options.clientVersion,
+      },
+      clientCapabilities: {
+        fs: { readTextFile: true, writeTextFile: true },
+        elicitation: { form: {} },
+      },
+    });
+    this.capabilities = this.buildCapabilitySnapshot(initResponse);
+    this.cliVersion = this.capabilities.agentInfo?.version;
+    this.state = "ready";
+    this.publishConnection();
+    this.log(`ACP ready (protocol v${this.capabilities.protocolVersion}, agent ${this.capabilities.agentInfo?.name ?? "unknown"}@${this.capabilities.agentInfo?.version ?? "?"})`);
+  }
 
-      // Process initial session list
-      if (initResult.sessions) {
-        for (const [sid, info] of Object.entries(initResult.sessions)) {
-          if (info) {
-            this.handleSessionInfoUpdate({
-              sessionId: sid,
-              cwd: info.cwd ?? this.options.cwd,
-              title: info.title ?? undefined,
-              updatedAt: info.updatedAt ?? undefined,
-            });
-          }
-        }
-      }
+  private buildCapabilitySnapshot(res: InitializeResponse): AcpCapabilitySnapshot {
+    const agentCapabilities = res.agentCapabilities;
+    const promptCapabilities = agentCapabilities?.promptCapabilities;
+    const sessionCapabilities = agentCapabilities?.sessionCapabilities;
+    const mcpCapabilities = agentCapabilities?.mcpCapabilities;
+    if (!agentCapabilities) this.log("ACP initialize response omitted agent capabilities; defaulting optional features to false");
+    return {
+      protocolVersion: res.protocolVersion,
+      agentInfo: res.agentInfo
+        ? { name: res.agentInfo.name, title: res.agentInfo.title ?? undefined, version: res.agentInfo.version }
+        : null,
+      authMethods: res.authMethods ?? [],
+      loadSession: agentCapabilities?.loadSession === true,
+      prompts: {
+        image: promptCapabilities?.image === true,
+        audio: promptCapabilities?.audio === true,
+        embeddedContext: promptCapabilities?.embeddedContext === true,
+      },
+      sessions: {
+        list: sessionCapabilities?.list != null,
+        delete: sessionCapabilities?.delete != null,
+        fork: sessionCapabilities?.fork != null,
+        resume: sessionCapabilities?.resume != null,
+        close: sessionCapabilities?.close != null,
+        additionalDirectories: sessionCapabilities?.additionalDirectories != null,
+      },
+      mcp: { http: mcpCapabilities?.http === true, sse: mcpCapabilities?.sse === true },
+      elicitation: { form: true, url: false },
+    };
+  }
 
-      // Allow bootstrap notifications to settle
-      await new Promise<void>((r) => setTimeout(r, ACP_BOOTSTRAP_RACE_GUARD_MS));
-
-      this.state = "ready";
-      this.publishConnection();
-      this.log("ACP ready");
-    } catch (err) {
-      throw err;
-    }
+  private requireCapability(check: (c: AcpCapabilitySnapshot) => boolean, name: string): AcpCapabilitySnapshot {
+    const capabilities = this.capabilities;
+    if (!capabilities) throw new AcpUnavailableError("ACP not initialized");
+    if (!check(capabilities)) throw new AcpUnavailableError(`Agent does not advertise ${name}`);
+    return capabilities;
   }
 
   private updateSession(sessionId: string, patch: Partial<AcpSessionState>): AcpSessionState {
     const existing = this.sessions.get(sessionId);
     if (!existing) return existing!;
-    const next: AcpSessionState = {
-      ...existing,
-      ...patch,
-      revision: existing.revision + 1,
-    };
+    const next: AcpSessionState = { ...existing, ...patch, revision: existing.revision + 1 };
     this.sessions.set(sessionId, next);
-    // Skip publishing during ACP replay. omp streams every historic message
-    // as its own `session/update` event during `session/load`; publishing
-    // each one triggers an O(N) webview re-render, so a 200-message session
-    // burns 200×N =~ 40k re-renders before the transcript is even visible.
-    // `registerSession` publishes ONCE with the merged state after replay.
+    if (existing.promptPending !== next.promptPending) this.publishRunning();
     if (!next.replaying) this.publishSession(sessionId);
     return next;
   }
 
-  private registerSession(
-    sessionId: string,
-    cwd: string,
-    init: {
-      modes?: SessionMode[];
-      configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[];
-      currentModeId?: string;
-    },
-  ): AcpSessionState {
+  private registerSession(sessionId: string, cwd: string, init: { modes?: SessionMode[]; configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[]; currentModeId?: string }): AcpSessionState {
     const existing = this.sessions.get(sessionId);
     const state: AcpSessionState = {
-      sessionId,
-      cwd,
-      messages: existing?.messages ?? [],
-      toolCalls: existing?.toolCalls ?? {},
+      sessionId, cwd, messages: existing?.messages ?? [], toolCalls: existing?.toolCalls ?? {},
       availableCommands: existing?.availableCommands ?? [],
-      availableModes: init.modes?.map((m) => ({ id: m.id, name: m.name, description: m.description })) ?? existing?.availableModes ?? [],
-      configOptions: init.configOptions ?? existing?.configOptions ?? [],
-      plan: existing?.plan ?? [],
-      revision: (existing?.revision ?? 0) + 1,
-      usage: existing?.usage,
-      turnUsage: existing?.turnUsage,
-      stopReason: existing?.stopReason,
-      loaded: true,
-      replaying: false,
-      promptPending: false,
-      currentMode: init.currentModeId ?? existing?.currentMode,
+      availableModes: init.modes?.map((mode) => ({ id: mode.id, name: mode.name, description: mode.description })) ?? existing?.availableModes ?? [],
+      configOptions: init.configOptions ?? existing?.configOptions ?? [], plan: existing?.plan ?? [],
+      revision: (existing?.revision ?? 0) + 1, usage: existing?.usage, stopReason: existing?.stopReason,
+      loaded: true, replaying: false, promptPending: false, currentMode: init.currentModeId ?? existing?.currentMode,
     };
     this.sessions.set(sessionId, state);
+    this.messageIndex.delete(sessionId);
     this.publishSession(sessionId);
     this.publishRunning();
     return state;
@@ -661,198 +660,108 @@ export class AcpService {
 
   private handleSessionUpdate(sessionId: string, update: import("@agentclientprotocol/sdk").SessionUpdate): void {
     const patch: Partial<AcpSessionState> = {};
-
     if (isSessionNotice(update)) {
       const notice = readSessionNotice(update);
       if (notice) this.emitSessionNotice(sessionId, notice);
-      this.updateSession(sessionId, patch);
       return;
     }
-
-    // Handle different update types
     switch (update.sessionUpdate) {
       case "user_message_chunk":
       case "agent_message_chunk":
       case "agent_thought_chunk": {
-        const content = update.content;
         const existing = this.sessions.get(sessionId);
-        if (existing) {
-          const newMessages = [...existing.messages];
-          // Role each chunk into its own bucket: user text, assistant
-          // visible answer, or assistant "thought" (chain-of-thought that
-          // the UI wraps in a collapsible Thinking block). Coalesce chunks
-          // sharing a messageId; when omp forgets to send messageId, fall
-          // back to the last message of the SAME role so we don't push a
-          // new row per chunk.
-          const targetRole: "user" | "assistant" | "thought" =
-            update.sessionUpdate === "user_message_chunk" ? "user"
-            : update.sessionUpdate === "agent_thought_chunk" ? "thought"
-            : "assistant";
-          const msgIdx = update.messageId
-            ? newMessages.findIndex((m) => m.id === update.messageId && m.role === targetRole)
-            : newMessages.findLastIndex((m) => m.role === targetRole);
-          if (msgIdx >= 0) {
-            const prev = newMessages[msgIdx];
-            if (prev.role !== "toolCall") {
-              newMessages[msgIdx] = { ...prev, content: mergeContentBlocks(prev.content, content) };
-            }
-          } else {
-            newMessages.push({ id: update.messageId ?? crypto.randomUUID(), role: targetRole, content: [content] });
+        if (!existing) break;
+        const role = update.sessionUpdate === "user_message_chunk" ? "user" : update.sessionUpdate === "agent_thought_chunk" ? "thought" : "assistant";
+        const indexByMessageId = this.messageIndex.get(sessionId) ?? new Map<string, number>();
+        this.messageIndex.set(sessionId, indexByMessageId);
+        const messages = existing.messages.slice();
+        let index = update.messageId ? indexByMessageId.get(update.messageId) ?? -1 : -1;
+        if (!update.messageId) for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === role) { index = i; break; }
+        if (index >= 0) {
+          const previous = messages[index];
+          if (previous.role !== "toolCall") {
+            messages[index] = { ...previous, content: mergeContentBlocks(previous.content, update.content) };
           }
-          patch.messages = newMessages;
+        } else {
+          const id = update.messageId ?? crypto.randomUUID();
+          messages.push({ id, role, content: [update.content] });
+          if (update.messageId) indexByMessageId.set(update.messageId, messages.length - 1);
         }
+        patch.messages = messages;
         break;
       }
       case "tool_call": {
-        const tc = update as ToolCall & { sessionUpdate: "tool_call" };
+        const toolCall = update as ToolCall & { sessionUpdate: "tool_call" };
         const existing = this.sessions.get(sessionId);
         const toolCalls = existing?.toolCalls ?? {};
-        patch.toolCalls = { ...toolCalls, [tc.toolCallId]: toToolCallEntry(tc) };
-        if (existing && !existing.messages.some((message) => message.role === "toolCall" && message.toolCallId === tc.toolCallId)) {
-          patch.messages = [...existing.messages, { id: `tool-${tc.toolCallId}`, role: "toolCall", toolCallId: tc.toolCallId, content: [] }];
-        }
+        patch.toolCalls = { ...toolCalls, [toolCall.toolCallId]: toToolCallEntry(toolCall) };
+        if (existing && !existing.messages.some((message) => message.role === "toolCall" && message.toolCallId === toolCall.toolCallId)) patch.messages = [...existing.messages, { id: `tool-${toolCall.toolCallId}`, role: "toolCall", toolCallId: toolCall.toolCallId, content: [] }];
         break;
       }
       case "tool_call_update": {
-        const tcu = update as ToolCallUpdate & { sessionUpdate: "tool_call_update" };
+        const delta = update as ToolCallUpdate & { sessionUpdate: "tool_call_update" };
         const toolCalls = this.sessions.get(sessionId)?.toolCalls ?? {};
-        const existingTc = toolCalls[tcu.toolCallId];
-        if (existingTc) {
-          const merged = toToolCallEntry({ ...existingTc, title: tcu.title ?? existingTc.title, kind: tcu.kind ?? existingTc.kind, status: tcu.status ?? existingTc.status, name: tcu.name ?? existingTc.name, content: tcu.content ?? existingTc.content, locations: tcu.locations ?? undefined, rawInput: tcu.rawInput ?? existingTc.rawInput, rawOutput: tcu.rawOutput ?? existingTc.rawOutput });
-          patch.toolCalls = { ...toolCalls, [tcu.toolCallId]: merged };
-        }
+        const current = toolCalls[delta.toolCallId];
+        if (current) patch.toolCalls = { ...toolCalls, [delta.toolCallId]: toToolCallEntry({ ...current, title: delta.title ?? current.title, kind: delta.kind ?? current.kind, status: delta.status ?? current.status, name: delta.name ?? current.name, content: delta.content ?? current.content, locations: delta.locations ?? undefined, rawInput: delta.rawInput ?? current.rawInput, rawOutput: delta.rawOutput ?? current.rawOutput }) };
         break;
       }
-      case "plan": {
-        const plan = update as import("@agentclientprotocol/sdk").Plan & { sessionUpdate: "plan" };
-        patch.plan = plan.entries ?? [];
-        break;
-      }
-      case "plan_update": {
-        const pu = update as import("@agentclientprotocol/sdk").PlanUpdate & { sessionUpdate: "plan_update" };
-        // PlanUpdateContent can be PlanItems, PlanFile, or PlanMarkdown
-        if ("entries" in (pu.plan as object)) {
-          patch.plan = ((pu.plan as { entries?: import("@agentclientprotocol/sdk").PlanEntry[] }).entries ?? []) as import("@agentclientprotocol/sdk").PlanEntry[];
-        }
-        break;
-      }
-      case "plan_removed": {
-        patch.plan = [];
-        break;
-      }
-      case "available_commands_update": {
-        const acu = update as import("@agentclientprotocol/sdk").AvailableCommandsUpdate & { sessionUpdate: "available_commands_update" };
-        patch.availableCommands = acu.availableCommands ?? [];
-        break;
-      }
-      case "current_mode_update": {
-        const cmu = update as import("@agentclientprotocol/sdk").CurrentModeUpdate & { sessionUpdate: "current_mode_update" };
-        patch.currentMode = cmu.currentModeId;
-        break;
-      }
-      case "config_option_update": {
-        const cou = update as import("@agentclientprotocol/sdk").ConfigOptionUpdate & { sessionUpdate: "config_option_update" };
-        patch.configOptions = cou.configOptions ?? [];
-        break;
-      }
-      case "session_info_update": {
-        const siu = update as import("@agentclientprotocol/sdk").SessionInfoUpdate & { sessionUpdate: "session_info_update" };
-        if (siu.title) patch.title = siu.title;
-        if (siu.updatedAt) patch.updatedAt = siu.updatedAt;
-        break;
-      }
-      case "usage_update": {
-        // Ground truth from SDK schema + omp emitter (acp-agent.ts
-        // #emitEndOfTurnUpdates):
-        //   used: number (tokens currently in context)
-        //   size: number (model.contextWindow)
-        // Both fields are guaranteed by the schema and by omp's use of
-        // `getContextUsage()` — no need for optional/`?? 0` defaults here.
-        const uu = update as import("@agentclientprotocol/sdk").UsageUpdate & { sessionUpdate: "usage_update" };
-        patch.usage = { used: uu.used, contextWindow: uu.size };
-        break;
-      }
+      case "plan": patch.plan = (update as import("@agentclientprotocol/sdk").Plan).entries ?? []; break;
+      case "plan_update": { const plan = (update as import("@agentclientprotocol/sdk").PlanUpdate).plan; if ("entries" in (plan as object)) patch.plan = (plan as { entries?: import("@agentclientprotocol/sdk").PlanEntry[] }).entries ?? []; break; }
+      case "plan_removed": patch.plan = []; break;
+      case "available_commands_update": patch.availableCommands = (update as import("@agentclientprotocol/sdk").AvailableCommandsUpdate).availableCommands ?? []; break;
+      case "current_mode_update": patch.currentMode = (update as import("@agentclientprotocol/sdk").CurrentModeUpdate).currentModeId; break;
+      case "config_option_update": patch.configOptions = (update as import("@agentclientprotocol/sdk").ConfigOptionUpdate).configOptions ?? []; break;
+      case "session_info_update": { const info = update as import("@agentclientprotocol/sdk").SessionInfoUpdate; if ("title" in info) patch.title = info.title ?? undefined; if ("updatedAt" in info) patch.updatedAt = info.updatedAt ?? undefined; break; }
+      case "usage_update": { const usage = update as import("@agentclientprotocol/sdk").UsageUpdate; patch.usage = { used: usage.used, contextWindow: usage.size }; break; }
     }
-
+    if (patch.messages && update.sessionUpdate !== "user_message_chunk" && update.sessionUpdate !== "agent_message_chunk" && update.sessionUpdate !== "agent_thought_chunk") this.messageIndex.delete(sessionId);
     this.updateSession(sessionId, patch);
   }
 
   private handleSessionInfoUpdate(info: { sessionId: string; cwd: string; title?: string; updatedAt?: string }): void {
-    const existing = this.sessions.get(info.sessionId);
-    if (!existing) return;
-    this.updateSession(info.sessionId, {
-      cwd: info.cwd,
-      title: info.title,
-      updatedAt: info.updatedAt,
-    });
+    if (!this.sessions.has(info.sessionId)) return;
+    this.updateSession(info.sessionId, { cwd: info.cwd, title: info.title, updatedAt: info.updatedAt });
   }
 
   private cancelInteractionsForSession(sessionId: string): void {
-    for (const [rid, p] of this.pendingPermissions) {
-      if (p.sessionId === sessionId) {
-        this.pendingPermissions.delete(rid);
-        p.resolve({ outcome: { outcome: "cancelled" } });
-      }
-    }
-    for (const [rid, p] of this.pendingElicitations) {
-      if (p.sessionId === sessionId) {
-        this.pendingElicitations.delete(rid);
-        p.resolve({ action: "cancel" } as CreateElicitationResponse);
-      }
-    }
+    for (const [resolverId, pending] of this.pendingPermissions) if (pending.sessionId === sessionId) { this.pendingPermissions.delete(resolverId); pending.resolve({ outcome: { outcome: "cancelled" } }); }
+    for (const [resolverId, pending] of this.pendingElicitations) if (pending.sessionId === sessionId) { this.pendingElicitations.delete(resolverId); pending.resolve({ action: "cancel" } as CreateElicitationResponse); }
   }
 
   private cancelAllInteractions(): void {
-    for (const [rid, p] of this.pendingPermissions) {
-      this.pendingPermissions.delete(rid);
-      p.resolve({ outcome: { outcome: "cancelled" } });
-    }
-    for (const [rid, p] of this.pendingElicitations) {
-      this.pendingElicitations.delete(rid);
-      p.resolve({ action: "cancel" } as CreateElicitationResponse);
-    }
+    for (const [resolverId, pending] of this.pendingPermissions) { this.pendingPermissions.delete(resolverId); pending.resolve({ outcome: { outcome: "cancelled" } }); }
+    for (const [resolverId, pending] of this.pendingElicitations) { this.pendingElicitations.delete(resolverId); pending.resolve({ action: "cancel" } as CreateElicitationResponse); }
   }
 
   private markUnavailable(message: string): void {
     this.unavailableError = new AcpUnavailableError(message);
     this.state = "unavailable";
-    // Fix: create new objects, don't mutate in place.
-    for (const [sid, session] of this.sessions) {
-      this.sessions.set(sid, { ...session, promptPending: false });
-    }
+    for (const [sessionId, session] of this.sessions) { this.sessions.set(sessionId, { ...session, promptPending: false }); this.messageIndex.delete(sessionId); }
     this.publishConnection();
-    for (const sid of this.sessions.keys()) {
-      this.publishSession(sid);
-    }
+    for (const sessionId of this.sessions.keys()) this.publishSession(sessionId);
+    this.publishRunning();
   }
 
   private publishConnection(): void {
     const snapshot = this.getSnapshot();
-    for (const l of this.connectionListeners) {
-      try { l(snapshot); } catch { /* ignore */ }
-    }
+    for (const listener of this.connectionListeners) try { listener(snapshot); } catch { /* ignore */ }
   }
 
   private publishSession(sessionId: string): void {
     const state = this.sessions.get(sessionId);
     if (!state) return;
-    const listeners = this.sessionListeners.get(sessionId);
-    if (listeners) {
-      for (const l of listeners) {
-        try { l(state); } catch { /* ignore */ }
-      }
-    }
+    for (const listener of this.sessionListeners.get(sessionId) ?? []) try { listener(state); } catch { /* ignore */ }
   }
 
   private runningSessionIds(): string[] {
-    return [...this.sessions.keys()];
+    const out: string[] = [];
+    for (const [id, session] of this.sessions) if (session.promptPending) out.push(id);
+    return out;
   }
 
   private publishRunning(): void {
     const ids = this.runningSessionIds();
-    for (const l of this.runningListeners) {
-      try { l(ids); } catch { /* ignore */ }
-    }
+    for (const listener of this.runningListeners) try { listener(ids); } catch { /* ignore */ }
   }
 
   private emitSessionNotice(sessionId: string, notice: { level: NoticeLevel; message: string }): void {
@@ -874,3 +783,4 @@ export class AcpService {
     });
   }
 }
+

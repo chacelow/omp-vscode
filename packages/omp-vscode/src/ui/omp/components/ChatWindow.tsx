@@ -1448,6 +1448,7 @@ export function ChatWindow({
                         return view;
                       return (
                         <div
+                          data-omp-mount
                           key={`${keyPrefix}-${idx}`}
                           ref={attachVisibleRef(idx, currentRefIdx)}
                           data-entry-id={paddedEntryIds[idx]}
@@ -1719,6 +1720,7 @@ export function ChatWindow({
                     !streamState.streamingMessage &&
                     agentPhase && (
                       <div
+                        data-omp-mount
                         className="text-text-muted flex items-center gap-2 py-2 text-[13px]"
                         role="status"
                         aria-live="polite"

@@ -1,8 +1,8 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { motion } from "motion/react";
-import { ChevronDown, ChevronRight, Copy, Check, ExternalLink, FileText, Folder, Search } from "lucide-react";
+import { Ban, Check, CheckCircle2, ChevronDown, ChevronRight, Circle, CircleDot, Copy, ExternalLink, FileText, Folder, ListTodo, LockKeyhole, Search } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -85,7 +85,12 @@ export function isChangeTool(block: ToolCallContent): boolean {
 /** True when the block should render as an inline read-only "activity" line.
  *  Edit/write/delete/move + bash stay as expandable tool cards (Cursor style). */
 export function isLineStyleTool(block: ToolCallContent): boolean {
-  return isExploringTool(block);
+  const name = (block.toolName || "").toLowerCase();
+  return isExploringTool(block) || name === "todo";
+}
+
+export function isTodoTool(block: ToolCallContent): boolean {
+  return (block.toolName || "").toLowerCase() === "todo";
 }
 
 /* -------------------------------------------------------------------------- */
@@ -907,6 +912,168 @@ function ChangeLine({ block, result, duration, onOpenFile }: {
     />
   );
 }
+type TodoStatus = "pending" | "in_progress" | "completed" | "abandoned" | "blocked";
+
+interface TodoTask {
+  content: string;
+  status: TodoStatus;
+  blocker?: string;
+}
+
+interface TodoPhase {
+  name: string;
+  tasks: TodoTask[];
+}
+
+function parseTodoPhases(value: unknown): TodoPhase[] {
+  if (!Array.isArray(value)) return [];
+  const phases: TodoPhase[] = [];
+  for (const phase of value) {
+    if (!isRecord(phase)) continue;
+    const name = typeof phase.name === "string" ? phase.name : typeof phase.phase === "string" ? phase.phase : "Tasks";
+    const rawTasks = Array.isArray(phase.tasks) ? phase.tasks : Array.isArray(phase.items) ? phase.items : [];
+    const tasks: TodoTask[] = [];
+    for (const task of rawTasks) {
+      if (typeof task === "string") {
+        tasks.push({ content: task, status: "pending" });
+        continue;
+      }
+      if (!isRecord(task) || typeof task.content !== "string") continue;
+      const rawStatus = task.status;
+      const status: TodoStatus = rawStatus === "in_progress" || rawStatus === "completed" || rawStatus === "abandoned" || rawStatus === "blocked" ? rawStatus : "pending";
+      tasks.push({ content: task.content, status, blocker: typeof task.blocker === "string" ? task.blocker : undefined });
+    }
+    if (tasks.length > 0) phases.push({ name, tasks });
+  }
+  return phases;
+}
+
+function readTodoPhases(block: ToolCallContent, result: ToolResultMessage | undefined): TodoPhase[] {
+  if (isRecord(result?.details)) {
+    const details = isRecord(result.details.details) ? result.details.details : result.details;
+    const phases = parseTodoPhases(details.phases);
+    if (phases.length > 0) return phases;
+  }
+  const initialized = parseTodoPhases(block.input.list);
+  if (initialized.length > 0) return initialized;
+
+  const op = typeof block.input.op === "string" ? block.input.op : "update";
+  const phase = typeof block.input.phase === "string" ? block.input.phase : "Tasks";
+  const status: TodoStatus = op === "done" ? "completed" : op === "drop" ? "abandoned" : op === "block" ? "blocked" : op === "start" ? "in_progress" : "pending";
+  const items = Array.isArray(block.input.items) ? block.input.items.filter((item): item is string => typeof item === "string") : [];
+  const task = typeof block.input.task === "string" ? [block.input.task] : [];
+  const tasks = [...task, ...items].map((content) => ({ content, status, blocker: status === "blocked" && typeof block.input.reason === "string" ? block.input.reason : undefined }));
+  return tasks.length > 0 ? [{ name: phase, tasks }] : [];
+}
+
+function readCompletedTodoKeys(result: ToolResultMessage | undefined): Set<string> {
+  if (!isRecord(result?.details)) return new Set();
+  const details = isRecord(result.details.details) ? result.details.details : result.details;
+  if (!Array.isArray(details.completedTasks)) return new Set();
+  return new Set(details.completedTasks.flatMap((task) => isRecord(task) && typeof task.content === "string" ? [task.content] : []));
+}
+
+function TodoStatusIcon({ status }: { status: TodoStatus }) {
+  if (status === "completed") return <CheckCircle2 size={13} className="text-[var(--success)]" />;
+  if (status === "in_progress") return <CircleDot size={13} className="text-[var(--accent)]" />;
+  if (status === "blocked") return <LockKeyhole size={12} className="text-[var(--warning)]" />;
+  if (status === "abandoned") return <Ban size={12} className="text-[var(--text-dim)]" />;
+  return <Circle size={12} className="text-[var(--text-dim)]" />;
+}
+
+export function TodoCard({ block, result }: { block: ToolCallContent; result?: ToolResultMessage }) {
+  const phases = readTodoPhases(block, result);
+  const tasks = phases.flatMap((phase) => phase.tasks);
+  const newlyCompleted = readCompletedTodoKeys(result);
+  const closed = tasks.filter((task) => task.status === "completed" || task.status === "abandoned").length;
+  const blocked = tasks.filter((task) => task.status === "blocked").length;
+  const activePhaseIndex = phases.findIndex((phase) => phase.tasks.some((task) => task.status === "pending" || task.status === "in_progress"));
+  const progress = tasks.length > 0 ? Math.round((closed / tasks.length) * 100) : 0;
+  const isError = result?.isError === true;
+
+  return (
+    <section
+      className={cn("overflow-hidden rounded-lg border bg-[var(--tool-bg)]", isError ? "border-[var(--destructive)]/30 opacity-60" : "border-[color-mix(in_srgb,var(--border)_60%,transparent)]")}
+      aria-label="Task progress"
+    >
+      <header className="flex min-w-0 items-center gap-2 px-3 py-2">
+        <ListTodo size={14} className="shrink-0 text-[var(--text-muted)]" />
+        <span className="shrink-0 text-[12px] font-semibold text-[var(--text)]">Tasks</span>
+        <div className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-[var(--border)]/45" aria-hidden>
+          <motion.div className="h-full rounded-full bg-[var(--accent)]" animate={{ width: `${progress}%` }} transition={{ duration: 0.25, ease: "easeOut" }} />
+        </div>
+        <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">{closed}/{tasks.length}</span>
+        {blocked > 0 ? <span className="shrink-0 font-mono text-[10px] text-[var(--warning)]">{blocked} blocked</span> : null}
+      </header>
+      <div className="border-t border-[var(--border)]/45 bg-[var(--bg-subtle)] px-3 py-2">
+        {phases.map((phase, phaseIndex) => {
+          const phaseClosed = phase.tasks.filter((task) => task.status === "completed" || task.status === "abandoned").length;
+          const isActive = phaseIndex === activePhaseIndex;
+          return (
+            <section key={`${phase.name}-${phaseIndex}`} className={cn("min-w-0 py-1.5", phaseIndex > 0 && "mt-1 border-t border-[var(--border)]/35 pt-2.5")}>
+              <div className="mb-1.5 flex min-w-0 items-center gap-2">
+                <span className={cn("min-w-0 flex-1 truncate text-[11px] font-semibold", isActive ? "text-[var(--accent)]" : "text-[var(--text-muted)]")}>{phase.name}</span>
+                <span className="shrink-0 font-mono text-[10px] text-[var(--text-dim)] tabular-nums">{phaseClosed}/{phase.tasks.length}</span>
+              </div>
+              <ul className="grid gap-1">
+                <AnimatePresence initial={false} mode="popLayout">
+                  {phase.tasks.map((task) => (
+                    <motion.li
+                      layout
+                      key={`${phase.name}:${task.content}`}
+                      initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
+                      transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                      className="flex min-w-0 items-start gap-2 text-[11px] leading-[1.45]"
+                    >
+                      <span className="relative mt-[1px] size-[13px] shrink-0">
+                        <AnimatePresence initial={false} mode="popLayout">
+                          <motion.span
+                            key={task.status}
+                            className="absolute inset-0 flex items-center justify-center"
+                            initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                          >
+                            <TodoStatusIcon status={task.status} />
+                          </motion.span>
+                        </AnimatePresence>
+                      </span>
+                      <motion.span
+                        className="min-w-0 break-words"
+                        animate={{ opacity: task.status === "completed" || task.status === "abandoned" ? 0.55 : 1 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                      >
+                        <span className="relative inline-grid">
+                          <span className={task.status === "abandoned" || task.status === "completed" && !newlyCompleted.has(task.content) ? "line-through" : undefined}>{task.content}</span>
+                          {task.status === "completed" && newlyCompleted.has(task.content) ? (
+                            <motion.span
+                              aria-hidden
+                              className="absolute inset-0 overflow-hidden whitespace-nowrap text-[var(--success)] line-through"
+                              initial={{ clipPath: "inset(0 100% 0 0)" }}
+                              animate={{ clipPath: "inset(0 0% 0 0)" }}
+                              transition={{ duration: 0.6, delay: 0.1, ease: "linear" }}
+                            >
+                              {task.content}
+                            </motion.span>
+                          ) : null}
+                        </span>
+                        {task.status === "blocked" && task.blocker ? <span className="ml-1 text-[var(--warning)]">— {task.blocker}</span> : null}
+                      </motion.span>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+            </section>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* Public entry point                                                         */
 /* -------------------------------------------------------------------------- */
@@ -925,6 +1092,9 @@ export function ToolLine({
   onOpenFile?: (path: string) => void;
 }) {
   const name = (block.toolName || "").toLowerCase();
+  if (name === "todo") {
+    return <TodoCard block={block} result={result} />;
+  }
   if (name === "read" || block.toolKind === "read") {
     return <ReadLine block={block} result={result} duration={duration} onOpenFile={onOpenFile} />;
   }
