@@ -3,32 +3,48 @@ export interface InitialNavigation {
   sessionId: string | null;
 }
 
-const LAST_SESSION_KEY = "omp.lastSessionId";
+const LAST_SESSION_KEY = "omp.lastSession";
 
-/** Persist the last opened session so reopening VS Code (which drops URL
- *  params — the webview reloads at "/") restores the previous conversation
- *  instead of a blank chat. localStorage survives webview reloads because
- *  the webview origin is stable per extension. */
-export function rememberLastSession(sessionId: string | null): void {
+/** Persist the last opened session (id + its cwd) so reopening VS Code —
+ *  which reloads the webview with only the workspace `cwd` param — restores
+ *  the previous conversation instead of a blank chat. */
+export function rememberLastSession(sessionId: string | null, cwd?: string | null): void {
   try {
-    if (sessionId) localStorage.setItem(LAST_SESSION_KEY, sessionId);
+    if (sessionId) localStorage.setItem(LAST_SESSION_KEY, JSON.stringify({ sessionId, cwd: cwd ?? null }));
     else localStorage.removeItem(LAST_SESSION_KEY);
   } catch {
-    // localStorage unavailable (e.g. blocked) — restore is best-effort.
+    // localStorage unavailable — restore is best-effort.
   }
 }
 
-export function getInitialNavigation(searchParams: Pick<URLSearchParams, "get">): InitialNavigation {
-  const requestedCwd = searchParams.get("cwd")?.trim() || null;
-  if (requestedCwd) return { requestedCwd, sessionId: null };
-
-  let sessionId = searchParams.get("session");
-  if (!sessionId) {
-    try {
-      sessionId = localStorage.getItem(LAST_SESSION_KEY);
-    } catch {
-      sessionId = null;
-    }
+function readLastSession(): { sessionId: string; cwd: string | null } | null {
+  try {
+    const raw = localStorage.getItem(LAST_SESSION_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const sessionId = "sessionId" in parsed && typeof parsed.sessionId === "string" ? parsed.sessionId : null;
+    if (!sessionId) return null;
+    const cwd = "cwd" in parsed && typeof parsed.cwd === "string" ? parsed.cwd : null;
+    return { sessionId, cwd };
+  } catch {
+    return null;
   }
-  return { requestedCwd: null, sessionId };
+}
+
+/** In VS Code the webview ALWAYS boots with a `cwd` param (the workspace
+ *  folder, injected by the useSearchParams shim) and never a `session`
+ *  param — session restore MUST take priority over the new-session-in-cwd
+ *  flow, but only when the remembered session belongs to this workspace
+ *  (same cwd, or a subdirectory such as a worktree). */
+export function getInitialNavigation(searchParams: Pick<URLSearchParams, "get">): InitialNavigation {
+  const explicitSession = searchParams.get("session");
+  if (explicitSession) return { requestedCwd: null, sessionId: explicitSession };
+
+  const requestedCwd = searchParams.get("cwd")?.trim() || null;
+  const last = readLastSession();
+  if (last && (!requestedCwd || !last.cwd || last.cwd === requestedCwd || last.cwd.startsWith(`${requestedCwd}/`))) {
+    return { requestedCwd: null, sessionId: last.sessionId };
+  }
+  return { requestedCwd, sessionId: null };
 }

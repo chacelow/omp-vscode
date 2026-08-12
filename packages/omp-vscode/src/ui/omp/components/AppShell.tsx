@@ -358,7 +358,7 @@ function AppShellContent() {
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
     setNewSessionCwd(null);
     setSelectedSession(session);
-    rememberLastSession(session.id);
+    rememberLastSession(session.id, session.cwd);
     setSessionKey((k) => k + 1);
     setSystemPrompt(null);
     setInitialSessionRestored(true);
@@ -420,7 +420,7 @@ function AppShellContent() {
   const handleSessionCreated = useCallback((session: SessionInfo) => {
     setNewSessionCwd(null);
     setSelectedSession(session);
-    rememberLastSession(session.id);
+    rememberLastSession(session.id, session.cwd);
     setBranchTree([]);
     setBranchActiveLeafId(null);
     setRefreshKey((k) => k + 1);
@@ -444,14 +444,14 @@ function AppShellContent() {
     setNewSessionCwd(null);
     setBranchTree([]);
     setBranchActiveLeafId(null);
-    rememberLastSession(newSessionId);
+    rememberLastSession(newSessionId, selectedSession?.cwd ?? newSessionCwd);
     setSelectedSession((prev) => ({
       ...(prev ?? { path: "", cwd: "", created: "", modified: "", messageCount: 0, firstMessage: "" }),
       id: newSessionId,
     }));
     hydrateSelectedSession(newSessionId);
     router.replace(`?session=${encodeURIComponent(newSessionId)}`, { scroll: false });
-  }, [router, hydrateSelectedSession]);
+  }, [router, hydrateSelectedSession, selectedSession?.cwd, newSessionCwd]);
 
   const handleInitialRestoreDone = useCallback(() => {
     setInitialSessionRestored(true);

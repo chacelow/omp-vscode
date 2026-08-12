@@ -515,7 +515,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setRetryInfo(null);
     }
     if (state.promptPending) {
-      const streaming = [...nextMessages].reverse().find((message) => message.role === "assistant");
+      // Only the transcript TAIL is the live streaming message. A prior
+      // turn's assistant must not count — prompt() appends the user row
+      // before any chunk arrives, so at turn start the tail is the user
+      // message (→ "start": shimmer shows), and once assistant chunks land
+      // the tail flips to the new assistant (→ "update": text streams).
+      const tail = nextMessages[nextMessages.length - 1];
+      const streaming = tail?.role === "assistant" ? tail : undefined;
       if (streaming) dispatch({ type: "update", message: streaming }); else dispatch({ type: "start" });
       const chars = messageText(streaming ?? null);
       const now = performance.now();
@@ -603,6 +609,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const cwd = newSessionCwd ?? session?.cwd;
       if (!cwd) return null;
       let sid: string | null = null;
+      let resumedExisting = false;
       if (!initialForceNewSessionRef.current) {
         try {
           const listed = await hostCall("sessionsList", {});
@@ -610,6 +617,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           if (recent) {
             const resumed = await acpRequest({ type: "acp/resumeSession", sessionId: recent.id, cwd });
             sid = responseSessionId(resumed) ?? recent.id;
+            resumedExisting = true;
           }
         } catch { /* resume is best effort */ }
       }
@@ -628,6 +636,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       try {
         await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
       } catch { /* subscription is best-effort */ }
+      // Resumed an existing session → its history lives in the JSONL, and
+      // ACP resume does NOT replay it. Paint the transcript from disk so
+      // the user sees the conversation they're continuing (previously this
+      // path showed an empty message list until the next turn).
+      if (resumedExisting) {
+        try {
+          const detail = await hostCall("sessionDetail", { sessionId: sid });
+          if (detail && sessionIdRef.current === sid && messagesRef.current.length === 0) {
+            setData({ sessionId: detail.sessionId, filePath: detail.filePath, tree: detail.tree.filter((node): node is SessionTreeNode => typeof node === "object" && node !== null), leafId: detail.leafId, context: detail.context });
+            setActiveLeafId(detail.leafId);
+            setMessages(detail.context.messages.map(normalizeToolCalls));
+            setEntryIds(detail.context.entryIds);
+            setThinkingLevel(detail.context.thinkingLevel as ThinkingLevelOption);
+          }
+        } catch { /* transcript paint is best-effort; ACP snapshots still arrive */ }
+      }
       return sid;
     })();
     ensuringNewSessionRef.current = task;

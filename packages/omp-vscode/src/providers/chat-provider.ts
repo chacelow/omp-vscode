@@ -243,11 +243,19 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           const startLine = rangeMatch?.groups?.start ? Math.max(0, Number.parseInt(rangeMatch.groups.start, 10) - 1) : null;
           const endLine = rangeMatch?.groups?.end ? Math.max(0, Number.parseInt(rangeMatch.groups.end, 10) - 1) : startLine;
           const uri = vscode.Uri.file(filePath);
+          let stat: vscode.FileStat;
           try {
-            await vscode.workspace.fs.stat(uri);
+            stat = await vscode.workspace.fs.stat(uri);
           } catch {
             void vscode.window.showWarningMessage(`File not found: ${filePath}`);
             this.log.appendLine(`[openFile] missing: ${filePath}`);
+            this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+            break;
+          }
+          // Directories can't be opened as text documents ("无法读取实际上
+          // 是一个目录的文件"). Reveal them in the OS file manager instead.
+          if (stat.type & vscode.FileType.Directory) {
+            await vscode.commands.executeCommand("revealFileInOS", uri);
             this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
             break;
           }
