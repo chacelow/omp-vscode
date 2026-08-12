@@ -98,8 +98,6 @@ interface Props {
   cwdName?: string | null;
   cwd?: string | null;
   onCwdChange?: (cwd: string) => void;
-  /** True when the user explicitly requested a new session (no resume). */
-  forceNewSession?: boolean;
 }
 
 function phaseLabel(
@@ -381,7 +379,6 @@ export function ChatWindow({
   cwdName,
   cwd,
   onCwdChange,
-  forceNewSession,
 }: Props) {
   const { t } = useI18n();
   const { soundEnabled, onSoundToggle, playDoneSound, unlockAudio } =
@@ -494,7 +491,6 @@ export function ChatWindow({
     onSystemPromptChange,
     onOpenSettings,
     onOpenResumeDialog,
-    forceNewSession,
   });
   // Optimistic user message rendered as a separate slot. When a live turn
   // is streaming, its authoritative streaming assistant is the LAST entry

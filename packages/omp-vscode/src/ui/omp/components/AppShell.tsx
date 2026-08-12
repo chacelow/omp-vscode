@@ -92,9 +92,6 @@ function AppShellContent() {
   const [sessionKey, setSessionKey] = useState(0);
   const [minimapOpen, setMinimapOpen] = useState(false);
   const [treeOpen, setTreeOpen] = useState(false);
-  // Set when the user explicitly clicks "New Session"; ChatWindow consumes it
-  // on mount to skip the cwd's resume (fresh session, not continue).
-  const forceNewSessionRef = useRef(false);
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [projectTrust, setProjectTrust] = useState<ProjectTrustStatus | null>(null);
@@ -376,18 +373,11 @@ function AppShellContent() {
     }
   }, [router, isMobile]);
 
-  // Clear the explicit-new-session flag after the remounted ChatWindow has
-  // consumed it (effects run after render).
-  useEffect(() => {
-    if (forceNewSessionRef.current) forceNewSessionRef.current = false;
-  });
-
   const handleNewSession = useCallback((_sessionId: string, cwd: string) => {
     setSelectedSession(null);
     rememberLastSession(null);
     setNewSessionCwd(cwd);
     setSessionKey((k) => k + 1);
-    forceNewSessionRef.current = true;
     setBranchTree([]);
     setBranchActiveLeafId(null);
     setSystemPrompt(null);
@@ -1071,7 +1061,6 @@ function AppShellContent() {
               cwdName={activeCwdName}
               cwd={activeCwd}
               onCwdChange={(nextCwd) => handleCwdChange(nextCwd)}
-              forceNewSession={forceNewSessionRef.current}
             />
           ) : initialCwdStatus === "validating" ? (
             <LoadingState label={translate("workspace.opening")}>

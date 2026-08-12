@@ -223,7 +223,7 @@ export class AcpService {
   }
 
   async listSessions(cwd = this.options.cwd): Promise<AcpSessionInfo[]> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     const result = await ctx.agent.request(methods.agent.session.list, { cwd }) as { sessions: Array<{ sessionId: string; cwd: string; title?: string | null; updatedAt?: string | null }> };
     return (result.sessions ?? []).map((s) => ({
       sessionId: s.sessionId,
@@ -234,7 +234,7 @@ export class AcpService {
   }
 
   async newSession(cwd: string): Promise<AcpSessionState> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     const sessionBuilder = ctx.agent.buildSession(cwd);
     const activeSession = await sessionBuilder.start();
     const response = activeSession.newSessionResponse as {
@@ -250,7 +250,7 @@ export class AcpService {
   }
 
   async loadSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     // Preserve any existing messages/toolCalls in the clearing snapshot.
     // omp's `session/load` replays historical events; before those arrive
     // the SDK stashes an intermediate state. If we overwrite our local
@@ -285,7 +285,7 @@ export class AcpService {
   }
 
   async resumeSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     const response = await ctx.agent.request(methods.agent.session.resume, { sessionId, cwd, mcpServers: [] } as never) as {
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
       configOptions?: import("@agentclientprotocol/sdk").SessionConfigOption[] | null;
@@ -298,7 +298,7 @@ export class AcpService {
   }
 
   async forkSession(sessionId: string, cwd: string): Promise<AcpSessionState> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     const response = await ctx.agent.request(methods.agent.session.fork, { sessionId, cwd }) as {
       sessionId: string;
       modes?: { currentModeId: string; availableModes?: SessionMode[] } | null;
@@ -307,7 +307,7 @@ export class AcpService {
   }
 
   async closeSession(sessionId: string): Promise<void> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     this.cancelInteractionsForSession(sessionId);
     await ctx.agent.request(methods.agent.session.close, { sessionId });
     this.sessions.delete(sessionId);
@@ -316,8 +316,16 @@ export class AcpService {
   }
 
   async prompt(sessionId: string, prompt: ContentBlock[]): Promise<void> {
-    const ctx = this.requireConnection();
-    const session = this.requireSession(sessionId);
+    const ctx = await this.ensureReady();
+    // Self-heal: if this session isn't registered (the background attach
+    // failed — e.g. it raced the connection startup — or the omp process
+    // was restarted and lost its in-memory sessions), load it now instead
+    // of failing the send with "Session … not found". session/load is
+    // idempotent for an already-open session.
+    let session = this.sessions.get(sessionId);
+    if (!session) {
+      session = await this.loadSession(sessionId, this.options.cwd);
+    }
     if (session.promptPending) throw new AcpUnavailableError("A prompt is already running for this session");
     // omp does NOT echo the user's prompt back as a user_message_chunk for
     // a live turn (verified against acp-event-mapper: chunks only replay
@@ -367,18 +375,18 @@ export class AcpService {
   }
 
   async cancelPrompt(sessionId: string): Promise<void> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     this.cancelInteractionsForSession(sessionId);
     await ctx.agent.notify(methods.agent.session.cancel, { sessionId });
   }
 
   async setMode(sessionId: string, modeId: string): Promise<void> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     await ctx.agent.request(methods.agent.session.setMode, { sessionId, modeId });
   }
 
   async setConfigOption(sessionId: string, configId: string, value: string | boolean): Promise<void> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     const request = typeof value === "boolean"
       ? { sessionId, configId, type: "boolean" as const, value }
       : { sessionId, configId, value };
@@ -387,7 +395,7 @@ export class AcpService {
   }
 
   async extMethod<T>(method: string, params: Record<string, unknown>): Promise<T> {
-    const ctx = this.requireConnection();
+    const ctx = await this.ensureReady();
     // Ext methods live outside the typed `methods.agent.*` set — omp exposes `_omp/*` and
     // similar names. The SDK routes them via `agent.request(method, params)`; extMethod is
     // the legacy alias but still available. Use request so params typing is honored.
@@ -448,6 +456,17 @@ export class AcpService {
       throw new AcpUnavailableError("OMP ACP is not connected");
     }
     return this.connection;
+  }
+
+  /** Await connection readiness instead of throwing. Session ops arriving
+   *  during startup (webview restore races the `omp acp` spawn/handshake by
+   *  design — extension.ts kicks `start()` off without awaiting) queue on
+   *  the in-flight startup promise rather than failing with "not
+   *  connected", which previously left the session unattached and made the
+   *  NEXT op fail with "Session … not found". */
+  private async ensureReady(): Promise<ClientConnection> {
+    if (this.state !== "ready" || !this.connection) await this.start();
+    return this.requireConnection();
   }
 
   private requireSession(sessionId: string): AcpSessionState {

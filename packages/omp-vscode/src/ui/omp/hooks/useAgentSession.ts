@@ -106,7 +106,6 @@ export interface UseAgentSessionOptions {
   /** Opens the webview-native full session picker for the local `/resume` command. */
   onOpenResumeDialog?: () => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
-  forceNewSession?: boolean;
 }
 
 export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
@@ -321,9 +320,10 @@ function contentFor(message: string, images?: AttachedImage[]): ContentBlock[] {
 export function useAgentSession(opts: UseAgentSessionOptions) {
   const { session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onOpenSettings, onOpenResumeDialog } = opts;
   const isNew = session === null && newSessionCwd !== null;
-  const initialForceNewSessionRef = useRef(opts.forceNewSession === true);
   const [data, setData] = useState<SessionData | null>(null);
-  const [loading, setLoading] = useState(session !== null || (newSessionCwd !== null && opts.forceNewSession !== true));
+  // Loading only applies to opening an EXISTING session (JSONL fetch).
+  // A blank new chat renders instantly.
+  const [loading, setLoading] = useState(session !== null);
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -606,62 +606,30 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [addNotice, newSessionCwd, session?.cwd]);
 
+  // ACP-native session creation: a blank chat has NO session; the first
+  // send creates one via session/new. Attaching to existing sessions is
+  // always EXPLICIT (sidebar pick / reopen restore → loadSession →
+  // session/load full replay). The previous "silently attach the most
+  // recent session in this cwd" magic put messages into old sessions the
+  // user never chose and raced the background attach ("Session … not
+  // found" on send).
   const ensureNewSession = useCallback(async (): Promise<string | null> => {
     if (sessionIdRef.current) return sessionIdRef.current;
     if (ensuringNewSessionRef.current) return ensuringNewSessionRef.current;
     const task = (async () => {
       const cwd = newSessionCwd ?? session?.cwd;
       if (!cwd) return null;
-      let sid: string | null = null;
-      let resumedExisting = false;
-      if (!initialForceNewSessionRef.current) {
-        try {
-          const listed = await hostCall("sessionsList", {});
-          const recent = listed.sessions.filter((candidate) => candidate.cwd === cwd).sort((a, b) => b.modified.localeCompare(a.modified))[0];
-          if (recent) {
-            // MUST be session/load (full history replay), NOT session/resume.
-            // Resume attaches without replaying, which leaves the ACP-side
-            // transcript empty — the first live snapshot after a send would
-            // then wholesale-replace local JSONL history with just the new
-            // turn ("history vanished" bug). Load replays everything with
-            // per-event publishes suppressed, so the ACP state is complete.
-            await acpRequest({ type: "acp/loadSession", sessionId: recent.id, cwd });
-            sid = recent.id;
-            resumedExisting = true;
-          }
-        } catch { /* resume is best effort */ }
-      }
-      if (!sid) {
-        const created = await acpRequest({ type: "acp/newSession", cwd });
-        sid = responseSessionId(created);
-      }
+      const created = await acpRequest({ type: "acp/newSession", cwd });
+      const sid = responseSessionId(created);
       if (!sid) return null;
       sessionIdRef.current = sid;
-      // ACP `session/new` returns a fully-live session. Mark it as loaded
-      // so the later `selectedSession` promotion (parent hydration) does
-      // NOT trigger `loadSession(sid, true)`, which would invoke the
-      // historical-replay `session/load` op and wipe our transcript.
-      // Just subscribe — no `acp/loadSession` needed.
+      // session/new returns a fully-live session — mark it loaded so the
+      // later selectedSession promotion doesn't re-run loadSession (which
+      // would trigger a pointless historical replay of an empty session).
       lastLoadedSessionIdRef.current = sid;
       try {
         await acpRequest({ type: "acp/subscribeSession", sessionId: sid });
       } catch { /* subscription is best-effort */ }
-      // Resumed an existing session → its history lives in the JSONL, and
-      // ACP resume does NOT replay it. Paint the transcript from disk so
-      // the user sees the conversation they're continuing (previously this
-      // path showed an empty message list until the next turn).
-      if (resumedExisting) {
-        try {
-          const detail = await hostCall("sessionDetail", { sessionId: sid });
-          if (detail && sessionIdRef.current === sid && messagesRef.current.length === 0) {
-            setData({ sessionId: detail.sessionId, filePath: detail.filePath, tree: detail.tree.filter((node): node is SessionTreeNode => typeof node === "object" && node !== null), leafId: detail.leafId, context: detail.context });
-            setActiveLeafId(detail.leafId);
-            setMessages(detail.context.messages.map(normalizeToolCalls));
-            setEntryIds(detail.context.entryIds);
-            setThinkingLevel(detail.context.thinkingLevel as ThinkingLevelOption);
-          }
-        } catch { /* transcript paint is best-effort; ACP snapshots still arrive */ }
-      }
       return sid;
     })();
     ensuringNewSessionRef.current = task;
@@ -893,30 +861,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     void loadSession(session.id, true);
     return () => { void acpRequest({ type: "acp/unsubscribeSession", sessionId: session.id }); };
   }, [loadSession, session?.id, session]);
+  // Blank-chat mount: ACP-native means NO session exists until the first
+  // send (handleSend → ensureNewSession → session/new). Just load models
+  // and release the loading overlay; nothing to create or attach here.
   useEffect(() => {
     if (session || !isNew || !newSessionCwd || sessionIdRef.current) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const sid = await ensureNewSession();
-        if (!sid || cancelled) return;
-        // ensureNewSession has already: (a) created/resumed the ACP
-        // session, (b) subscribed to it, and (c) marked it loaded via
-        // lastLoadedSessionIdRef. We must NOT call loadSession here —
-        // for a fresh session it would hit `session/load` (historical
-        // replay), wiping our empty transcript and flashing LoadingState.
-        if (!cancelled) {
-          void loadModels();
-          if (!initialForceNewSessionRef.current) promoteNewSession(1, "");
-        }
-      } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [ensureNewSession, isNew, loadModels, newSessionCwd, promoteNewSession, session]);
+    void loadModels();
+    setLoading(false);
+  }, [isNew, loadModels, newSessionCwd, session]);
   useEffect(() => { onSystemPromptChange?.(systemPrompt); }, [onSystemPromptChange, systemPrompt]);
   useEffect(() => { if (onBranchDataChange) onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange); }, [activeLeafId, data?.tree, handleLeafChange, onBranchDataChange]);
   useEffect(() => { window.addEventListener("keydown", markUserScrollIntent); window.addEventListener("pointerdown", markUserScrollIntent, { passive: true }); return () => { window.removeEventListener("keydown", markUserScrollIntent); window.removeEventListener("pointerdown", markUserScrollIntent); }; }, [markUserScrollIntent]);
