@@ -106,7 +106,22 @@ function readStringField(input: Record<string, unknown>, key: string): string {
 }
 
 function readInputPath(block: ToolCallContent): string {
-  return readStringField(block.input, "path") || readStringField(block.input, "file_path");
+  // omp tools accept several path shapes: `path`/`file_path` as string or
+  // string[] (glob takes multiple roots), or the legacy `paths` array.
+  // Match all of them so the tool line's label is populated on first
+  // render — otherwise arrays fell through readStringField and the row
+  // showed the placeholder until (never) an update converted it to a
+  // string.
+  const input = block.input;
+  if (!input || typeof input !== "object") return "";
+  const record = input as Record<string, unknown>;
+  const candidate = record.path ?? record.file_path ?? record.paths;
+  if (typeof candidate === "string") return candidate;
+  if (Array.isArray(candidate)) {
+    const strings = candidate.filter((v): v is string => typeof v === "string");
+    return strings.length > 0 ? strings.join(", ") : "";
+  }
+  return "";
 }
 
 function readGrepPattern(block: ToolCallContent): string {
@@ -554,7 +569,11 @@ function GlobLine({ block, result, duration, onOpenFile }: {
   duration?: number;
   onOpenFile?: (path: string) => void;
 }) {
-  const pattern = readGrepPattern(block) || readInputPath(block);
+  // Glob takes `path` (or the legacy `paths`) — never a regex `pattern`.
+  // The label is the scope path(s); an empty scope means the tool call's
+  // args haven't landed in state yet (transient during the tool_call
+  // event) and we render an ellipsis rather than a fake "(pattern)".
+  const scope = readInputPath(block);
   // omp's glob tool ships two payloads:
   //   • text() — a human-readable markdown tree (`# dir / ## sub / file`)
   //     built by `formatGroupedPaths` — meant for the model to read.
@@ -612,8 +631,8 @@ function GlobLine({ block, result, duration, onOpenFile }: {
     <ToolLineBase
       verb="Globbed"
       icon={<Search size={11} className="shrink-0 text-[var(--text-dim)]" />}
-      primary={pattern || "(pattern)"}
-      primaryTitle={pattern}
+      primary={scope || "…"}
+      primaryTitle={scope}
       hint={files.length > 0 ? `${files.length} ${files.length === 1 ? "file" : "files"}` : "no matches"}
       duration={duration}
       isError={isError}
