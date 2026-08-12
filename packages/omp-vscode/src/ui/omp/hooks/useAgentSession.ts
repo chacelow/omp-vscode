@@ -204,12 +204,16 @@ function toolMessages(message: AcpMessage, tool: ToolCall | undefined): AgentMes
     ? tool.rawInput as Record<string, unknown>
     : {};
   const locations = (tool.locations ?? []).flatMap((location) => location.path ? [{ path: location.path, line: typeof location.line === "number" ? location.line : undefined }] : []);
-  let output = "";
-  if (typeof tool.rawOutput === "string") output = tool.rawOutput;
-  else if (tool.rawOutput !== undefined) {
-    try { output = JSON.stringify(tool.rawOutput, null, 2); } catch { output = String(tool.rawOutput); }
-  } else {
-    output = (tool.content ?? []).flatMap((item) => item.type === "content" && item.content.type === "text" ? [item.content.text] : item.type === "diff" ? [item.newText] : []).join("\n");
+  // Prefer the tool's content blocks (human-readable text the agent
+  // produced) over rawOutput. rawOutput is a structured object; JSON.stringify
+  // of it feeds garbage into tool-specific renderers (e.g. the grep match
+  // list treated every JSON line as a match).
+  let output = (tool.content ?? []).flatMap((item) => item.type === "content" && item.content.type === "text" ? [item.content.text] : item.type === "diff" ? [item.newText] : []).join("\n");
+  if (!output) {
+    if (typeof tool.rawOutput === "string") output = tool.rawOutput;
+    else if (tool.rawOutput !== undefined) {
+      try { output = JSON.stringify(tool.rawOutput, null, 2); } catch { output = String(tool.rawOutput); }
+    }
   }
   const call: AssistantMessage = {
     role: "assistant",
@@ -615,8 +619,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           const listed = await hostCall("sessionsList", {});
           const recent = listed.sessions.filter((candidate) => candidate.cwd === cwd).sort((a, b) => b.modified.localeCompare(a.modified))[0];
           if (recent) {
-            const resumed = await acpRequest({ type: "acp/resumeSession", sessionId: recent.id, cwd });
-            sid = responseSessionId(resumed) ?? recent.id;
+            // MUST be session/load (full history replay), NOT session/resume.
+            // Resume attaches without replaying, which leaves the ACP-side
+            // transcript empty — the first live snapshot after a send would
+            // then wholesale-replace local JSONL history with just the new
+            // turn ("history vanished" bug). Load replays everything with
+            // per-event publishes suppressed, so the ACP state is complete.
+            await acpRequest({ type: "acp/loadSession", sessionId: recent.id, cwd });
+            sid = recent.id;
             resumedExisting = true;
           }
         } catch { /* resume is best effort */ }
