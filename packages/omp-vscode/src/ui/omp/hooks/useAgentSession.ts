@@ -892,44 +892,39 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }).finally(() => setPendingRestoreModel(null));
   }, [pendingRestoreModel, snapshot?.stopReason]);
 
-  // ACP doesn't emit per-message usage/duration/ttft. omp persists them to
-  // the session JSONL — refetch once per turn end and merge onto local
-  // messages by assistant-index alignment. Firing on every snapshot revision
-  // spams sessionTail because omp publishes snapshots for usage_update,
-  // plan, and tool_call state after the turn settles.
+  // Turn-end resync from the session JSONL. Two jobs in one fetch:
+  // 1. entryIds — ACP snapshots carry messages but no JSONL entry ids, so
+  //    messages created during live turns have no entryId and every
+  //    entry-addressed action on them (edit-resend/rewind, fork, navigate)
+  //    silently no-ops. Refetching sessionDetail after the turn gives an
+  //    aligned messages+entryIds pair from a single source.
+  // 2. per-message usage/duration/ttft — ACP doesn't emit these; omp
+  //    persists them to the JSONL.
+  // Fires once per turn boundary (stopReason+count signature), not on every
+  // snapshot revision — omp publishes snapshots for usage_update/plan/tool
+  // state after the turn settles.
   const lastHydratedStopReasonRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!snapshot || snapshot.promptPending) return;
     if (!snapshot.stopReason) return;
-    if (lastHydratedStopReasonRef.current === snapshot.stopReason && (snapshot.messages?.length ?? 0) === 0) return;
-    // Signature that changes only on a real turn boundary: stopReason + count.
     const signature = `${snapshot.stopReason}#${snapshot.messages?.length ?? 0}`;
     if (lastHydratedStopReasonRef.current === signature) return;
     lastHydratedStopReasonRef.current = signature;
     const sessionId = sessionIdRef.current;
     if (!sessionId) return;
     let cancelled = false;
-    void hostCall("sessionTail", { sessionId, sinceRevision: null }).then((tail) => {
-      if (cancelled || !tail) return;
-      const persisted: AssistantMessage[] = [];
-      for (const entry of tail.entries) {
-        if (entry.message.role === "assistant") persisted.push(entry.message);
-      }
-      setMessages((current) => {
-        let index = 0;
-        return current.map((message) => {
-          if (message.role !== "assistant") return message;
-          const source = persisted[index++];
-          if (!source) return message;
-          return {
-            ...message,
-            usage: source.usage ?? message.usage,
-            duration: source.duration ?? message.duration,
-            ttft: source.ttft ?? message.ttft,
-            timestamp: source.timestamp ?? message.timestamp,
-          } satisfies AssistantMessage;
-        });
-      });
+    void hostCall("sessionDetail", { sessionId }).then((detail) => {
+      if (cancelled || !detail || sessionIdRef.current !== sessionId) return;
+      // A new turn may have started while the fetch was in flight — the
+      // JSONL doesn't have the live turn yet; don't wipe it.
+      if (agentRunningRef.current) return;
+      // The JSONL is the at-rest authority: same transcript the ACP replay
+      // produces, plus entry ids and persisted stats. Swap atomically so
+      // messages[idx] ↔ entryIds[idx] stay aligned.
+      setData({ sessionId: detail.sessionId, filePath: detail.filePath, tree: detail.tree.filter((node): node is SessionTreeNode => typeof node === "object" && node !== null), leafId: detail.leafId, context: detail.context });
+      setActiveLeafId(detail.leafId);
+      setMessages(detail.context.messages.map(normalizeToolCalls));
+      setEntryIds(detail.context.entryIds);
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [snapshot?.promptPending, snapshot?.stopReason, snapshot?.messages?.length]);
