@@ -21,6 +21,7 @@ import {
 import { THEMES, type OmpTheme } from "@/lib/themes";
 import { speechModelsList } from "@/lib/ext-methods";
 import { ModelRolesPanel } from "./settings/ModelRolesPanel";
+import { Switch } from "./ui/switch";
 
 export function applyTheme(theme: OmpTheme): void {
   const root = document.documentElement;
@@ -253,16 +254,10 @@ function renderControl(
           cursor: "pointer",
         }}
       >
-        <input
-          type="checkbox"
+        <Switch
           checked={value === true}
-          onChange={(event) => onChange(event.target.checked)}
-          style={{
-            width: 16,
-            height: 16,
-            accentColor:
-              "var(--vscode-inputOption-activeBackground, var(--accent))",
-          }}
+          onCheckedChange={onChange}
+          aria-label={def.label}
         />
         <span style={{ color: "var(--text-muted)", fontSize: 12 }}>
           {value === true
@@ -331,16 +326,16 @@ function renderControl(
                   cursor: "pointer",
                 }}
               >
-                <input
-                  type="checkbox"
+                <Switch
                   checked={index >= 0}
-                  onChange={(event) =>
+                  onCheckedChange={(checked) =>
                     onChange(
-                      event.target.checked
+                      checked
                         ? [...selected, option.value]
                         : selected.filter((entry) => entry !== option.value)
                     )
                   }
+                  aria-label={option.label}
                 />
                 <span>
                   {translateOr(

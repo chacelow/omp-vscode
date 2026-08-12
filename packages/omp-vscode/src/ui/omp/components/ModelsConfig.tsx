@@ -9,6 +9,7 @@ import type {
   ModelCatalogRecommendation,
 } from "@/lib/model-catalog";
 import type { DiscoveredModel } from "@/lib/model-discovery";
+import { Switch } from "./ui/switch";
 // Color icons (have their own fill colors — no background needed)
 import AnthropicIcon from "@lobehub/icons/es/Anthropic/components/Mono";
 import OpenAIIcon from "@lobehub/icons/es/OpenAI/components/Mono";
@@ -443,16 +444,10 @@ function Check({
         color: "var(--text-muted)",
       }}
     >
-      <input
-        type="checkbox"
+      <Switch
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{
-          width: 13,
-          height: 13,
-          accentColor: "var(--accent)",
-          cursor: "pointer",
-        }}
+        onCheckedChange={onChange}
+        aria-label={label}
       />
       {label}
     </label>
@@ -501,7 +496,6 @@ function ProviderDetail({
   const [discoveryQuery, setDiscoveryQuery] = useState("");
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const discoveryRequestIdRef = useRef(0);
-  const selectShownRef = useRef<HTMLInputElement>(null);
   useEffect(() => setEditingName(name), [name]);
   const set = <K extends keyof ProviderEntry>(k: K, v: ProviderEntry[K]) =>
     onChange({ ...provider, [k]: v });
@@ -576,10 +570,6 @@ function ProviderDetail({
     !allShownSelected &&
     selectableShownIds.some((id) => selectedModelIds.includes(id));
 
-  useEffect(() => {
-    if (selectShownRef.current)
-      selectShownRef.current.indeterminate = someShownSelected;
-  }, [someShownSelected]);
 
   const toggleDiscoveredModel = (id: string) => {
     setSelectedModelIds((current) =>
@@ -788,18 +778,12 @@ function ProviderDetail({
                   fontWeight: 600,
                 }}
               >
-                <input
-                  ref={selectShownRef}
-                  type="checkbox"
+                <Switch
                   checked={allShownSelected}
                   disabled={selectableShownIds.length === 0}
-                  onChange={toggleShownModels}
-                  style={{
-                    width: 13,
-                    height: 13,
-                    accentColor: "var(--accent)",
-                    flexShrink: 0,
-                  }}
+                  onCheckedChange={toggleShownModels}
+                  aria-label={t("models.discoverySelectShown")}
+                  title={someShownSelected ? t("models.discoverySelectShown") : undefined}
                 />
                 {t("models.discoverySelectShown")}
               </label>
@@ -832,17 +816,11 @@ function ProviderDetail({
                         opacity: alreadyAdded ? 0.65 : 1,
                       }}
                     >
-                      <input
-                        type="checkbox"
+                      <Switch
                         checked={checked || alreadyAdded}
                         disabled={alreadyAdded}
-                        onChange={() => toggleDiscoveredModel(model.id)}
-                        style={{
-                          width: 13,
-                          height: 13,
-                          accentColor: "var(--accent)",
-                          flexShrink: 0,
-                        }}
+                        onCheckedChange={() => toggleDiscoveredModel(model.id)}
+                        aria-label={model.name ?? model.id}
                       />
                       <span style={{ minWidth: 0, flex: 1 }}>
                         <span

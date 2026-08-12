@@ -4,6 +4,7 @@ import type {
   AcpElicitationRequest,
   AcpPermissionRequest,
 } from "../../../core/acp/protocol";
+import { Switch } from "./ui/switch";
 
 type InteractionResponse = {
   optionId?: string;
@@ -331,13 +332,10 @@ export function InteractionDialog({
                   >
                     <span>{property.title ?? name}</span>
                     {property.type === "boolean" ? (
-                      <input
-                        type="checkbox"
+                      <Switch
                         checked={values[name] === true}
-                        onChange={(event) =>
-                          setValue(name, event.target.checked)
-                        }
-                        className="accent-primary size-4"
+                        onCheckedChange={(checked) => setValue(name, checked)}
+                        aria-label={property.title ?? name}
                       />
                     ) : property.type === "array" && property.itemChoices ? (
                       <div className="grid gap-1">
@@ -346,26 +344,25 @@ export function InteractionDialog({
                             key={choice}
                             className="flex items-center gap-2 text-sm"
                           >
-                            <input
-                              type="checkbox"
+                            <Switch
                               checked={
                                 Array.isArray(values[name]) &&
                                 values[name].includes(choice)
                               }
-                              onChange={(event) => {
+                              onCheckedChange={(checked) => {
                                 const selected = Array.isArray(values[name])
                                   ? values[name]
                                   : [];
                                 setValue(
                                   name,
-                                  event.target.checked
+                                  checked
                                     ? [...selected, choice]
                                     : selected.filter(
                                         (value) => value !== choice
                                       )
                                 );
                               }}
-                              className="accent-primary size-4"
+                              aria-label={choice}
                             />
                             {choice}
                           </label>
