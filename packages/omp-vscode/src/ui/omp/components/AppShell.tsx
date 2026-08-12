@@ -898,7 +898,7 @@ function AppShellContent() {
         <div
           ref={sidebarResizer.panelRef}
           id="session-sidebar"
-          className={`sidebar-container${sidebarOpen ? "sidebar-open" : "sidebar-closed"}${sidebarResizer.isResizing ? "sidebar-resizing" : ""}`}
+          className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}${sidebarResizer.isResizing ? " sidebar-resizing" : ""}`}
           style={
             {
               "--sidebar-width": `${sidebarResizer.width}px`,
@@ -919,7 +919,7 @@ function AppShellContent() {
           <div
             {...sidebarResizer.separatorProps}
             aria-controls="session-sidebar"
-            className={`panel-resize-handle sidebar-resize-handle${sidebarResizer.isResizing ? "is-resizing" : ""}`}
+            className={`panel-resize-handle sidebar-resize-handle${sidebarResizer.isResizing ? " is-resizing" : ""}`}
             data-resize-handle="sidebar"
             title={`${translate("layout.resizeSidebar")}: ${translate("layout.resizeHint")}`}
           />
@@ -1508,14 +1508,14 @@ function AppShellContent() {
 
         <div
           aria-hidden="true"
-          className={`right-panel-overlay-backdrop${rightPanelOpen ? "is-open" : ""}`}
+          className={`right-panel-overlay-backdrop${rightPanelOpen ? " is-open" : ""}`}
           onClick={() => setRightPanelOpen(false)}
         />
         {rightPanelOpen && (
           <div
             {...rightPanelResizer.separatorProps}
             aria-controls="file-panel"
-            className={`panel-resize-handle right-panel-resize-handle${rightPanelResizer.isResizing ? "is-resizing" : ""}`}
+            className={`panel-resize-handle right-panel-resize-handle${rightPanelResizer.isResizing ? " is-resizing" : ""}`}
             data-resize-handle="right-panel"
             title={`${translate("layout.resizeFilePanel")}: ${translate("layout.resizeHint")}`}
           />
@@ -1525,7 +1525,7 @@ function AppShellContent() {
         <div
           ref={rightPanelResizer.panelRef}
           id="file-panel"
-          className={`right-panel-container${rightPanelOpen ? "right-panel-open" : "right-panel-closed"}${rightPanelResizer.isResizing ? "right-panel-resizing" : ""}`}
+          className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}${rightPanelResizer.isResizing ? " right-panel-resizing" : ""}`}
           style={
             {
               "--right-panel-width": `${rightPanelResizer.width}px`,

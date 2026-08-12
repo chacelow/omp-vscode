@@ -1379,7 +1379,7 @@ function ToolCallBlock({
 
   return (
     <div
-      className={`sf-tool-block${isError ? "sf-tool-error" : ""}`}
+      className={`sf-tool-block${isError ? " sf-tool-error" : ""}`}
       style={{
         borderRadius: 7,
         overflow: "hidden",
@@ -1430,7 +1430,6 @@ function ToolCallBlock({
         ) : (
           <span
             style={{
-              color: "var(--text-dim)",
               fontFamily: "var(--font-mono)",
               fontSize: 11,
               overflow: "hidden",
