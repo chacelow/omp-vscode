@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Folder, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
+import { Shimmer } from "./ai-elements/shimmer";
+import { useI18n } from "@/hooks/useI18n";
 import { hostCall } from "../../bridge";
 
 interface Project {
@@ -30,6 +32,8 @@ export function ProjectSwitcher({
 }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
+  const { t } = useI18n();
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -37,21 +41,27 @@ export function ProjectSwitcher({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    setLoading(true);
     hostCall("sessionsList", {})
       .then(({ sessions }) => {
         if (cancelled) return;
         const seen = new Set<string>();
         const list: Project[] = [];
-        for (const s of sessions) {
-          const root = s.projectRoot ?? s.cwd;
+        for (const session of sessions) {
+          const root = session.projectRoot ?? session.cwd;
           if (seen.has(root)) continue;
           seen.add(root);
           list.push({ name: pathName(root), path: root });
         }
-        list.sort((a, b) => a.name.localeCompare(b.name));
+        list.sort((left, right) => left.name.localeCompare(right.name));
         setProjects(list);
       })
-      .catch(() => setProjects([]));
+      .catch(() => {
+        if (!cancelled) setProjects([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -133,9 +143,13 @@ export function ProjectSwitcher({
             padding: 4,
           }}
         >
-          {projects.length === 0 ? (
+          {loading ? (
+            <Shimmer className="px-2.5 py-2 text-[11px]" duration={2.5} spread={1}>
+              {t("sidebar.loadingProjects")}
+            </Shimmer>
+          ) : projects.length === 0 ? (
             <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-dim)" }}>
-              No projects yet
+              {t("sidebar.noProjects")}
             </div>
           ) : (
             projects.map((p) => (

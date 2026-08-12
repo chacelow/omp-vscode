@@ -24,7 +24,7 @@ import ExternalEditorModal from "./ExternalEditorModal";
 import { SlashPalette, buildSlashCommandLayout, slashMatchRank, getSlashDescription, SLASH_SOURCE_ORDER, type SlashCommandPaletteItem } from "./chat/SlashPalette";
 import { AtMenu } from "./chat/AtMenu";
 import { Button } from "./ui/button";
-import { Gauge, TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
+import { TriangleAlert, Undo2, RefreshCw, Check, X } from "lucide-react";
 import type { ChatFooterStats } from "./chat/ChatFooterBar";
 import { useI18n } from "@/hooks/useI18n";
 import { ompExtensions } from "@/lib/ext-methods";
@@ -71,8 +71,6 @@ export interface ChatInputProps {
   thinkingLevelMap?: Record<string, string | null> | null;
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   queuedMessages?: QueuedMessages | null;
-  /** Live engine tok/s while streaming (composer footer). */
-  liveTps?: number | null;
   /** Context usage ring (shown next to the attach button). */
   contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
   stats?: ChatFooterStats | null;
@@ -244,7 +242,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, modelScopeWarnings, onModelChange, onModelOpen, modelRoles, fastMode, onRoleChange,
   onCompact, onAbortCompaction, isCompacting, compactError, compactResult, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
-  retryInfo, queuedMessages, liveTps, contextUsage, stats, inputHistory = [], onRecallQueue,
+  retryInfo, queuedMessages, contextUsage, stats, inputHistory = [], onRecallQueue,
   onToggleThinking, onOpenHistorySearch, onOpenModelSelector, onOpenTemporaryModelPicker, onOpenAgentHub, onDisplayReset, onToggleExpandAllTools, onToggleToolsHidden,
   slashCommands, slashCommandsLoading, onLoadSlashCommands, onBuiltinCommand,
   soundEnabled, onSoundToggle, onAudioUnlock,
@@ -1518,12 +1516,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           onSend={handleSend}
           onAbort={onAbort}
         />
-        {liveTps != null && (
-          <div className="mt-1 flex items-center justify-end gap-1 font-mono text-[10px] tabular-nums text-[var(--text-dim)]">
-            <Gauge size={10} className="shrink-0" />
-            {Math.round(liveTps as number).toLocaleString()} tok/s
-          </div>
-        )}
       <ExternalEditorModal
         open={externalEditorOpen}
         initialValue={value}

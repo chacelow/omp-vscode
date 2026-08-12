@@ -56,6 +56,7 @@ import {
   type NoticeItem,
 } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
+import { hostCall } from "../../bridge";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 import {
@@ -777,47 +778,24 @@ export function ChatWindow({
     isNew && messages.length === 0 && !streamState.isStreaming && !sessionBusy;
   const messageCwd = session?.cwd ?? newSessionCwd ?? undefined;
 
-  // Versions reported internally by the omp-web service via /api/version.
-  // The bridge caches them because its response may arrive before React mounts.
   const [serviceVersions, setServiceVersions] = useState<{
     cli: string;
     pi: string;
     omp: string;
-  }>(() => {
-    const cached = (
-      globalThis as {
-        __OMP_VERSIONS?: { cli?: string; pi?: string; omp?: string };
-      }
-    ).__OMP_VERSIONS;
-    return {
-      cli: cached?.cli ?? "",
-      pi: cached?.pi ?? "",
-      omp: cached?.omp ?? "",
-    };
-  });
+  } | null>(null);
+  const [versionsUnavailable, setVersionsUnavailable] = useState(false);
   useEffect(() => {
-    const apply = (d?: { cli?: string; pi?: string; omp?: string }) => {
-      if (d)
-        setServiceVersions({
-          cli: d.cli ?? "",
-          pi: d.pi ?? "",
-          omp: d.omp ?? "",
-        });
+    let cancelled = false;
+    hostCall("version", {})
+      .then((versions) => {
+        if (!cancelled) setServiceVersions(versions);
+      })
+      .catch(() => {
+        if (!cancelled) setVersionsUnavailable(true);
+      });
+    return () => {
+      cancelled = true;
     };
-    apply(
-      (
-        globalThis as {
-          __OMP_VERSIONS?: { cli?: string; pi?: string; omp?: string };
-        }
-      ).__OMP_VERSIONS
-    );
-    const h = (e: Event) =>
-      apply(
-        (e as CustomEvent<{ cli?: string; pi?: string; omp?: string }>).detail
-      );
-    window.addEventListener("omp-versions", h);
-    window.dispatchEvent(new Event("omp-request-versions"));
-    return () => window.removeEventListener("omp-versions", h);
   }, []);
 
   const availableThinkingLevels = displayModelValue
@@ -909,7 +887,6 @@ export function ChatWindow({
     thinkingLevelMap: currentThinkingLevelMap,
     retryInfo,
     queuedMessages,
-    liveTps,
     contextUsage,
     stats: sessionStats,
     inputHistory,
@@ -1016,7 +993,7 @@ export function ChatWindow({
       soundEnabled={soundEnabled}
       onSoundToggle={onSoundToggle}
       cwd={messageCwd}
-      tps={tps}
+      tps={liveTps ?? tps}
       activeModes={activeModes}
       fastMode={fastMode}
       onRoleChange={handleRoleChange}
@@ -1239,30 +1216,37 @@ export function ChatWindow({
                 }}
                 title="Versions reported by the local omp-web service"
               >
-                <span>
-                  omp{" "}
-                  <span style={{ color: "var(--text)" }}>
-                    v{serviceVersions.cli || serviceVersions.pi || "0.0.0"}
-                  </span>
-                </span>
-                {serviceVersions.pi && (
+                {serviceVersions ? (
                   <>
+                    <span>
+                      omp{" "}
+                      <span style={{ color: "var(--text)" }}>
+                        {serviceVersions.cli ? `v${serviceVersions.cli}` : "unavailable"}
+                      </span>
+                    </span>
+                    {serviceVersions.pi && (
+                      <>
+                        <span style={{ opacity: 0.6 }}>·</span>
+                        <span>
+                          pi <span style={{ color: "var(--text)" }}>v{serviceVersions.pi}</span>
+                        </span>
+                      </>
+                    )}
                     <span style={{ opacity: 0.6 }}>·</span>
                     <span>
-                      pi{" "}
+                      ext{" "}
                       <span style={{ color: "var(--text)" }}>
-                        v{serviceVersions.pi}
+                        {serviceVersions.omp ? `v${serviceVersions.omp}` : "unavailable"}
                       </span>
                     </span>
                   </>
+                ) : versionsUnavailable ? (
+                  <span>Versions unavailable</span>
+                ) : (
+                  <Shimmer as="span" className="text-[11px]" duration={2.5} spread={1}>
+                    Loading versions…
+                  </Shimmer>
                 )}
-                <span style={{ opacity: 0.6 }}>·</span>
-                <span>
-                  ext{" "}
-                  <span style={{ color: "var(--text)" }}>
-                    v{serviceVersions.omp || "0.0.0"}
-                  </span>
-                </span>
               </div>
             </div>
 

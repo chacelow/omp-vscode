@@ -36,6 +36,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   host = new HostService({
     log: (acpLog ??= vscode.window.createOutputChannel("OMP ACP")),
     cwd,
+    extensionVersion: String(context.extension.packageJSON.version ?? ""),
   });
 
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);

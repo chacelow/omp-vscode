@@ -922,6 +922,49 @@ html.starfield .sf-running-dot {
   border-radius: 0 !important;
 }
 
+/* The chat footer is a single-line priority row. Container queries remove
+   lower-value details before they can wrap or squeeze primary controls. */
+.chat-footer-bar {
+  container-name: chat-footer;
+  container-type: inline-size;
+}
+
+@container chat-footer (max-width: 700px) {
+  .chat-footer-modes {
+    display: none;
+  }
+}
+
+@container chat-footer (max-width: 620px) {
+  .chat-footer-branch {
+    display: none;
+  }
+}
+
+@container chat-footer (max-width: 520px) {
+  .chat-footer-cache {
+    display: none;
+  }
+}
+
+@container chat-footer (max-width: 420px) {
+  .chat-footer-usage {
+    display: none;
+  }
+}
+
+@container chat-footer (max-width: 340px) {
+  .chat-footer-duration {
+    display: none;
+  }
+}
+
+@container chat-footer (max-width: 260px) {
+  .chat-footer-fast {
+    display: none;
+  }
+}
+
 /* Assistant metadata progressively sheds lower-priority fields as the chat
    column narrows. The session action remains available at every width. */
 .assistant-message {
@@ -1684,11 +1727,6 @@ code {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-@media (max-width: 640px) {
-  .file-viewer-meta {
-    display: none;
-  }
-}
 
 @media (max-width: 380px) {
   .file-viewer-toolbar {
@@ -1916,186 +1954,56 @@ span.linenumber {
 }
 
 /* Desktop sidebar: animate width */
-@media (min-width: 641px) {
-  .sidebar-overlay-backdrop {
-    display: none !important;
-  }
-  .sidebar-container {
-    position: relative;
-    overflow: hidden;
-    transition:
-      width 0.2s ease,
-      min-width 0.2s ease;
-  }
-  .sidebar-container.sidebar-open {
-    width: var(--sidebar-width, 260px);
-    min-width: var(--sidebar-width, 260px);
-  }
-  .sidebar-container.sidebar-closed {
-    width: 0;
-    min-width: 0;
-    border-right: none !important;
-    /* Stay invisible across breakpoint flips (mobile fixed 280px →
-       desktop width 0 animates through visible widths for a frame). */
-    visibility: hidden;
-  }
-  /* keep inner content at fixed width so it doesn't reflow during animation */
-  .sidebar-container > * {
-    width: var(--sidebar-width, 260px);
-    min-width: var(--sidebar-width, 260px);
-  }
-  .sidebar-container.sidebar-resizing,
-  .sidebar-container.sidebar-resizing > * {
-    transition: none !important;
-  }
+.sidebar-container {
+  position: relative;
+  overflow: hidden;
+  transition:
+    width 0.2s ease,
+    min-width 0.2s ease;
+}
+.sidebar-container.sidebar-open {
+  width: var(--sidebar-width, 260px);
+  min-width: var(--sidebar-width, 260px);
+}
+.sidebar-container.sidebar-closed {
+  width: 0;
+  min-width: 0;
+  border-right: none !important;
+  visibility: hidden;
+}
+.sidebar-container > * {
+  width: var(--sidebar-width, 260px);
+  min-width: var(--sidebar-width, 260px);
+}
+.sidebar-container.sidebar-resizing,
+.sidebar-container.sidebar-resizing > * {
+  transition: none !important;
 }
 
-/* Wide desktop file panel: participate in the split layout. */
-@media (min-width: 960px) {
-  .right-panel-container {
-    overflow: hidden;
-    transition:
-      width 0.2s ease,
-      min-width 0.2s ease;
-    flex-shrink: 0;
-  }
-  .right-panel-container.right-panel-open {
-    width: var(--right-panel-width, clamp(360px, 42vw, 640px));
-    min-width: 300px;
-  }
-  .right-panel-container.right-panel-closed {
-    width: 0;
-    min-width: 0;
-    border-left: none !important;
-  }
-  /* keep inner content at fixed width so it doesn't reflow during animation */
-  .right-panel-container > * {
-    width: var(--right-panel-width, clamp(360px, 42vw, 640px));
-    min-width: 300px;
-  }
-  .right-panel-container.right-panel-resizing,
-  .right-panel-container.right-panel-resizing > * {
-    transition: none !important;
-  }
+/* Right file panel: participate in the split layout at all widths. */
+.right-panel-container {
+  overflow: hidden;
+  transition:
+    width 0.2s ease,
+    min-width 0.2s ease;
+  flex-shrink: 0;
 }
-
-/* Compact desktop file panel: overlay the chat instead of collapsing it. */
-@media (min-width: 641px) and (max-width: 959px) {
-  .right-panel-resize-handle {
-    display: none;
-  }
-  .right-panel-overlay-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 240;
-    display: block;
-    background: rgba(0, 0, 0, 0.24);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-  .right-panel-overlay-backdrop.is-open {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .right-panel-container {
-    position: fixed;
-    top: 0;
-    right: env(safe-area-inset-right);
-    bottom: 0;
-    z-index: 250;
-    width: min(560px, calc(100vw - 48px));
-    min-width: 300px;
-    overflow: hidden;
-    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
-    transition: transform 0.2s ease;
-  }
-  .right-panel-container.right-panel-open {
-    transform: translateX(0);
-  }
-  .right-panel-container.right-panel-closed {
-    transform: translateX(100%);
-    pointer-events: none;
-  }
-  .right-panel-container > * {
-    width: 100%;
-    min-width: 0;
-  }
+.right-panel-container.right-panel-open {
+  width: var(--right-panel-width, clamp(360px, 42vw, 640px));
+  min-width: 300px;
 }
-
-/* Mobile sidebar: slide in/out as overlay */
-@media (max-width: 640px) {
-  .chat-stats-center {
-    display: none !important;
-  }
-  .sidebar-container {
-    position: fixed !important;
-    top: 0;
-    left: env(safe-area-inset-left);
-    bottom: 0;
-    width: 280px;
-    max-width: 85vw;
-    height: var(--app-viewport-height, 100dvh);
-    transition:
-      transform 0.25s ease,
-      box-shadow 0.25s ease;
-  }
-  .sidebar-container.sidebar-open {
-    transform: translateX(0);
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-  }
-  .sidebar-container.sidebar-closed {
-    transform: translateX(calc(-100% - env(safe-area-inset-left)));
-    box-shadow: none;
-    /* Prevent the panel from flashing on screen for a frame when the
-       breakpoint flips (desktop width:0 → fixed 280px+transform):
-       hidden until opened, no paint, no flicker. */
-    visibility: hidden;
-  }
-
-  .right-panel-container {
-    position: fixed;
-    inset: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
-    height: var(--app-viewport-height, 100dvh);
-    z-index: 250;
-    overflow: hidden;
-    transition: transform 0.2s ease;
-  }
-  .right-panel-container.right-panel-open {
-    width: auto;
-    min-width: 0;
-  }
-  .right-panel-container.right-panel-closed {
-    width: 0 !important;
-    min-width: 0 !important;
-    border-left: none !important;
-    display: none !important;
-  }
-  .right-panel-container > * {
-    width: 100%;
-    min-width: 0;
-  }
-  .panel-resize-handle,
-  .right-panel-overlay-backdrop {
-    display: none;
-  }
-  .directory-picker-back,
-  .directory-picker-entry,
-  .directory-picker-action {
-    min-height: 44px !important;
-  }
-  .directory-picker-back {
-    min-width: 44px !important;
-  }
-  .directory-picker-footer {
-    flex-wrap: wrap;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
-  }
-  textarea,
-  input,
-  select {
-    font-size: 16px !important;
-  }
+.right-panel-container.right-panel-closed {
+  width: 0;
+  min-width: 0;
+  border-left: none !important;
+}
+.right-panel-container > * {
+  width: var(--right-panel-width, clamp(360px, 42vw, 640px));
+  min-width: 300px;
+}
+.right-panel-container.right-panel-resizing,
+.right-panel-container.right-panel-resizing > * {
+  transition: none !important;
 }
 
 @keyframes omp-spin {

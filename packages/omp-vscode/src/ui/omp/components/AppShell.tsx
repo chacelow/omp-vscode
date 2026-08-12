@@ -21,7 +21,6 @@ import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import { StarfieldEmblem } from "./StarfieldEmblem";
 import { useI18n } from "@/hooks/useI18n";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { Spinner, LoadingState } from "./ui/spinner";
 import { cn } from "@/lib/utils";
@@ -61,7 +60,6 @@ function AppShellContent() {
   const { isStarfield } = useTheme();
   const { t } = useLanguage();
   const { locale, t: translate } = useI18n();
-  const isMobile = useIsMobile();
   useViewportHeight();
 
 
@@ -100,7 +98,6 @@ function AppShellContent() {
   const [projectTrustError, setProjectTrustError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
-  const [mobileSidebarReady, setMobileSidebarReady] = useState(false);
   const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
   const rightPanelWidthRef = useRef(RIGHT_PANEL_FALLBACK_WIDTH);
   const getResponsiveRightPanelWidth = useCallback(
@@ -154,14 +151,6 @@ function AppShellContent() {
   });
   const reclampSidebarWidth = sidebarResizer.reclampWidth;
   const reclampRightPanelWidth = rightPanelResizer.reclampWidth;
-  // On mobile the sidebar is an overlay drawer; hide it by default so the chat
-  // is visible on load. Runs once the breakpoint resolves after hydration.
-  useEffect(() => {
-    if (isMobile) setSidebarOpen(false);
-  }, [isMobile]);
-  useEffect(() => {
-    setMobileSidebarReady(true);
-  }, []);
   useEffect(() => {
     if (!rightPanelOpen) return;
     reclampSidebarWidth();
@@ -231,16 +220,14 @@ function AppShellContent() {
   const [topPanelPos, setTopPanelPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const toggleTopPanel = useCallback((panel: "branches" | "system" | "session" | "language") => {
-    if (isMobile) setSidebarOpen(false);
     setActiveTopPanel((cur) => cur === panel ? null : panel);
-  }, [isMobile]);
+  }, []);
 
 
 
   const handleSidebarToggle = useCallback(() => {
-    if (isMobile) setActiveTopPanel(null);
     setSidebarOpen((open) => !open);
-  }, [isMobile]);
+  }, []);
 
   useEffect(() => {
     if (!activeTopPanel || !topBarRef.current) return;
@@ -252,7 +239,7 @@ function AppShellContent() {
     const ro = new ResizeObserver(update);
     ro.observe(topBarRef.current);
     return () => ro.disconnect();
-  }, [activeTopPanel, isMobile]);
+  }, [activeTopPanel]);
 
   // Right panel — file tabs only
   const [fileTabs, setFileTabs] = useState<Tab[]>([]);
@@ -359,8 +346,6 @@ function AppShellContent() {
     setSessionKey((k) => k + 1);
     setSystemPrompt(null);
     setInitialSessionRestored(true);
-    // On mobile, collapse the overlay drawer so the chat is revealed after pick.
-    if (isMobile && !isRestore) setSidebarOpen(false);
     if (isRestore) {
       // Suppress the redundant sessionKey bump that would come from the
       // onCwdChange effect firing after setSelectedCwd in the sidebar
@@ -371,7 +356,7 @@ function AppShellContent() {
     if (!isRestore) {
       router.replace(`?session=${encodeURIComponent(session.id)}`, { scroll: false });
     }
-  }, [router, isMobile]);
+  }, [router]);
 
   const handleNewSession = useCallback((_sessionId: string, cwd: string) => {
     setSelectedSession(null);
@@ -382,9 +367,8 @@ function AppShellContent() {
     setBranchActiveLeafId(null);
     setSystemPrompt(null);
     setActiveTopPanel(null);
-    if (isMobile) setSidebarOpen(false);
     router.replace("/", { scroll: false });
-  }, [router, isMobile]);
+  }, [router]);
 
   // Global keyboard shortcuts (handles Esc, Ctrl+Alt+N etc.)
   useGlobalKeyboardShortcuts({
@@ -495,9 +479,7 @@ function AppShellContent() {
     });
     setActiveFileTabId(tabId);
     setRightPanelOpen(true);
-    // On mobile the file panel is full-screen; close the drawer so it shows.
-    if (isMobile) setSidebarOpen(false);
-  }, [isMobile]);
+  }, []);
 
   const handleOpenLinkedFile = useCallback((filePath: string) => {
     // Open in the REAL VS Code editor (native openTextDocument). The old
@@ -690,16 +672,6 @@ function AppShellContent() {
           animation: none;
         }
       }
-      @media (max-width: 640px) {
-        .sidebar-overlay-backdrop.sidebar-mobile-pending {
-          opacity: 0 !important;
-          pointer-events: none !important;
-        }
-        .sidebar-container.sidebar-mobile-pending.sidebar-open {
-          transform: translateX(calc(-100% - env(safe-area-inset-left)));
-          box-shadow: none;
-        }
-      }
     `}</style>
     <div style={{
       display: "flex",
@@ -712,26 +684,12 @@ function AppShellContent() {
       overflowY: "hidden",
       background: "var(--bg)",
     }}>
-      {/* Mobile overlay backdrop */}
-      <div
-        className={`sidebar-overlay-backdrop${mobileSidebarReady ? "" : " sidebar-mobile-pending"}`}
-        onClick={() => setSidebarOpen(false)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 199,
-          background: "var(--vscode-widget-shadow, rgba(0,0,0,0.4))",
-          opacity: sidebarOpen ? 1 : 0,
-          pointerEvents: sidebarOpen ? "auto" : "none",
-          transition: "opacity 0.25s ease",
-        }}
-      />
 
       {/* Left sidebar */}
       <div
         ref={sidebarResizer.panelRef}
         id="session-sidebar"
-        className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}${mobileSidebarReady ? "" : " sidebar-mobile-pending"}${sidebarResizer.isResizing ? " sidebar-resizing" : ""}`}
+        className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}${sidebarResizer.isResizing ? " sidebar-resizing" : ""}`}
         style={{
           "--sidebar-width": `${sidebarResizer.width}px`,
           background: "var(--bg-panel)",
@@ -1019,7 +977,7 @@ function AppShellContent() {
                     return (
                       <div className={cn(
                         "grid gap-4 font-mono text-xs leading-[1.5]",
-                        isMobile ? "grid-cols-1" : "grid-cols-[minmax(360px,1.7fr)_minmax(140px,0.55fr)_minmax(190px,0.75fr)] gap-x-6",
+                        "grid-cols-[minmax(360px,1.7fr)_minmax(140px,0.55fr)_minmax(190px,0.75fr)] gap-x-6",
                       )}>
                         {sessionInfoSection}
                          {section(translate("session.messages"), messageRows)}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useI18n } from "@/hooks/useI18n";
 import { hostCall } from "../../bridge";
@@ -2860,7 +2859,6 @@ export function ModelsConfig({
   onClose?: () => void;
   embedded?: boolean;
 }) {
-  const isMobile = useIsMobile();
   const { t } = useI18n();
   const [config, setConfig] = useState<ModelsJson>({ providers: {} });
   const [loading, setLoading] = useState(true);
@@ -3166,9 +3164,9 @@ export function ModelsConfig({
                   overflow: "hidden",
                 }
               : {
-                  width: isMobile ? "100%" : 920,
+                  width: 920,
                   maxWidth: "100%",
-                  height: isMobile ? "100%" : "min(84vh, 820px)",
+                  height: "min(84vh, 820px)",
                   background: "var(--bg)",
                   borderRadius: 12,
                   display: "flex",
@@ -3237,17 +3235,15 @@ export function ModelsConfig({
             style={{
               flex: 1,
               display: "flex",
-              flexDirection: isMobile ? "column" : "row",
+              flexDirection: "row",
               overflow: "hidden",
             }}
           >
             {/* Left: tree */}
             <div
               style={{
-                width: isMobile ? "100%" : 232,
-                maxHeight: isMobile ? 220 : undefined,
-                borderRight: isMobile ? "none" : "1px solid var(--border)",
-                borderBottom: isMobile ? "1px solid var(--border)" : "none",
+                width: 232,
+                borderRight: "1px solid var(--border)",
                 display: "flex",
                 flexDirection: "column",
                 flexShrink: 0,
@@ -3591,7 +3587,7 @@ export function ModelsConfig({
               style={{
                 flex: 1,
                 overflowY: "auto",
-                padding: isMobile ? 14 : "20px clamp(20px, 4vw, 36px)",
+                padding: "20px clamp(20px, 4vw, 36px)",
               }}
             >
               {loading

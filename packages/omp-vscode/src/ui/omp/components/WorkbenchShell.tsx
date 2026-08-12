@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { useI18n } from "@/hooks/useI18n";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
@@ -92,7 +91,6 @@ export function WorkbenchShell(): JSX.Element {
   const [cwd, setCwd] = useState<string>(
     () => document.getElementById("app")?.getAttribute("data-cwd") ?? ""
   );
-  const isMobile = useIsMobile();
   const [resetOpen, setResetOpen] = useState(false);
 
   useEffect(() => {
@@ -141,7 +139,7 @@ export function WorkbenchShell(): JSX.Element {
       <div
         style={{
           display: "flex",
-          flexDirection: isMobile ? "column" : "row",
+          flexDirection: "row",
           height: "100vh",
           width: "100vw",
           overflow: "hidden",
@@ -152,36 +150,32 @@ export function WorkbenchShell(): JSX.Element {
       >
         <aside
           style={{
-            width: isMobile ? "100%" : 190,
-            maxHeight: isMobile ? 58 : undefined,
+            width: 190,
             flexShrink: 0,
-            padding: isMobile ? "8px 10px" : "16px 10px",
-            borderRight: isMobile ? "none" : "1px solid var(--border)",
-            borderBottom: isMobile ? "1px solid var(--border)" : "none",
+            padding: "16px 10px",
+            borderRight: "1px solid var(--border)",
             background: "var(--bg-panel)",
-            overflowX: isMobile ? "auto" : "hidden",
-            overflowY: isMobile ? "hidden" : "auto",
+            overflowX: "hidden",
+            overflowY: "auto",
           }}
         >
-          {!isMobile ? (
-            <div style={{ padding: "0 10px 14px" }}>
-              <div
-                style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}
-              >
-                {t("workbench.title")}
-              </div>
-              <div
-                style={{ marginTop: 2, fontSize: 10, color: "var(--text-dim)" }}
-              >
-                {t("workbench.subtitle")}
-              </div>
+          <div style={{ padding: "0 10px 14px" }}>
+            <div
+              style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+            >
+              {t("workbench.title")}
             </div>
-          ) : null}
+            <div
+              style={{ marginTop: 2, fontSize: 10, color: "var(--text-dim)" }}
+            >
+              {t("workbench.subtitle")}
+            </div>
+          </div>
           <nav
             aria-label="Workbench sections"
             style={{
               display: "flex",
-              flexDirection: isMobile ? "row" : "column",
+              flexDirection: "column",
               gap: 3,
               minWidth: "max-content",
             }}
@@ -196,7 +190,7 @@ export function WorkbenchShell(): JSX.Element {
                   title={definition.hint}
                   aria-current={active ? "page" : undefined}
                   style={{
-                    minHeight: isMobile ? 36 : 38,
+                    minHeight: 38,
                     padding: "8px 10px",
                     border: "none",
                     borderRadius: 7,
@@ -230,7 +224,7 @@ export function WorkbenchShell(): JSX.Element {
               minHeight: 58,
               display: "flex",
               alignItems: "center",
-              padding: isMobile ? "8px 16px" : "10px 24px",
+              padding: "10px 24px",
               borderBottom: "1px solid var(--border)",
               flexShrink: 0,
             }}

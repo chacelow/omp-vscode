@@ -5,6 +5,7 @@ import { handlers } from "./handlers";
 export interface HostServiceDeps {
   log: vscode.OutputChannel;
   cwd: string;
+  extensionVersion: string;
 }
 
 /** Typed dispatcher for webview → extension host calls (non-agent, non-omp).

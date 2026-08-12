@@ -438,15 +438,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const matched = displayModel ? modelList.find((model) => model.provider === displayModel.provider && (model.id === displayModel.modelId || displayModel.modelId.includes(model.id))) : null;
     const contextWindow = contextUsage?.contextWindow || matched?.contextWindow || 128000;
     // Live turns report context tokens via ACP usage_update. A freshly
-    // loaded session has no live usage — derive it from the LAST assistant
-    // message's persisted usage (input+output+cache ≈ the context the last
-    // turn consumed), same as the TUI footer after /resume.
+    // loaded session has no live usage — derive it from the newest
+    // assistant message with a NON-ZERO usage row (input+output+cache).
+    // Error/aborted turns get persisted with all-zero usage; skip those
+    // and walk backwards to the last successful turn, same as the TUI
+    // footer after /resume.
     let lastTurnTokens: number | null = null;
     for (let i = messages.length - 1; i >= 0; i--) {
       const message = messages[i];
       if (message.role !== "assistant" || !message.usage) continue;
       const { input, output, cacheRead, cacheWrite } = message.usage;
-      lastTurnTokens = (input ?? 0) + (output ?? 0) + (cacheRead ?? 0) + (cacheWrite ?? 0);
+      const total = (input ?? 0) + (output ?? 0) + (cacheRead ?? 0) + (cacheWrite ?? 0);
+      if (total <= 0) continue;
+      lastTurnTokens = total;
       break;
     }
     const currentTokens = contextUsage?.tokens ?? lastTurnTokens;

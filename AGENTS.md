@@ -107,6 +107,10 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 - Don't use `.only` or `.skip` in committed code
 - Keep test suites reasonably flat - avoid excessive `describe` nesting
 
+### VS Code frontend changes
+
+- Complete VS Code webview frontend changes with static inspection only. Do not launch VS Code, run frontend builds/tests, or perform browser smoke tests unless the user explicitly requests verification.
+
 ## When ESLint + Prettier + Stylelint Can't Help
 
 ESLint + Prettier + Stylelint's linter will catch most issues automatically. Focus your attention on:

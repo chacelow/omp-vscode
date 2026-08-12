@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { acpRequest, hostCall } from "../../bridge";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import type { PluginPackageInfo, PluginsResponse } from "@/lib/api-types";
 import { ompExtensions, ompExtensionsToggle } from "@/lib/ext-methods";
 import { useI18n } from "@/hooks/useI18n";
@@ -689,7 +688,6 @@ export function PluginsConfig({
   embedded?: boolean;
 }) {
   const { t } = useI18n();
-  const isMobile = useIsMobile();
   const [data, setData] = useState<PluginsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -824,7 +822,7 @@ export function PluginsConfig({
       <div
         style={embedded
           ? { display: "flex", flexDirection: "column", height: "100%", width: "100%", background: "var(--bg)", color: "var(--text)", overflow: "hidden" }
-          : { width: isMobile ? "calc(100vw - 16px)" : 860, maxWidth: "calc(100vw - 16px)", height: isMobile ? "calc(100dvh - 16px)" : "76vh", maxHeight: "calc(100dvh - 16px)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))", overflow: "hidden" }
+          : { width: 860, maxWidth: "calc(100vw - 16px)", height: "76vh", maxHeight: "calc(100dvh - 16px)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.18))", overflow: "hidden" }
         }
       >
         <div
@@ -885,13 +883,11 @@ export function PluginsConfig({
           </div>
         )}
 
-        <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", overflow: "hidden" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden" }}>
           <div
             style={{
-              width: isMobile ? "100%" : 245,
-              maxHeight: isMobile ? "40vh" : undefined,
-              borderRight: isMobile ? "none" : "1px solid var(--border)",
-              borderBottom: isMobile ? "1px solid var(--border)" : "none",
+              width: 245,
+              borderRight: "1px solid var(--border)",
               display: "flex",
               flexDirection: "column",
               flexShrink: 0,

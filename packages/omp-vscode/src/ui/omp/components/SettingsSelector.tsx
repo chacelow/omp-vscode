@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { X } from "lucide-react";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
 import { hostCall } from "../../bridge";
 import {
@@ -429,7 +428,6 @@ export function SettingsPanel({
   onQueueModeChange,
 }: SettingsPanelProps): JSX.Element {
   const { t } = useI18n();
-  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     SETTINGS_TABS[0].id
   );
@@ -652,7 +650,7 @@ export function SettingsPanel({
                       }
                       onChange={(next) => saveValue(def.path, next)}
                       onOpenModelRoles={modelRoles}
-                      compact={isMobile}
+                      compact={false}
                       t={t}
                     />
                   );

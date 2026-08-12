@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { FolderIcon } from "./FileIcons";
 import { hostCall } from "../../bridge";
@@ -27,7 +26,6 @@ interface Props {
 
 export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Props) {
   const { t } = useLanguage();
-  const isMobile = useIsMobile();
   const [currentPath, setCurrentPath] = useState<string>("");
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [homeDir, setHomeDir] = useState<string>("");
@@ -161,9 +159,9 @@ export function FolderPickerModal({ open, initialPath, onSelect, onClose }: Prop
         role="dialog"
         aria-modal="true"
         style={{
-          width: isMobile ? "calc(100vw - 16px)" : 740,
+          width: 740,
           maxWidth: "calc(100vw - 16px)",
-          height: isMobile ? "calc(100dvh - 16px)" : "75vh",
+          height: "75vh",
           maxHeight: "calc(100dvh - 16px)",
           background: "var(--bg)",
           border: "1px solid var(--border)",

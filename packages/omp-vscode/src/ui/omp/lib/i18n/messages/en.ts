@@ -73,6 +73,8 @@ export const enLocale: LocalePlugin = {
     "sidebar.selectProject": "Select project…",
     "sidebar.filterProjects": "Filter projects…",
     "sidebar.noMatchingProjects": "No matching projects",
+    "sidebar.loadingProjects": "Loading projects…",
+    "sidebar.noProjects": "No projects yet",
     "sidebar.useDefaultDirectory": "Use default directory",
     "sidebar.customPath": "Custom path…",
     "directoryPicker.selectDirectory": "Select directory",

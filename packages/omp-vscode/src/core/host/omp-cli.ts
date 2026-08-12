@@ -10,8 +10,10 @@ export async function getOmpCliVersion(): Promise<string> {
     const child = spawn(resolveOmpBinary(), ["-v"]);
     let out = "";
     for await (const chunk of child.stdout) out += String(chunk);
-    await new Promise<void>((resolve) => child.once("close", () => resolve()));
-    cliVersionCache = out.trim();
+    const exitCode = await new Promise<number | null>((resolve) => child.once("close", resolve));
+    cliVersionCache = exitCode === 0
+      ? out.trim().replace(/^omp(?:\s+|\/)?v?/i, "")
+      : "";
   } catch {
     cliVersionCache = "";
   }
