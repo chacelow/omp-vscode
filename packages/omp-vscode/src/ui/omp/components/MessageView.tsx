@@ -1046,8 +1046,12 @@ function ThinkingBlock({
   blockIndex: number;
 }) {
   const { t } = useI18n();
-  // Stream: expanded live (auto-follow); done: collapsed to a one-line
-  // summary — zoeymind-style lifecycle.
+  // Historical sessions: start collapsed (a compact one-line summary the
+  // user opens on demand). Live turns: open while the model is still
+  // producing thinking chunks so the tail scroll-follows. When the turn
+  // ends we DO NOT auto-collapse — collapsing on completion caused a
+  // visible layout jump ('gap suddenly closes'), and it discards content
+  // the user was still reading. Manual toggle stays available.
   const [expanded, setExpanded] = useState(isStreaming === true);
   const prevStreamingRef = useRef(isStreaming);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -1061,9 +1065,7 @@ function ThinkingBlock({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const prev = prevStreamingRef.current;
-    if (isStreaming && !prev) setExpanded(true);
-    else if (!isStreaming && prev) setExpanded(false);
+    if (isStreaming && !prevStreamingRef.current) setExpanded(true);
     prevStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
