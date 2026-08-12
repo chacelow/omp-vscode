@@ -319,7 +319,19 @@ export class AcpService {
     const ctx = this.requireConnection();
     const session = this.requireSession(sessionId);
     if (session.promptPending) throw new AcpUnavailableError("A prompt is already running for this session");
-    this.updateSession(sessionId, { promptPending: true, error: undefined });
+    // omp does NOT echo the user's prompt back as a user_message_chunk for
+    // a live turn (verified against acp-event-mapper: chunks only replay
+    // during session/load). Append it to the canonical transcript here —
+    // same as the TUI, which paints the user message immediately on
+    // submit. This guarantees ordering (user row precedes the streaming
+    // assistant) and lets the webview clear its optimistic slot as soon as
+    // this snapshot lands.
+    this.updateSession(sessionId, {
+      promptPending: true,
+      error: undefined,
+      stopReason: undefined,
+      messages: [...session.messages, { id: crypto.randomUUID(), role: "user", content: prompt }],
+    });
     try {
       const promptResponse = await ctx.agent.request(methods.agent.session.prompt, { sessionId, prompt }) as {
         stopReason?: string;

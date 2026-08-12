@@ -496,30 +496,30 @@ export function ChatWindow({
     onOpenResumeDialog,
     forceNewSession,
   });
-  // Splice the optimistic user message into the render stream. It lives in
-  // its own slot in useAgentSession (TUI pattern) — during a live turn we
-  // insert it BEFORE the streaming assistant tail so ordering matches the
-  // chronological truth: user asked, then assistant is answering. When the
-  // authoritative user row lands in the ACP snapshot's messages array, the
-  // hook clears pendingUserMessage and this splice becomes a no-op.
+  // Optimistic user message rendered as a separate slot. When a live turn
+  // is streaming, its authoritative streaming assistant is the LAST entry
+  // in rawMessages; we splice the pending user right before it so the
+  // user appears above the streaming response. When there's no live turn
+  // (idle or between turns) we simply append the pending user at the end
+  // — the previous turn's assistant stays where it is.
   const messages = useMemo(() => {
     if (!pendingUserMessage) return rawMessages;
     const last = rawMessages[rawMessages.length - 1];
-    if (last?.role === "assistant") {
+    const streamingTail = (agentRunning || streamState.isStreaming) && last?.role === "assistant";
+    if (streamingTail) {
       return [...rawMessages.slice(0, -1), pendingUserMessage, last];
     }
     return [...rawMessages, pendingUserMessage];
-  }, [rawMessages, pendingUserMessage]);
-  // Mirror entryIds shape (extra undefined for the optimistic slot) so
-  // callsites reading entryIds[idx] don't misalign.
+  }, [rawMessages, pendingUserMessage, agentRunning, streamState.isStreaming]);
   const paddedEntryIds = useMemo(() => {
     if (!pendingUserMessage) return entryIds;
     const last = rawMessages[rawMessages.length - 1];
-    if (last?.role === "assistant") {
+    const streamingTail = (agentRunning || streamState.isStreaming) && last?.role === "assistant";
+    if (streamingTail) {
       return [...entryIds.slice(0, -1), "__pending__", entryIds[entryIds.length - 1] ?? ""];
     }
     return [...entryIds, "__pending__"];
-  }, [entryIds, rawMessages, pendingUserMessage]);
+  }, [entryIds, rawMessages, pendingUserMessage, agentRunning, streamState.isStreaming]);
   const sessionBusy = agentRunning || bashRunning;
   const [modelHubOpen, setModelHubOpen] = useState(false);
   const [temporaryModelPickerOpen, setTemporaryModelPickerOpen] =

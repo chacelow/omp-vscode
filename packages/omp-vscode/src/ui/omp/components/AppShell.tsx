@@ -31,7 +31,7 @@ import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
 import { buildAtMentionText, buildFileAtMentionsText, buildFileLineMentionText } from "@/lib/file-fuzzy";
-import { getInitialNavigation } from "@/lib/initial-navigation";
+import { getInitialNavigation, rememberLastSession } from "@/lib/initial-navigation";
 import {
   getDefaultRightPanelWidth,
   getRightPanelMaxWidth,
@@ -358,6 +358,7 @@ function AppShellContent() {
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
     setNewSessionCwd(null);
     setSelectedSession(session);
+    rememberLastSession(session.id);
     setSessionKey((k) => k + 1);
     setSystemPrompt(null);
     setInitialSessionRestored(true);
@@ -383,6 +384,7 @@ function AppShellContent() {
 
   const handleNewSession = useCallback((_sessionId: string, cwd: string) => {
     setSelectedSession(null);
+    rememberLastSession(null);
     setNewSessionCwd(cwd);
     setSessionKey((k) => k + 1);
     forceNewSessionRef.current = true;
@@ -418,6 +420,7 @@ function AppShellContent() {
   const handleSessionCreated = useCallback((session: SessionInfo) => {
     setNewSessionCwd(null);
     setSelectedSession(session);
+    rememberLastSession(session.id);
     setBranchTree([]);
     setBranchActiveLeafId(null);
     setRefreshKey((k) => k + 1);
@@ -441,6 +444,7 @@ function AppShellContent() {
     setNewSessionCwd(null);
     setBranchTree([]);
     setBranchActiveLeafId(null);
+    rememberLastSession(newSessionId);
     setSelectedSession((prev) => ({
       ...(prev ?? { path: "", cwd: "", created: "", modified: "", messageCount: 0, firstMessage: "" }),
       id: newSessionId,
@@ -458,6 +462,7 @@ function AppShellContent() {
     if (selectedSession?.id === sessionId) {
       const cwd = selectedSession.cwd;
       setSelectedSession(null);
+      rememberLastSession(null);
       setNewSessionCwd(cwd ?? null);
       setSessionKey((k) => k + 1);
       setBranchTree([]);
