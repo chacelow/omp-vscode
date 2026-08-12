@@ -283,6 +283,18 @@ function messageText(message: unknown): string {
     return text + block.text;
   }, "");
 }
+
+/**
+ * Signature identifying a submitted user message so an authoritative
+ * server-side copy can be matched against the optimistic one. Mirrors
+ * TUI's `${text}\u0000${imageCount}` pattern (interactive-mode.ts:1609).
+ */
+function userMessageSignature(message: AgentMessage): string {
+  if (message.role !== "user") return "";
+  const text = messageText(message);
+  const imageCount = Array.isArray(message.content) ? message.content.reduce((count, block) => count + (block?.type === "image" ? 1 : 0), 0) : 0;
+  return `${text}\u0000${imageCount}`;
+}
 function parseModel(value: string | undefined): SelectedModel | null {
   if (!value) return null;
   const separator = value.indexOf("/");
@@ -311,8 +323,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
-  // Kept in sync inside every setMessages caller. Read by applySnapshot
-  // to guard against empty-snapshot wipes.
+  // Optimistic user message (single-slot, TUI-parity). omp does NOT echo
+  // the just-prompted user text via `user_message_chunk` during a live
+  // turn (see `acp-event-mapper.ts:145-219`); the authoritative user row
+  // only appears in `state.messages` on the next full replay. We keep the
+  // just-submitted user turn in its own slot until an ACP snapshot's
+  // messages array contains a user row with a matching signature.
+  const [pendingUserMessage, setPendingUserMessage] = useState<AgentMessage | null>(null);
   const messagesRef = useRef<AgentMessage[]>([]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [entryIds, setEntryIds] = useState<string[]>([]);
@@ -372,7 +389,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const ignoreProgrammaticScrollUntilRef = useRef(0);
   const ensuringNewSessionRef = useRef<Promise<string | null> | null>(null);
   const newSessionPromotedRef = useRef(false);
-  const optimisticUserMessageKeyRef = useRef<string | null>(null);
   const preCompactUsedRef = useRef<number | null>(null);
   const latestUsedRef = useRef<number | null>(null);
   const sawErrorStopRef = useRef(false);
@@ -449,12 +465,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setSnapshot(state);
     const nextMessages = coalesceToolAssistants(state.messages.flatMap((message) => toAgentMessages(message, state.toolCalls)));
     setMessages((current) => {
-      // ACP snapshots strip per-message usage/duration/ttft/timestamp because
-      // ACP doesn't emit them. Preserve the JSONL-derived stats already on
-      // local messages by aligning assistant-index across the diff.
+      // Enrich assistants with local usage/duration/ttft that ACP doesn't
+      // emit. Align by assistant-index across the diff.
       const previousAssistants: AssistantMessage[] = current.filter((message): message is AssistantMessage => message.role === "assistant");
       let assistantIndex = 0;
-      const enriched = nextMessages.map((message) => {
+      return nextMessages.map((message) => {
         if (message.role !== "assistant") return message;
         const previous = previousAssistants[assistantIndex++];
         if (!previous) return message;
@@ -466,19 +481,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           timestamp: message.timestamp ?? previous.timestamp,
         } satisfies AssistantMessage;
       });
-      const optimisticKey = optimisticUserMessageKeyRef.current;
-      if (!optimisticKey) return enriched;
-      const hasAuthoritativeMessage = enriched.some((message) => message.role === "user" && messageText(message) === optimisticKey);
-      if (hasAuthoritativeMessage) {
-        optimisticUserMessageKeyRef.current = null;
-        return enriched;
-      }
-      // Snapshot hasn't picked up the just-sent user message yet — carry the
-      // optimistic row forward from `current` so it doesn't visibly vanish
-      // between send and first agent chunk.
-      const optimistic = current.find((message) => message.role === "user" && messageText(message) === optimisticKey);
-      if (!optimistic) return enriched;
-      return [...enriched, optimistic];
+    });
+    // Clear optimistic user once its authoritative counterpart appears in
+    // the snapshot. Signature-matched (text + image count) so identical
+    // repeated prompts don't collide.
+    setPendingUserMessage((pending) => {
+      if (!pending) return pending;
+      const sig = userMessageSignature(pending);
+      const authoritative = nextMessages.some((message) => message.role === "user" && userMessageSignature(message) === sig);
+      return authoritative ? null : pending;
     });
     const wasRunning = agentRunningRef.current;
     agentRunningRef.current = state.promptPending;
@@ -636,14 +647,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!sid) return;
       const command = message.trim().match(/^\/(live|collab|join|leave)(?:\s|$)/i)?.[1];
       if (command) addNotice({ type: "info", message: `/${command.toLowerCase()} is TUI-only for now` });
-      optimisticUserMessageKeyRef.current = message;
-      setMessages((previous) => [...previous, { role: "user", content: blocksToContent(contentFor(message, images)).filter((block): block is DisplayContent[number] & ({ type: "text" } | { type: "image" }) => block.type === "text" || block.type === "image"), timestamp: Date.now() }]);
+      const displayContent = blocksToContent(contentFor(message, images)).filter((block): block is DisplayContent[number] & ({ type: "text" } | { type: "image" }) => block.type === "text" || block.type === "image");
+      // Optimistic user message lives in its own slot until the ACP
+      // snapshot's messages array contains a signature-matched user row.
+      // Do NOT push into `messages` — that racedwith applySnapshot and
+      // caused duplicates + wrong ordering.
+      setPendingUserMessage({ role: "user", content: displayContent, timestamp: Date.now() });
       await acpRequest({ type: "acp/prompt", sessionId: sid, prompt: contentFor(message, images) });
       promoteNewSession(1, message);
     } catch (cause) {
+      setPendingUserMessage(null);
       addNotice({ type: "error", message: cause instanceof Error ? cause.message : "Failed to send message" });
     }
   }, [addNotice, beginCompaction, ensureNewSession, promoteNewSession]);
+
   const handleAbort = useCallback(async () => { const sid = sessionIdRef.current; if (sid) await acpRequest({ type: "acp/cancel", sessionId: sid }); }, []);
   const handleFork = useCallback(async (_entryId: string) => {
     const sid = sessionIdRef.current;
@@ -933,7 +950,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
 
   return {
-    data, loading, error, activeLeafId, messages, entryIds, streamState,
+    data, loading, error, activeLeafId, messages, pendingUserMessage, entryIds, streamState,
     agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, modelRoles, fastMode, newSessionModel, toolPreset, thinkingLevel, pendingRestoreModel,
     retryInfo, contextUsage: sessionStats?.contextUsage ?? contextUsage, systemPrompt, forkingEntryId, compactionBoundary,
     isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,

@@ -414,7 +414,8 @@ export function ChatWindow({
   const {
     loading,
     error,
-    messages,
+    messages: rawMessages,
+    pendingUserMessage,
     entryIds,
     streamState,
     data,
@@ -495,6 +496,30 @@ export function ChatWindow({
     onOpenResumeDialog,
     forceNewSession,
   });
+  // Splice the optimistic user message into the render stream. It lives in
+  // its own slot in useAgentSession (TUI pattern) — during a live turn we
+  // insert it BEFORE the streaming assistant tail so ordering matches the
+  // chronological truth: user asked, then assistant is answering. When the
+  // authoritative user row lands in the ACP snapshot's messages array, the
+  // hook clears pendingUserMessage and this splice becomes a no-op.
+  const messages = useMemo(() => {
+    if (!pendingUserMessage) return rawMessages;
+    const last = rawMessages[rawMessages.length - 1];
+    if (last?.role === "assistant") {
+      return [...rawMessages.slice(0, -1), pendingUserMessage, last];
+    }
+    return [...rawMessages, pendingUserMessage];
+  }, [rawMessages, pendingUserMessage]);
+  // Mirror entryIds shape (extra undefined for the optimistic slot) so
+  // callsites reading entryIds[idx] don't misalign.
+  const paddedEntryIds = useMemo(() => {
+    if (!pendingUserMessage) return entryIds;
+    const last = rawMessages[rawMessages.length - 1];
+    if (last?.role === "assistant") {
+      return [...entryIds.slice(0, -1), "__pending__", entryIds[entryIds.length - 1] ?? ""];
+    }
+    return [...entryIds, "__pending__"];
+  }, [entryIds, rawMessages, pendingUserMessage]);
   const sessionBusy = agentRunning || bashRunning;
   const [modelHubOpen, setModelHubOpen] = useState(false);
   const [temporaryModelPickerOpen, setTemporaryModelPickerOpen] =
@@ -1360,7 +1385,7 @@ export function ChatWindow({
                         msg.role === "user" &&
                         idx > 0 &&
                         messages[idx - 1].role === "assistant"
-                          ? entryIds[idx - 1]
+                          ? paddedEntryIds[idx - 1]
                           : undefined;
                       const isVisible =
                         msg.role === "user" || msg.role === "assistant";
@@ -1397,7 +1422,7 @@ export function ChatWindow({
                           modelNames={modelNames}
                           cwd={messageCwd}
                           onOpenFile={onOpenFile}
-                          entryId={entryIds[idx]}
+                          entryId={paddedEntryIds[idx]}
                           onFork={
                             options.hideFork ||
                             sessionBusy ||
@@ -1406,7 +1431,7 @@ export function ChatWindow({
                               ? undefined
                               : handleFork
                           }
-                          forking={forkingEntryId === entryIds[idx]}
+                          forking={forkingEntryId === paddedEntryIds[idx]}
                           onNavigate={sessionBusy ? undefined : handleNavigate}
                           prevAssistantEntryId={
                             sessionBusy ? undefined : prevAssistantEntryId
@@ -1445,7 +1470,7 @@ export function ChatWindow({
                         <div
                           key={`${keyPrefix}-${idx}`}
                           ref={attachVisibleRef(idx, currentRefIdx)}
-                          data-entry-id={entryIds[idx]}
+                          data-entry-id={paddedEntryIds[idx]}
                         >
                           {view}
                         </div>
