@@ -83,8 +83,8 @@ export function subscribeAcp(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-export function openInVSCode(filePath: string): void {
-  ompPost({ type: "openFile", path: filePath });
+export function openInVSCode(filePath: string, cwd?: string | null): void {
+  ompPost({ type: "openFile", path: filePath, cwd: cwd ?? undefined });
 }
 
 export function openImageInVSCode(data: string, mimeType: string): void {

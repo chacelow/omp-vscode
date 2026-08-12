@@ -116,5 +116,5 @@ export type AcpWebviewMessage =
   | { type: "acp/request"; requestId: number; request: AcpRequest }
   | { type: "host/call"; requestId: number; method: string; params: unknown }
   | { type: "log"; level: "info" | "error"; message: string; stack?: string }
-  | { type: "openFile"; path: string }
+  | { type: "openFile"; path: string; cwd?: string }
   | { type: "openImage"; data: string; mimeType: string };

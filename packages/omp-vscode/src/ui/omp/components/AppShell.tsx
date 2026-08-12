@@ -488,8 +488,10 @@ function AppShellContent() {
   const handleOpenLinkedFile = useCallback((filePath: string) => {
     // Open in the REAL VS Code editor (native openTextDocument). The old
     // webview file-panel tabs are gone — this is the chat's file-open path.
-    openInVSCode(filePath);
-  }, []);
+    // Pass the session cwd so the extension can resolve relative paths
+    // (agents often emit `apps/foo/bar.tsx` without leading slash).
+    openInVSCode(filePath, selectedSession?.cwd ?? activeCwd);
+  }, [activeCwd, selectedSession?.cwd]);
 
   const handleCloseFileTab = useCallback((tabId: string) => {
     setFileTabs((prev) => {

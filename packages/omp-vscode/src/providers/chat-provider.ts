@@ -239,9 +239,19 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           // path as missing and the "File not found" warning would fire on valid files.
           const raw = msg.path;
           const rangeMatch = raw.match(/^(?<file>.+?)(?:[:#]L?(?<start>\d+)(?:[-:]L?(?<end>\d+))?)?$/);
-          const filePath = rangeMatch?.groups?.file ?? raw;
+          const rawFile = rangeMatch?.groups?.file ?? raw;
           const startLine = rangeMatch?.groups?.start ? Math.max(0, Number.parseInt(rangeMatch.groups.start, 10) - 1) : null;
           const endLine = rangeMatch?.groups?.end ? Math.max(0, Number.parseInt(rangeMatch.groups.end, 10) - 1) : startLine;
+          // Agents emit repo-relative paths (`apps/foo/bar.tsx`); resolve them
+          // against the session cwd, then fall back to each workspace folder.
+          // Absolute paths are used as-is.
+          const filePath = await this.resolveOpenFilePath(rawFile, msg.cwd);
+          if (!filePath) {
+            void vscode.window.showWarningMessage(`File not found: ${rawFile}`);
+            this.log.appendLine(`[openFile] missing: ${rawFile}`);
+            this.replyToWebview(null, { type: "acp/response", requestId: 0, ok: true, data: null });
+            break;
+          }
           const uri = vscode.Uri.file(filePath);
           let stat: vscode.FileStat;
           try {
@@ -459,5 +469,39 @@ export class ChatProvider implements vscode.WebviewViewProvider {
   private post(message: unknown): void {
     if (this.view) void this.view.webview.postMessage(message);
     if (this.workbenchPanel) void this.workbenchPanel.webview.postMessage(message);
+  }
+
+  /**
+   * Resolve a webview-supplied file path (possibly relative, possibly
+   * repo-relative from the agent) to an existing absolute path.
+   * Search order:
+   *  1. Absolute path — used as-is if it exists.
+   *  2. `${cwd}/${rawFile}` — session cwd from the webview (most common).
+   *  3. Each `vscode.workspace.workspaceFolders[i].uri.fsPath / rawFile` —
+   *     covers relative paths when the user has the repo open as a workspace
+   *     folder but the session cwd wasn't threaded through.
+   * Returns null if none of the candidates exist.
+   */
+  private async resolveOpenFilePath(rawFile: string, cwd: string | undefined): Promise<string | null> {
+    const exists = async (candidate: string): Promise<boolean> => {
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.file(candidate));
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    if (path.isAbsolute(rawFile)) {
+      return (await exists(rawFile)) ? rawFile : null;
+    }
+    const candidates: string[] = [];
+    if (cwd) candidates.push(path.resolve(cwd, rawFile));
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      candidates.push(path.resolve(folder.uri.fsPath, rawFile));
+    }
+    for (const candidate of candidates) {
+      if (await exists(candidate)) return candidate;
+    }
+    return null;
   }
 }
