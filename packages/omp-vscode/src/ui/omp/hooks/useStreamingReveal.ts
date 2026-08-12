@@ -60,7 +60,11 @@ export function useStreamingReveal(
   }, [text, thinking]);
 
   useEffect(() => {
-    if (snapToEnd) {
+    // Fast path: never-streamed content (loaded from JSONL / a message
+    // that has always been in snapToEnd mode) — reveal instantly, no
+    // animation. revealedRef stays at 0 for this case because the frame
+    // loop has never run.
+    if (snapToEnd && revealedRef.current === 0) {
       const total = graphemeCount(text, segmenter);
       revealedRef.current = total;
       setRevealed(total);
@@ -80,10 +84,15 @@ export function useStreamingReveal(
         return;
       }
 
-      const step = Math.max(
-        MIN_STEP,
-        Math.ceil((total - revealedRef.current) / CATCHUP_FRAMES)
-      );
+      const remaining = total - revealedRef.current;
+      // Turn just ended (snapToEnd flipped true mid-stream): finish the
+      // remaining reveal in ~3 frames (~100ms) at 30fps. Smooths out the
+      // gap between "last chunk arrived" and "prompt resolved" — used to
+      // hard-snap and the tail of the message flashed in ("嘣一下").
+      // Regular streaming keeps the gentler 8-frame catchup.
+      const catchupFrames = snapToEnd ? 3 : CATCHUP_FRAMES;
+      const minStep = snapToEnd ? MIN_STEP * 6 : MIN_STEP;
+      const step = Math.max(minStep, Math.ceil(remaining / catchupFrames));
       revealedRef.current = Math.min(total, revealedRef.current + step);
       setRevealed(revealedRef.current);
       frameRef.current = requestAnimationFrame(tick);
