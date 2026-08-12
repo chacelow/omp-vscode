@@ -10,7 +10,7 @@ import { FolderPickerModal } from "./FolderPickerModal";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-import { GitFork, Plus, RefreshCw } from "lucide-react";
+import { GitFork, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { acpRequest, hostCall } from "../../bridge";
 import { ompSessionsListAll, type OmpSessionSummary } from "@/lib/ext-methods";
 
@@ -861,27 +861,26 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             <Button
               onClick={handleNewSession}
               disabled={!selectedCwd}
-              variant="secondary"
-              size="sm"
+              variant="ghost"
+              size="toolbar"
               title={selectedCwd ? t("sidebar.newSessionTitle", { path: selectedCwd }) : t("sidebar.selectProject")}
-              className="h-8 gap-1.5 rounded-[7px] border border-[var(--border)] px-3 text-[12px] font-medium text-[var(--text-muted)] hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={t("sidebar.new")}
+              className="text-[var(--text-muted)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Plus size={12} strokeWidth={2.2} />
-              {t("sidebar.new")}
+              <Plus />
             </Button>
             <Button
               onClick={() => loadSessions(false)}
-              variant="secondary"
-              size="icon"
+              variant="ghost"
+              size="toolbar"
               title={t("sidebar.refresh")}
+              aria-label={t("sidebar.refresh")}
               className={cn(
-                "h-8 w-8 rounded-[7px]",
-                sessionRefreshDone
-                  ? "border border-[color-mix(in_srgb,var(--success)_40%,transparent)] bg-[color-mix(in_srgb,var(--success)_18%,transparent)] text-success"
-                  : "border border-[var(--border)] text-[var(--text-muted)]",
+                "text-[var(--text-muted)]",
+                sessionRefreshDone && "text-success",
               )}
             >
-              <RefreshCw size={13} className={sessionRefreshDone ? "text-success" : ""} />
+              <RefreshCw />
             </Button>
           </div>
         </div>
@@ -2022,62 +2021,29 @@ function SessionItem({
 
           {/* Action buttons — shown on hover */}
           {hovered && (
-            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-              <button
+            <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+              <Button
+                type="button"
                 onClick={startRename}
+                variant="ghost"
+                size="toolbar"
                 title={t("sidebar.rename")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, padding: 0,
-                  background: "var(--bg-hover)", border: "1px solid var(--border)",
-                  borderRadius: 7, color: "var(--text-muted)",
-                  cursor: "pointer", flexShrink: 0,
-                  transition: "background 0.12s, color 0.12s, border-color 0.12s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-selected)";
-                  e.currentTarget.style.color = "var(--accent)";
-                  e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 35%, transparent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
+                aria-label={t("sidebar.rename")}
+                className="text-[var(--text-muted)] hover:text-[var(--accent)]"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                </svg>
-              </button>
-              <button
+                <Pencil />
+              </Button>
+              <Button
+                type="button"
                 onClick={handleDeleteClick}
+                variant="ghost"
+                size="toolbar"
                 title={t("sidebar.deleteWithShiftClick")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, padding: 0,
-                  background: "var(--bg-hover)", border: "1px solid var(--border)",
-                  borderRadius: 7, color: "var(--text-muted)",
-                  cursor: "pointer", flexShrink: 0,
-                  transition: "background 0.12s, color 0.12s, border-color 0.12s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "color-mix(in srgb, var(--destructive) 8%, transparent)";
-                  e.currentTarget.style.color = "#ef4444";
-                  e.currentTarget.style.borderColor = "color-mix(in srgb, var(--destructive) 35%, transparent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
+                aria-label={t("sidebar.delete")}
+                className="text-[var(--text-muted)] hover:bg-[color-mix(in_srgb,var(--destructive)_10%,transparent)] hover:text-[#ef4444]"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  <path d="M10 11v6M14 11v6" />
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                </svg>
-              </button>
+                <Trash2 />
+              </Button>
             </div>
           )}
         </>

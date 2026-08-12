@@ -353,7 +353,11 @@ function AppShellContent() {
     }
     // Skip router.replace when restoring from URL — the param is already correct
     // and calling replace in production Next.js triggers a Suspense remount loop
+    // Collapse the sidebar so the picked session's chat gets full attention.
+    // Skip on URL restore — no user gesture triggered it, and the sidebar
+    // starts closed by default anyway.
     if (!isRestore) {
+      setSidebarOpen(false);
       router.replace(`?session=${encodeURIComponent(session.id)}`, { scroll: false });
     }
   }, [router]);
