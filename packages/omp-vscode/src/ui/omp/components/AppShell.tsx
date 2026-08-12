@@ -22,7 +22,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { StarfieldEmblem } from "./StarfieldEmblem";
 import { useI18n } from "@/hooks/useI18n";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
-import { Spinner, LoadingState } from "./ui/spinner";
+import { Spinner } from "./ui/spinner";
+import { AppLoading } from "./ui/app-loading";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import {
@@ -1385,19 +1386,10 @@ function AppShellContent() {
                 onCwdChange={(nextCwd) => handleCwdChange(nextCwd)}
               />
             ) : initialCwdStatus === "validating" ? (
-              <LoadingState label={translate("workspace.opening")}>
-                <div
-                  style={{
-                    maxWidth: "min(720px, 100%)",
-                    overflowWrap: "anywhere",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  {initialNavigation.requestedCwd}
-                </div>
-              </LoadingState>
+              <AppLoading
+                label={translate("workspace.opening")}
+                subtitle={initialNavigation.requestedCwd ?? undefined}
+              />
             ) : initialCwdStatus === "error" ? (
               <div
                 role="alert"

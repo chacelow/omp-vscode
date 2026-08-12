@@ -43,7 +43,7 @@ import { ProjectSwitcher } from "./ProjectSwitcher";
 import { UserMessageSelector } from "./UserMessageSelector";
 import { AgentHub } from "./agent-hub/AgentHub";
 import { HistorySearchDialog } from "./HistorySearchDialog";
-import { LoadingState } from "./ui/spinner";
+import { AppLoading } from "./ui/app-loading";
 import { ChevronRight, Clock, TriangleAlert } from "lucide-react";
 import { useI18n } from "@/hooks/useI18n";
 import {
@@ -992,17 +992,16 @@ export function ChatWindow({
   );
 
   if (loading) {
+    // Prefer the human title, fall back to the short id, then the cwd. All
+    // three may be absent on the very first render (session prop hydrating);
+    // in that case the label alone carries the state.
+    const sessionLabel = session?.name?.trim() || (session?.id ? session.id.slice(0, 8) : null);
+    const subtitle = sessionLabel ?? messageCwd ?? undefined;
     return (
-      <LoadingState label={t("chat.loadingSession")}>
-        {messageCwd && (
-          <div
-            className="max-w-[min(720px,100%)] font-mono text-[11px] text-[var(--text-muted)]"
-            style={{ overflowWrap: "anywhere" }}
-          >
-            {messageCwd}
-          </div>
-        )}
-      </LoadingState>
+      <AppLoading
+        label={t("chat.loadingSession")}
+        subtitle={subtitle}
+      />
     );
   }
 

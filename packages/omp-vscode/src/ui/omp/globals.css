@@ -57,8 +57,24 @@ a,
   animation: omp-mount-in var(--omp-motion-base) var(--omp-motion-ease) both;
 }
 
-@import url("tailwindcss");
-
+/* App-loading emblem: gentle breathing pulse. Paired with a Shimmer
+   label in `<AppLoading>` — the logo is the icon, the shimmer text is
+   the message. Reduced-motion collapses both animations globally. */
+@keyframes omp-emblem-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.04); }
+}
+.omp-app-loading-emblem {
+  animation: omp-emblem-pulse 1.6s ease-in-out infinite;
+  transform-origin: center;
+  will-change: opacity, transform;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .omp-app-loading-emblem { animation: none; opacity: 1; }
+}
 /* The webview iframe is width/height 100%; the app must fill it exactly
    or the body background shows below the chat page. Scrolling happens
    inside the app's own containers; the page itself must never scroll,
