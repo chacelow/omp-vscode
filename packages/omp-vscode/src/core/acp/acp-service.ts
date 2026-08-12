@@ -650,22 +650,23 @@ export class AcpService {
         const existing = this.sessions.get(sessionId);
         if (existing) {
           const newMessages = [...existing.messages];
-          // Fallback: if omp forgot to send `messageId`, coalesce into the
-          // last message of the same role rather than pushing a fresh row
-          // per chunk. That was the "one line per chunk" bug.
-          const targetRole = update.sessionUpdate === "user_message_chunk" ? "user" : "assistant";
+          // Role each chunk into its own bucket: user text, assistant
+          // visible answer, or assistant "thought" (chain-of-thought that
+          // the UI wraps in a collapsible Thinking block). Coalesce chunks
+          // sharing a messageId; when omp forgets to send messageId, fall
+          // back to the last message of the SAME role so we don't push a
+          // new row per chunk.
+          const targetRole: "user" | "assistant" | "thought" =
+            update.sessionUpdate === "user_message_chunk" ? "user"
+            : update.sessionUpdate === "agent_thought_chunk" ? "thought"
+            : "assistant";
           const msgIdx = update.messageId
-            ? newMessages.findIndex((m) => m.id === update.messageId)
+            ? newMessages.findIndex((m) => m.id === update.messageId && m.role === targetRole)
             : newMessages.findLastIndex((m) => m.role === targetRole);
           if (msgIdx >= 0) {
             const prev = newMessages[msgIdx];
             if (prev.role !== "toolCall") {
-              // If the incoming chunk is text and the tail block is also
-              // text, concatenate their strings — the ACP stream fragments
-              // text one delta at a time; the renderer treats each block
-              // as a paragraph, so unmerged fragments show as one line each.
-              const nextContent = mergeContentBlocks(prev.content, content);
-              newMessages[msgIdx] = { ...prev, content: nextContent };
+              newMessages[msgIdx] = { ...prev, content: mergeContentBlocks(prev.content, content) };
             }
           } else {
             newMessages.push({ id: update.messageId ?? crypto.randomUUID(), role: targetRole, content: [content] });
