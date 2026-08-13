@@ -989,6 +989,18 @@ export class AcpService {
           update as import("@agentclientprotocol/sdk").SessionInfoUpdate;
         if ("title" in info) patch.title = info.title ?? undefined;
         if ("updatedAt" in info) patch.updatedAt = info.updatedAt ?? undefined;
+        // omp emits session_info_update at exactly two points:
+        //   #emitBootstrapUpdates — session/new|load|resume
+        //   #emitEndOfTurnUpdates — after usage_update, right before the
+        //                            session/prompt RPC response returns
+        // When we see it mid-prompt, the model is done streaming and omp
+        // is in its final sync. The RPC response with stopReason lands a
+        // few ms later. Flip promptPending eagerly so the UI unblocks the
+        // input the moment the text stops, instead of waiting the extra
+        // stdio round-trip. omp's prompt queue (#queuePrompt) serializes
+        // any prompt fired during that tiny window, so nothing races.
+        const current = this.sessions.get(sessionId);
+        if (current?.promptPending) patch.promptPending = false;
         break;
       }
       case "usage_update": {

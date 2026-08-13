@@ -724,6 +724,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const sawErrorStopRef = useRef(false);
   const tpsRef = useRef({ chars: 0, startedAt: 0 });
   const restoredTurnRef = useRef<string | null>(null);
+  // Identity cache: when a snapshot arrives whose `messages` and
+  // `toolCalls` refs are unchanged (usage_update / session_info_update /
+  // plan / config / available_commands — none of them touch the message
+  // list), the whole flatMap + coalesce + setMessages pipeline is
+  // guaranteed to produce the same result. Skip it.
+  const lastAcpMessagesRef = useRef<AcpSessionState["messages"] | null>(null);
+  const lastAcpToolCallsRef = useRef<AcpSessionState["toolCalls"] | null>(null);
+  const lastAcpCommandsRef = useRef<AcpSessionState["availableCommands"] | null>(null);
+  const lastNextMessagesRef = useRef<AgentMessage[]>([]);
   const addNotice = useCallback(
     (notice: Omit<NoticeItem, "id"> & { id?: string }) =>
       dispatchNotice({
@@ -910,82 +919,100 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         return;
       }
       setSnapshot(state);
-      const nextMessages = coalesceToolAssistants(
-        state.messages.flatMap((message) =>
-          toAgentMessages(message, state.toolCalls)
-        )
-      );
-      setMessages((current) => {
-        // Enrich assistants with local usage/duration/ttft that ACP doesn't
-        // emit. Align by assistant-index across the diff. Return the
-        // NEW-from-cache message unchanged when nothing would be enriched
-        // — cloning every assistant with `{...message, usage: ...}` defeats
-        // the WeakMap cache in toAgentMessages and forces MessageView.memo
-        // to rerender every message per snapshot.
-        const previousAssistants: AssistantMessage[] = current.filter(
-          (message): message is AssistantMessage => message.role === "assistant"
+      // Fast path — skip the whole message pipeline when neither the
+      // messages array nor the toolCalls map changed reference (which
+      // covers usage_update / session_info_update / plan* /
+      // config_option_update / available_commands_update: they touch
+      // orthogonal state slots). Before: every session/update rebuilt
+      // nextMessages by iterating all N messages, ran coalesce, and
+      // recomputed setMessages. Multiplied by 30+ events per turn on a
+      // long session it was the biggest source of per-chunk overhead.
+      const messagesChanged = state.messages !== lastAcpMessagesRef.current;
+      const toolCallsChanged = state.toolCalls !== lastAcpToolCallsRef.current;
+      lastAcpMessagesRef.current = state.messages;
+      lastAcpToolCallsRef.current = state.toolCalls;
+      let nextMessages = lastNextMessagesRef.current;
+      if (messagesChanged || toolCallsChanged) {
+        nextMessages = coalesceToolAssistants(
+          state.messages.flatMap((message) =>
+            toAgentMessages(message, state.toolCalls)
+          )
         );
-        let assistantIndex = 0;
-        return nextMessages.map((message) => {
-          if (message.role !== "assistant") return message;
-          const previous = previousAssistants[assistantIndex++];
-          if (!previous) return message;
-          const usage = message.usage ?? previous.usage;
-          const duration = message.duration ?? previous.duration;
-          const ttft = message.ttft ?? previous.ttft;
-          const timestamp = message.timestamp ?? previous.timestamp;
-          if (
-            usage === message.usage &&
-            duration === message.duration &&
-            ttft === message.ttft &&
-            timestamp === message.timestamp
-          ) return message;
-          return {
-            ...message,
-            usage,
-            duration,
-            ttft,
-            timestamp,
-          } satisfies AssistantMessage;
+        lastNextMessagesRef.current = nextMessages;
+        setMessages((current) => {
+          const previousAssistants: AssistantMessage[] = current.filter(
+            (message): message is AssistantMessage => message.role === "assistant"
+          );
+          let assistantIndex = 0;
+          return nextMessages.map((message) => {
+            if (message.role !== "assistant") return message;
+            const previous = previousAssistants[assistantIndex++];
+            if (!previous) return message;
+            const usage = message.usage ?? previous.usage;
+            const duration = message.duration ?? previous.duration;
+            const ttft = message.ttft ?? previous.ttft;
+            const timestamp = message.timestamp ?? previous.timestamp;
+            if (
+              usage === message.usage &&
+              duration === message.duration &&
+              ttft === message.ttft &&
+              timestamp === message.timestamp
+            )
+              return message;
+            return {
+              ...message,
+              usage,
+              duration,
+              ttft,
+              timestamp,
+            } satisfies AssistantMessage;
+          });
         });
-      });
-      // Clear optimistic user once its authoritative counterpart appears in
-      // the snapshot. Signature-matched (text + image count) so identical
-      // repeated prompts don't collide.
-      setPendingUserMessage((pending) => {
-        if (!pending) return pending;
-        const sig = userMessageSignature(pending);
-        const authoritative = nextMessages.some(
-          (message) =>
-            message.role === "user" && userMessageSignature(message) === sig
-        );
-        return authoritative ? null : pending;
-      });
+        setPendingUserMessage((pending) => {
+          if (!pending) return pending;
+          const sig = userMessageSignature(pending);
+          const authoritative = nextMessages.some(
+            (message) =>
+              message.role === "user" && userMessageSignature(message) === sig
+          );
+          return authoritative ? null : pending;
+        });
+      }
       const wasRunning = agentRunningRef.current;
       agentRunningRef.current = state.promptPending;
       setAgentRunning(state.promptPending);
-      const activeTools = Object.entries(state.toolCalls).flatMap(
-        ([id, tool]) =>
-          tool.status === "in_progress"
-            ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }]
-            : []
-      );
-      setAgentPhase(
-        activeTools.length > 0
-          ? { kind: "running_tools", tools: activeTools }
-          : state.promptPending
-            ? { kind: "waiting_model" }
-            : null
-      );
-      setSlashCommands(
-        state.availableCommands.map((command) => ({
-          name: command.name,
-          description: command.description,
-          inputHint: command.input?.hint,
-          source: "prompt",
-        }))
-      );
-      setSlashCommandsLoading(false);
+      // Skip activeTools+agentPhase recompute when toolCalls and
+      // promptPending both stable — a usage_update carries neither.
+      if (toolCallsChanged || wasRunning !== state.promptPending) {
+        const activeTools = Object.entries(state.toolCalls).flatMap(
+          ([id, tool]) =>
+            tool.status === "in_progress"
+              ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }]
+              : []
+        );
+        setAgentPhase(
+          activeTools.length > 0
+            ? { kind: "running_tools", tools: activeTools }
+            : state.promptPending
+              ? { kind: "waiting_model" }
+              : null
+        );
+      }
+      // availableCommands is a stable reference across chunk-style
+      // updates; only recompute when it actually changed.
+      const cmdsChanged = state.availableCommands !== lastAcpCommandsRef.current;
+      lastAcpCommandsRef.current = state.availableCommands;
+      if (cmdsChanged) {
+        setSlashCommands(
+          state.availableCommands.map((command) => ({
+            name: command.name,
+            description: command.description,
+            inputHint: command.input?.hint,
+            source: "prompt",
+          }))
+        );
+        setSlashCommandsLoading(false);
+      }
       // ACP `usage_update` maps to `state.usage`. Both `used` and
       // contextWindow are required numbers when the field exists — no
       // defensive nullish/zero filtering needed here. Absence of `usage`
