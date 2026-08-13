@@ -46,6 +46,8 @@ import {
   isLineStyleTool,
   isTodoTool,
 } from "./chat/ToolLine";
+import { partRegistry } from "./chat/parts/registry";
+import type { AssistantPartProps } from "./chat/parts/types";
 import {
   getAssistantErrorMessage,
   isEmptyThinkingBlock,
@@ -984,74 +986,12 @@ function AssistantMessageView({
   );
 }
 
-function BlockView({
-  block,
-  toolResults,
-  isStreaming,
-  streamingDuration,
-  toolCallDurations,
-  cwd,
-  onOpenFile,
-  sessionId,
-  entryId,
-  blockIndex,
-  snapReveal,
-  expandAllTools,
-}: {
-  block: AssistantContentBlock;
-  toolResults?: Map<string, ToolResultMessage>;
-  isStreaming?: boolean;
-  streamingDuration?: number;
-  toolCallDurations?: Map<string, number>;
-  cwd?: string;
-  onOpenFile?: (filePath: string) => void;
-  sessionId?: string;
-  entryId?: string;
-  blockIndex: number;
-  snapReveal?: boolean;
-  expandAllTools?: boolean;
-}) {
-  if (block.type === "text") {
-    return (
-      <TextBlock
-        block={block}
-        isStreaming={isStreaming}
-        cwd={cwd}
-        onOpenFile={onOpenFile}
-        snapReveal={snapReveal}
-      />
-    );
-  }
-  if (block.type === "thinking") {
-    return (
-      <ThinkingBlock
-        block={block}
-        isStreaming={isStreaming}
-        duration={streamingDuration}
-        sessionId={sessionId}
-        entryId={entryId}
-        blockIndex={blockIndex}
-      />
-    );
-  }
-  if (block.type === "toolCall") {
-    const result = toolResults?.get(block.toolCallId);
-    const duration = toolCallDurations?.get(block.toolCallId);
-    return (
-      <ToolCallBlock
-        block={block}
-        result={result}
-        duration={duration}
-        onOpenFile={onOpenFile}
-        isStreaming={isStreaming}
-        expanded={expandAllTools}
-      />
-    );
-  }
-  return null;
+function BlockView(props: AssistantPartProps) {
+  const Part = partRegistry[props.block.type];
+  return <Part {...props} />;
 }
 
-function TextBlock({
+export function TextBlock({
   block,
   isStreaming,
   cwd,
@@ -1076,7 +1016,7 @@ function TextBlock({
   );
 }
 
-function ThinkingBlock({
+export function ThinkingBlock({
   block,
   isStreaming,
   duration,
@@ -1315,7 +1255,7 @@ function ReadToolGroup({
   );
 }
 
-function ToolCallBlock({
+export function ToolCallBlock({
   block,
   result,
   duration,

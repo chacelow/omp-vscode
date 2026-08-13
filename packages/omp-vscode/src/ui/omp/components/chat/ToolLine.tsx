@@ -28,6 +28,9 @@ import type {
   ToolCallKind,
   ToolResultMessage,
 } from "@/lib/types";
+import { toolRenderers } from "./parts/registry";
+import { DefaultToolPart } from "./parts/tools";
+import type { ToolPartProps } from "./parts/types";
 
 /* -------------------------------------------------------------------------- */
 /* Classification                                                             */
@@ -481,7 +484,7 @@ function basename(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
-function ReadLine({
+export function ReadLine({
   block,
   result,
   duration,
@@ -561,7 +564,7 @@ function ReadLine({
   );
 }
 
-function GrepLine({
+export function GrepLine({
   block,
   result,
   duration,
@@ -658,7 +661,7 @@ function GrepLine({
   );
 }
 
-function GlobLine({
+export function GlobLine({
   block,
   result,
   duration,
@@ -750,7 +753,7 @@ function GlobLine({
   );
 }
 
-function FetchLine({
+export function FetchLine({
   block,
   result,
   duration,
@@ -807,7 +810,7 @@ function FetchLine({
   );
 }
 
-function WebSearchLine({
+export function WebSearchLine({
   block,
   result,
   duration,
@@ -906,7 +909,7 @@ function WebSearchLine({
   );
 }
 
-function BashLine({
+export function BashLine({
   block,
   result,
   duration,
@@ -1003,7 +1006,7 @@ function readMovePaths(
   return { from, to };
 }
 
-function ChangeLine({
+export function ChangeLine({
   block,
   result,
   duration,
@@ -1393,91 +1396,10 @@ export function TodoCard({
 /* Public entry point                                                         */
 /* -------------------------------------------------------------------------- */
 
-export function ToolLine({
-  block,
-  result,
-  duration,
-  cwd,
-  onOpenFile,
-}: {
-  block: ToolCallContent;
-  result?: ToolResultMessage;
-  duration?: number;
-  cwd?: string;
-  onOpenFile?: (path: string) => void;
-}) {
-  const name = (block.toolName || "").toLowerCase();
-  if (name === "todo") {
-    return <TodoCard block={block} result={result} />;
-  }
-  if (name === "read" || block.toolKind === "read") {
-    return (
-      <ReadLine
-        block={block}
-        result={result}
-        duration={duration}
-        onOpenFile={onOpenFile}
-      />
-    );
-  }
-  if (name === "grep" || name === "grepped") {
-    return (
-      <GrepLine
-        block={block}
-        result={result}
-        duration={duration}
-        cwd={cwd}
-        onOpenFile={onOpenFile}
-      />
-    );
-  }
-  if (name === "glob") {
-    return (
-      <GlobLine
-        block={block}
-        result={result}
-        duration={duration}
-        onOpenFile={onOpenFile}
-      />
-    );
-  }
-  if (name === "web_search" || name === "websearch") {
-    return <WebSearchLine block={block} result={result} duration={duration} />;
-  }
-  if (
-    name === "fetch" ||
-    name === "web_fetch" ||
-    name === "webfetch" ||
-    block.toolKind === "fetch"
-  ) {
-    return <FetchLine block={block} result={result} duration={duration} />;
-  }
-  if (isBashTool(block)) {
-    return <BashLine block={block} result={result} duration={duration} />;
-  }
-  if (isChangeTool(block)) {
-    return (
-      <ChangeLine
-        block={block}
-        result={result}
-        duration={duration}
-        onOpenFile={onOpenFile}
-      />
-    );
-  }
-  // Search kind without a known name: reuse grep line as a reasonable default.
-  if (block.toolKind === "search") {
-    return (
-      <GrepLine
-        block={block}
-        result={result}
-        duration={duration}
-        cwd={cwd}
-        onOpenFile={onOpenFile}
-      />
-    );
-  }
-  return null;
+export function ToolLine(props: ToolPartProps) {
+  const toolName = props.block.toolName.toLowerCase();
+  const ToolPart = toolRenderers[toolName] ?? DefaultToolPart;
+  return <ToolPart {...props} />;
 }
 
 /* -------------------------------------------------------------------------- */
