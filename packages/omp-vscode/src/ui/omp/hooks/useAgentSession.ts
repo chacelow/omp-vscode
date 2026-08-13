@@ -166,20 +166,6 @@ type InteractionDialog = AcpPermissionRequest | AcpElicitationRequest;
 const LAST_MODEL_KEY = "omp.lastModel";
 const MAX_NOTICES = 5;
 const NOTICE_VISIBLE_MS = 5000;
-const NOTICE_EXIT_ANIMATION_MS = 180;
-const PROGRAMMATIC_SCROLL_IGNORE_MS = 700;
-const USER_SCROLL_INTENT_MS = 1200;
-const SCROLL_KEYS = new Set([
-  "ArrowUp",
-  "ArrowDown",
-  "PageUp",
-  "PageDown",
-  "Home",
-  "End",
-  " ",
-  "Space",
-  "Spacebar",
-]);
 type DisplayContent = Array<
   | { type: "text"; text: string }
   | {
@@ -188,6 +174,7 @@ type DisplayContent = Array<
     }
   | { type: "thinking"; thinking: string }
 >;
+const NOTICE_EXIT_ANIMATION_MS = 180;
 function createNoticeId(): string {
   return typeof crypto !== "undefined" &&
     typeof crypto.randomUUID === "function"
@@ -712,12 +699,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lastUserMsgRef = useRef<HTMLDivElement | null>(null);
-  const pendingScrollToUserRef = useRef(false);
-  const initialScrollDoneRef = useRef(false);
-  const completionScrollAllowedRef = useRef(true);
   const agentRunningRef = useRef(false);
-  const userScrollIntentUntilRef = useRef(0);
-  const ignoreProgrammaticScrollUntilRef = useRef(0);
   const ensuringNewSessionRef = useRef<Promise<string | null> | null>(null);
   const newSessionPromotedRef = useRef(false);
   const preCompactUsedRef = useRef<number | null>(null);
@@ -1670,43 +1652,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     await hostCall("sessionDelete", { sessionId: sid });
   }, []);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    ignoreProgrammaticScrollUntilRef.current =
-      Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  }, []);
-  const scrollUserMsgToTop = useCallback(() => {
-    const container = scrollContainerRef.current;
-    const element = lastUserMsgRef.current;
-    if (!container || !element) return;
-    const top =
-      element.getBoundingClientRect().top -
-      container.getBoundingClientRect().top +
-      container.scrollTop;
-    ignoreProgrammaticScrollUntilRef.current =
-      Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
-    container.scrollTo({ top: top - 16, behavior: "smooth" });
-  }, []);
-  const markUserScrollIntent = useCallback((event: Event) => {
-    if (
-      event instanceof KeyboardEvent &&
-      (!SCROLL_KEYS.has(event.key) ||
-        (event.target instanceof Element &&
-          event.target.closest("input, textarea, [contenteditable='true']")))
-    )
-      return;
-    userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_MS;
-  }, []);
-  const handleScrollPositionChange = useCallback(() => {
-    if (
-      !agentRunningRef.current ||
-      Date.now() < ignoreProgrammaticScrollUntilRef.current ||
-      Date.now() > userScrollIntentUntilRef.current
-    )
-      return;
-    completionScrollAllowedRef.current = false;
-  }, []);
-
   useEffect(
     () =>
       subscribeAcp((event: AcpHostEvent) => {
@@ -1771,51 +1716,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (onBranchDataChange)
       onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [activeLeafId, data?.tree, handleLeafChange, onBranchDataChange]);
-  useEffect(() => {
-    window.addEventListener("keydown", markUserScrollIntent);
-    window.addEventListener("pointerdown", markUserScrollIntent, {
-      passive: true,
-    });
-    return () => {
-      window.removeEventListener("keydown", markUserScrollIntent);
-      window.removeEventListener("pointerdown", markUserScrollIntent);
-    };
-  }, [markUserScrollIntent]);
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    container.addEventListener("wheel", markUserScrollIntent, {
-      passive: true,
-    });
-    container.addEventListener("touchstart", markUserScrollIntent, {
-      passive: true,
-    });
-    container.addEventListener("scroll", handleScrollPositionChange, {
-      passive: true,
-    });
-    return () => {
-      container.removeEventListener("wheel", markUserScrollIntent);
-      container.removeEventListener("touchstart", markUserScrollIntent);
-      container.removeEventListener("scroll", handleScrollPositionChange);
-    };
-  }, [
-    handleScrollPositionChange,
-    loading,
-    markUserScrollIntent,
-    messages.length,
-  ]);
-  useEffect(() => {
-    if (messages.length === 0) return;
-    if (pendingScrollToUserRef.current) {
-      pendingScrollToUserRef.current = false;
-      initialScrollDoneRef.current = true;
-      scrollUserMsgToTop();
-    } else if (!initialScrollDoneRef.current) {
-      initialScrollDoneRef.current = true;
-      scrollToBottom("instant");
-    } else if (!agentRunningRef.current && completionScrollAllowedRef.current)
-      scrollToBottom("smooth");
-  }, [agentRunning, messages.length, scrollToBottom, scrollUserMsgToTop]);
   useEffect(() => {
     const controller = new AbortController();
     void loadModels(controller.signal);
@@ -2009,8 +1909,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     messagesEndRef,
     scrollContainerRef,
     lastUserMsgRef,
-    pendingScrollToUserRef,
-    initialScrollDoneRef,
     handleSend,
     handleAbort,
     handleFork,

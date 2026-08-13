@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useStickToBottom } from "use-stick-to-bottom";
 import type {
   AgentMessage,
   AssistantContentBlock,
@@ -606,87 +607,19 @@ export function ChatWindow({
     prevScrollDistanceRef.current = null;
   }, [visibleCount, scrollContainerRef]);
 
-  // --- Auto-scroll follow (opencode/zoeymind style) ---
-  // Wheel up locks follow; scrolling back near the bottom unlocks. The lock
-  // lives in a ref too, so programmatic scrolls (optimistic insert, stream
-  // polling) read the CURRENT value synchronously — otherwise a stale state
-  // read right after the wheel event yanks the user back to the bottom.
-  const [userScrolled, setUserScrolledState] = useState(false);
-  const userScrolledRef = useRef(false);
-  const setUserScrolled = useCallback((v: boolean) => {
-    userScrolledRef.current = v;
-    setUserScrolledState(v);
-  }, []);
-  const autoScrollMarkRef = useRef<{ top: number; time: number } | null>(null);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const onWheel = (e: WheelEvent) => {
-      if (e.deltaY >= 0) return;
-      // Ignore wheel inside nested scrollables (tool output etc.) — only the
-      // main list decides follow state.
-      const target = e.target instanceof Element ? e.target : undefined;
-      const nested = target?.closest("[data-scrollable]");
-      if (nested && nested !== container) return;
-      if (container.scrollHeight - container.clientHeight <= 1) return;
-      // Wheel-up starts the detachment; the scroll handler below locks once
-      // the distance threshold is actually crossed.
-      setUserScrolled(true);
-    };
-    container.addEventListener("wheel", onWheel, { passive: true });
-    return () => container.removeEventListener("wheel", onWheel);
-  }, [setUserScrolled]);
-
-  // Follow lifecycle while streaming: snapping back within UNLOCK distance
-  // re-attaches (and the poll below keeps scrolling to the bottom); moving
-  // beyond LOCK distance detaches. Programmatic scrolls are marked so they
-  // don't trip the state.
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const onScroll = () => {
-      const dist =
-        container.scrollHeight - container.clientHeight - container.scrollTop;
-      if (dist <= 12) {
-        // Snap back: within the bottom threshold → re-attach.
-        setUserScrolled(false);
-      } else if (dist > 80) {
-        // Detached: scrolled a meaningful distance above the bottom → cancel
-        // follow (ref guards against re-locking on programmatic scrolls).
-        if (!userScrolledRef.current) setUserScrolled(true);
-      }
-    };
-    container.addEventListener("scroll", onScroll);
-    return () => container.removeEventListener("scroll", onScroll);
-  }, [setUserScrolled]);
-
-  const scrollToBottomNow = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    autoScrollMarkRef.current = {
-      top: el.scrollHeight - el.clientHeight,
-      time: Date.now(),
-    };
-    el.scrollTop = el.scrollHeight;
-  }, []);
-
-  useEffect(() => {
-    if (userScrolledRef.current) return;
-    scrollToBottomNow();
-  }, [messages, userScrolled, sessionBusy, scrollToBottomNow]);
-
-  useEffect(() => {
-    if (!sessionBusy || userScrolledRef.current) return;
-    const timer = setInterval(() => {
-      if (userScrolledRef.current) return;
-      const el = scrollContainerRef.current;
-      if (!el) return;
-      if (el.scrollHeight - el.clientHeight - el.scrollTop < 2) return;
-      scrollToBottomNow();
-    }, 150);
-    return () => clearInterval(timer);
-  }, [sessionBusy, userScrolled, scrollToBottomNow]);
+  // Auto-follow while streaming: use-stick-to-bottom (StackBlitz's
+  // library used by Bolt.new / Copilot Chat / etc.) — release on
+  // wheel-up + user scroll, re-engage when user comes back within
+  // ~70px of the bottom. Spring animation catches up smoothly to
+  // fast content growth without fighting the browser's smooth-scroll.
+  const stick = useStickToBottom({ initial: "instant" });
+  const mergedScrollRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollContainerRef.current = node;
+      stick.scrollRef.current = node;
+    },
+    [scrollContainerRef, stick.scrollRef]
+  );
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
@@ -1269,10 +1202,11 @@ export function ChatWindow({
               </div>
             </div>
             <div
-              ref={scrollContainerRef}
+              ref={mergedScrollRef}
               className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4"
             >
               <div
+                ref={stick.contentRef}
                 style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}
               >
                 <div
@@ -1769,6 +1703,13 @@ export function ChatWindow({
                     />
                   )}
 
+                  {/* Viewport reservation. Padding the tail with ~40% of
+                      the visible height means the actively-streaming reply
+                      renders in the UPPER half of the viewport instead of
+                      pressed against the input frame. Matches Continue.dev
+                      / ChatGPT / Cursor. Auto-follow scrolls into this
+                      pad, so no extra scroll math needed. */}
+                  <div aria-hidden="true" className="min-h-[40vh]" />
                   <div ref={messagesEndRef} />
                 </div>
               </div>
