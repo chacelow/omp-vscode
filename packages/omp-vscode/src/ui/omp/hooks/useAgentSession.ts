@@ -1822,17 +1822,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }).finally(() => setPendingRestoreModel(null));
   }, [pendingRestoreModel, snapshot?.stopReason]);
 
-  // Turn-end resync from the session JSONL. Two jobs in one fetch:
-  // 1. entryIds — ACP snapshots carry messages but no JSONL entry ids, so
-  //    messages created during live turns have no entryId and every
-  //    entry-addressed action on them (edit-resend/rewind, fork, navigate)
-  //    silently no-ops. Refetching sessionDetail after the turn gives an
-  //    aligned messages+entryIds pair from a single source.
-  // 2. per-message usage/duration/ttft — ACP doesn't emit these; omp
-  //    persists them to the JSONL.
-  // Fires once per turn boundary (stopReason+count signature), not on every
-  // snapshot revision — omp publishes snapshots for usage_update/plan/tool
-  // state after the turn settles.
+  // Turn-end backfill from JSONL — ACP snapshots don't carry the fields
+  // omp persists to disk:
+  //   • entryIds       (edit-resend / fork / rewind address by these)
+  //   • usage / duration / ttft / contextSnapshot (per-assistant stats)
+  //
+  // Previous version overwrote `messages` wholesale on every turn end,
+  // which meant every message object was replaced by a fresh reference
+  // → MessageView.memo failed for the whole transcript → visible
+  // "重新推拉数据 → 跳一下" flash. We already have the live text via ACP
+  // streaming; the JSONL is only needed for these auxiliary fields.
+  //
+  // Now: align by index, patch only the missing fields, keep the original
+  // AgentMessage object when nothing needs enrichment. React sees the
+  // same references across the diff → memo skips → no re-render.
   const lastHydratedStopReasonRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!snapshot || snapshot.promptPending) return;
@@ -1849,22 +1852,60 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // A new turn may have started while the fetch was in flight — the
         // JSONL doesn't have the live turn yet; don't wipe it.
         if (agentRunningRef.current) return;
-        // The JSONL is the at-rest authority: same transcript the ACP replay
-        // produces, plus entry ids and persisted stats. Swap atomically so
-        // messages[idx] ↔ entryIds[idx] stay aligned.
-        setData({
-          sessionId: detail.sessionId,
-          filePath: detail.filePath,
-          tree: detail.tree.filter(
+
+        // Non-message updates are safe to swap wholesale — they don't
+        // feed the message list.
+        setData((prev) => {
+          const nextTree = detail.tree.filter(
             (node): node is SessionTreeNode =>
               typeof node === "object" && node !== null
-          ),
-          leafId: detail.leafId,
-          context: detail.context,
+          );
+          return {
+            sessionId: detail.sessionId,
+            filePath: detail.filePath,
+            tree: nextTree,
+            leafId: detail.leafId,
+            context: detail.context,
+          };
         });
         setActiveLeafId(detail.leafId);
-        setMessages(detail.context.messages.map(normalizeToolCalls));
         setEntryIds(detail.context.entryIds);
+
+        // Index-aligned in-place merge into the LIVE `messages` array.
+        // Only patches assistant stats fields (usage/duration/ttft/
+        // contextSnapshot) — content, role, and everything else stay put.
+        setMessages((current) => {
+          const persisted = detail.context.messages;
+          let mutated = false;
+          const next = current.map((message, index) => {
+            if (message.role !== "assistant") return message;
+            const source = persisted[index];
+            if (!source || source.role !== "assistant") return message;
+            const usage = message.usage ?? source.usage;
+            const duration = message.duration ?? source.duration;
+            const ttft = message.ttft ?? source.ttft;
+            const timestamp = message.timestamp ?? source.timestamp;
+            const contextSnapshot =
+              message.contextSnapshot ?? source.contextSnapshot;
+            if (
+              usage === message.usage &&
+              duration === message.duration &&
+              ttft === message.ttft &&
+              timestamp === message.timestamp &&
+              contextSnapshot === message.contextSnapshot
+            ) return message;
+            mutated = true;
+            return {
+              ...message,
+              usage,
+              duration,
+              ttft,
+              timestamp,
+              contextSnapshot,
+            } satisfies AssistantMessage;
+          });
+          return mutated ? next : current;
+        });
       })
       .catch(() => undefined);
     return () => {
