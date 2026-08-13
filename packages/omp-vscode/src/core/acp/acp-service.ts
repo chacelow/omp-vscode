@@ -862,28 +862,40 @@ export class AcpService {
           this.messageIndex.get(sessionId) ?? new Map<string, number>();
         this.messageIndex.set(sessionId, indexByMessageId);
         const messages = existing.messages.slice();
-        let index = update.messageId
-          ? (indexByMessageId.get(update.messageId) ?? -1)
-          : -1;
-        if (!update.messageId)
+        // omp reuses the same liveMessageId across an assistant turn's
+        // thinking AND text chunks (see reference acp-agent.ts
+        // #getLiveMessageId: reset only at message_start / message_end).
+        // Key the index by messageId+role so a text chunk doesn't merge
+        // into the same-turn thought AcpMessage — that would land the
+        // reply text inside the thought row, where toAgentMessage() maps
+        // every text block to a thinking block. The visible reply then
+        // vanishes and only the "thinking" fold shows.
+        const indexKey = update.messageId ? `${update.messageId}:${role}` : "";
+        let index = indexKey ? (indexByMessageId.get(indexKey) ?? -1) : -1;
+        if (index === -1 && !update.messageId) {
           for (let i = messages.length - 1; i >= 0; i--)
             if (messages[i].role === role) {
               index = i;
               break;
             }
+        }
         if (index >= 0) {
           const previous = messages[index];
-          if (previous.role !== "toolCall") {
+          // Defensive: never merge across roles even if the caller passed
+          // an index we resolved earlier under a different role bucket.
+          if (previous.role === role) {
             messages[index] = {
               ...previous,
               content: mergeContentBlocks(previous.content, update.content),
             };
+          } else {
+            index = -1;
           }
-        } else {
+        }
+        if (index === -1) {
           const id = update.messageId ?? crypto.randomUUID();
           messages.push({ id, role, content: [update.content] });
-          if (update.messageId)
-            indexByMessageId.set(update.messageId, messages.length - 1);
+          if (indexKey) indexByMessageId.set(indexKey, messages.length - 1);
         }
         patch.messages = messages;
         break;
