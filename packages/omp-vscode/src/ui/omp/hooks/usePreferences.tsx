@@ -1,15 +1,19 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { hostCall } from "../../bridge";
+import { useEffect, useMemo, type ReactNode } from "react";
+
+import { useSettingsStore } from "@/state/settings-store";
+
+/**
+ * Backwards-compatible facade over the display-preference slice
+ * (`@/state/settings-store`).
+ *
+ * The former React Context has been retired; this file now exists so that
+ * existing consumers importing `PreferencesProvider` / `usePreferences`
+ * continue to work unchanged during the incremental migration to the new
+ * modular state architecture. New code SHOULD import from
+ * `@/hooks/useSettings` and `@/state/settings-store` directly.
+ */
 
 interface PreferencesContextValue {
   showImages: boolean;
@@ -17,47 +21,25 @@ interface PreferencesContextValue {
   setShowImages: (showImages: boolean) => Promise<void>;
 }
 
-const PreferencesContext = createContext<PreferencesContextValue | null>(null);
-
-function readShowImages(value: Record<string, unknown>): boolean {
-  return typeof value.showImages === "boolean" ? value.showImages : true;
-}
-
+/**
+ * Kept as a mount-time trigger for the initial settings fetch so callers
+ * that wrap their subtree in `<PreferencesProvider>` continue to hydrate the
+ * store exactly as they did before. The store itself is a global singleton;
+ * no React context is created.
+ */
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [showImages, setShowImagesState] = useState(true);
-
-  const refreshPreferences = useCallback(async () => {
-    const display = await hostCall("settingsGet", { category: "display" });
-    setShowImagesState(readShowImages(display));
-  }, []);
-
   useEffect(() => {
-    void refreshPreferences().catch(() => undefined);
-  }, [refreshPreferences]);
-
-  const setShowImages = useCallback(async (next: boolean) => {
-    setShowImagesState(next);
-    await hostCall("settingsSet", {
-      category: "display",
-      key: "showImages",
-      value: next,
-    });
+    void useSettingsStore.getState().refresh();
   }, []);
-
-  const value = useMemo(
-    () => ({ showImages, refreshPreferences, setShowImages }),
-    [refreshPreferences, setShowImages, showImages]
-  );
-  return (
-    <PreferencesContext.Provider value={value}>
-      {children}
-    </PreferencesContext.Provider>
-  );
+  return <>{children}</>;
 }
 
 export function usePreferences(): PreferencesContextValue {
-  const preferences = useContext(PreferencesContext);
-  if (!preferences)
-    throw new Error("usePreferences must be used within PreferencesProvider");
-  return preferences;
+  const showImages = useSettingsStore((s) => s.display.showImages);
+  const refreshPreferences = useSettingsStore((s) => s.refresh);
+  const setShowImages = useSettingsStore((s) => s.setShowImages);
+  return useMemo(
+    () => ({ showImages, refreshPreferences, setShowImages }),
+    [showImages, refreshPreferences, setShowImages]
+  );
 }
