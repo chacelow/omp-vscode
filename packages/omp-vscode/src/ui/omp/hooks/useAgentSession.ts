@@ -730,9 +730,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // plan / config / available_commands — none of them touch the message
   // list), the whole flatMap + coalesce + setMessages pipeline is
   // guaranteed to produce the same result. Skip it.
-  const lastAcpMessagesRef = useRef<AcpSessionState["messages"] | null>(null);
-  const lastAcpToolCallsRef = useRef<AcpSessionState["toolCalls"] | null>(null);
-  const lastAcpCommandsRef = useRef<AcpSessionState["availableCommands"] | null>(null);
+  // Partition revisions from acp-service (see AcpSessionState.*Revision).
+  // NOTE we cannot use `state.messages !==` here — postMessage's
+  // structured clone deep-copies state on every hop, so refs are NEVER
+  // stable across snapshots. Numbers survive the clone unchanged.
+  const lastAcpMessagesRevRef = useRef(-1);
+  const lastAcpToolCallsRevRef = useRef(-1);
+  const lastAcpCommandsRevRef = useRef(-1);
   const lastNextMessagesRef = useRef<AgentMessage[]>([]);
   const addNotice = useCallback(
     (notice: Omit<NoticeItem, "id"> & { id?: string }) =>
@@ -928,10 +932,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // nextMessages by iterating all N messages, ran coalesce, and
       // recomputed setMessages. Multiplied by 30+ events per turn on a
       // long session it was the biggest source of per-chunk overhead.
-      const messagesChanged = state.messages !== lastAcpMessagesRef.current;
-      const toolCallsChanged = state.toolCalls !== lastAcpToolCallsRef.current;
-      lastAcpMessagesRef.current = state.messages;
-      lastAcpToolCallsRef.current = state.toolCalls;
+      const messagesChanged =
+        state.messagesRevision !== lastAcpMessagesRevRef.current;
+      const toolCallsChanged =
+        state.toolCallsRevision !== lastAcpToolCallsRevRef.current;
+      lastAcpMessagesRevRef.current = state.messagesRevision;
+      lastAcpToolCallsRevRef.current = state.toolCallsRevision;
       ompTrace("snap", {
         sid: state.sessionId.slice(0, 8),
         rev: state.revision,
@@ -1011,8 +1017,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
       // availableCommands is a stable reference across chunk-style
       // updates; only recompute when it actually changed.
-      const cmdsChanged = state.availableCommands !== lastAcpCommandsRef.current;
-      lastAcpCommandsRef.current = state.availableCommands;
+      const cmdsChanged =
+        state.commandsRevision !== lastAcpCommandsRevRef.current;
+      lastAcpCommandsRevRef.current = state.commandsRevision;
       if (cmdsChanged) {
         setSlashCommands(
           state.availableCommands.map((command) => ({

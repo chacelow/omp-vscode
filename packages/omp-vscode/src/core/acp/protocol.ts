@@ -40,6 +40,14 @@ export interface AcpSessionState extends AcpSessionInfo {
   plan: PlanEntry[];
   // Internal snapshot revision — never exposed to UI.
   revision: number;
+  // Partition revisions — bump ONLY when the underlying array/map ref
+  // changes on the acp-service side. Webview compares these numbers
+  // (survive postMessage's structured clone; object refs do not) to
+  // skip expensive derivations for updates that don't touch messages
+  // or tools (usage_update, session_info_update, plan, config, …).
+  messagesRevision: number;
+  toolCallsRevision: number;
+  commandsRevision: number;
   // ACP `usage_update` payload: `used` (tokens in context) + `size` (context
   // window). Both are REQUIRED numbers per the SDK schema. omp emits this
   // only at end-of-turn — never at bootstrap — so absence of `usage` means

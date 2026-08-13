@@ -107,6 +107,9 @@ const emptySession = (sessionId: string, cwd: string): AcpSessionState => ({
   configOptions: [],
   plan: [],
   revision: 0,
+  messagesRevision: 0,
+  toolCallsRevision: 0,
+  commandsRevision: 0,
   loaded: false,
   replaying: false,
   promptPending: false,
@@ -315,6 +318,9 @@ export class AcpService {
       usage: existing?.usage,
       replaying: true,
       revision: (existing?.revision ?? 0) + 1,
+      messagesRevision: existing?.messagesRevision ?? 0,
+      toolCallsRevision: existing?.toolCallsRevision ?? 0,
+      commandsRevision: existing?.commandsRevision ?? 0,
     });
     // Skip publishing this transient clearing snapshot. registerSession
     // publishes once at the end with the merged final state; replay-time
@@ -784,10 +790,26 @@ export class AcpService {
   ): AcpSessionState {
     const existing = this.sessions.get(sessionId);
     if (!existing) return existing!;
+    // Bump partition revisions only when the specific ref changed.
+    // Webview compares these numbers (survive postMessage's structured
+    // clone) to skip work on updates that don't touch that partition.
+    const messagesChanged =
+      patch.messages !== undefined && patch.messages !== existing.messages;
+    const toolCallsChanged =
+      patch.toolCalls !== undefined && patch.toolCalls !== existing.toolCalls;
+    const commandsChanged =
+      patch.availableCommands !== undefined &&
+      patch.availableCommands !== existing.availableCommands;
     const next: AcpSessionState = {
       ...existing,
       ...patch,
       revision: existing.revision + 1,
+      messagesRevision:
+        existing.messagesRevision + (messagesChanged ? 1 : 0),
+      toolCallsRevision:
+        existing.toolCallsRevision + (toolCallsChanged ? 1 : 0),
+      commandsRevision:
+        existing.commandsRevision + (commandsChanged ? 1 : 0),
     };
     this.sessions.set(sessionId, next);
     if (existing.promptPending !== next.promptPending) this.publishRunning();
@@ -822,6 +844,9 @@ export class AcpService {
       configOptions: init.configOptions ?? existing?.configOptions ?? [],
       plan: existing?.plan ?? [],
       revision: (existing?.revision ?? 0) + 1,
+      messagesRevision: (existing?.messagesRevision ?? 0) + 1,
+      toolCallsRevision: (existing?.toolCallsRevision ?? 0) + 1,
+      commandsRevision: (existing?.commandsRevision ?? 0) + 1,
       usage: existing?.usage,
       stopReason: existing?.stopReason,
       loaded: true,
@@ -1008,18 +1033,14 @@ export class AcpService {
           update as import("@agentclientprotocol/sdk").SessionInfoUpdate;
         if ("title" in info) patch.title = info.title ?? undefined;
         if ("updatedAt" in info) patch.updatedAt = info.updatedAt ?? undefined;
-        // omp emits session_info_update at exactly two points:
-        //   #emitBootstrapUpdates — session/new|load|resume
-        //   #emitEndOfTurnUpdates — after usage_update, right before the
-        //                            session/prompt RPC response returns
-        // When we see it mid-prompt, the model is done streaming and omp
-        // is in its final sync. The RPC response with stopReason lands a
-        // few ms later. Flip promptPending eagerly so the UI unblocks the
-        // input the moment the text stops, instead of waiting the extra
-        // stdio round-trip. omp's prompt queue (#queuePrompt) serializes
-        // any prompt fired during that tiny window, so nothing races.
-        const current = this.sessions.get(sessionId);
-        if (current?.promptPending) patch.promptPending = false;
+        // Do NOT touch promptPending here. omp emits session_info_update
+        // at both bootstrap (#emitBootstrapUpdates) AND end-of-turn
+        // (#emitEndOfTurnUpdates). An earlier optimisation flipped
+        // promptPending=false on it to shave ~50ms off the "input
+        // unblocks after RPC response" gap, but the bootstrap emission
+        // (e.g. after session/load right before a fresh prompt) fires
+        // AFTER prompt() already set promptPending=true, so it also
+        // wrongly flipped mid-turn. The RPC response owns promptPending.
         break;
       }
       case "usage_update": {
