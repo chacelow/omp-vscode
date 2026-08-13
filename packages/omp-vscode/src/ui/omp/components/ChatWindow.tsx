@@ -1507,11 +1507,18 @@ export function ChatWindow({
                         continue;
                       }
 
-                      const isLiveTail =
-                        (sessionBusy || streamState.isStreaming) &&
+                      // Inline the LAST turn even after it completes.
+                      // Wrapping it in ProcessDetailsGroup adds a header
+                      // row + a collapsed fold at the exact moment
+                      // streaming ends, which shows up as a visible
+                      // layout jump ("样式跳了一下"). Wrap only turns
+                      // that have been superseded by a newer user
+                      // message — the fold happens on a user action, not
+                      // implicit on completion.
+                      const isTailTurn =
                         endIdx === messages.length &&
                         userIdx === lastAnchorIdx;
-                      if (isLiveTail) {
+                      if (isTailTurn) {
                         for (
                           let renderIdx = userIdx;
                           renderIdx < endIdx;
@@ -1617,7 +1624,7 @@ export function ChatWindow({
                               countToolCallBlocks(finalSplit.processBlocks)
                             }
                             durationSec={groupDuration}
-                            defaultExpanded={!finalAnswerMessage}
+                            defaultExpanded={!finalAnswerMessage || userIdx === lastAnchorIdx}
                           >
                             {visibleProcessIndices.map((processIdx) =>
                               renderMessage(processIdx, {
