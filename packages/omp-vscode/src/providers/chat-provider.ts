@@ -68,11 +68,6 @@ export class ChatProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.buildHtml(webviewView.webview, "chat");
     webviewView.webview.onDidReceiveMessage((msg) => {
-      const bodyBrief =
-        typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
-      this.log.appendLine(
-        `[${new Date().toISOString().slice(11, 23)}] [webview:chat] ${msg.type}${msg.url ? ` ${msg.url}` : ""}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`
-      );
       void this.handleWebviewMessage(msg);
     });
 
@@ -111,11 +106,6 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     this.workbenchPanel = panel;
     panel.webview.html = this.buildHtml(panel.webview, "workbench");
     panel.webview.onDidReceiveMessage((msg) => {
-      const bodyBrief =
-        typeof msg.body === "string" ? msg.body.slice(0, 120) : "";
-      this.log.appendLine(
-        `[${new Date().toISOString().slice(11, 23)}] [webview:workbench] ${msg.type}${msg.method ? ` ${msg.method}` : ""} ${bodyBrief}`
-      );
       void this.handleWebviewMessage(msg);
     });
     panel.onDidDispose(() => {
@@ -390,6 +380,12 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     requestId: number,
     request: AcpRequest
   ): Promise<void> {
+    const t0 = Date.now();
+    const sessionId =
+      "sessionId" in request && typeof request.sessionId === "string"
+        ? request.sessionId.slice(0, 8)
+        : undefined;
+    this.trace("acp", { req: requestId, type: request.type, sid: sessionId });
     try {
       switch (request.type) {
         case "acp/start": {
@@ -615,8 +611,23 @@ export class ChatProvider implements vscode.WebviewViewProvider {
           break;
         }
       }
+      this.trace("acp↩", {
+        req: requestId,
+        type: request.type,
+        sid: sessionId,
+        ok: true,
+        ms: Date.now() - t0,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      this.trace("acp↩", {
+        req: requestId,
+        type: request.type,
+        sid: sessionId,
+        ok: false,
+        ms: Date.now() - t0,
+        err: message,
+      });
       this.replyToWebview(requestId, {
         type: "acp/response",
         requestId,
@@ -626,16 +637,48 @@ export class ChatProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /** Compact one-line trace: `[hh:mm:ss.mmm] [tag] key=val ...`.
+   *  Everything actionable (method, session, duration, error) inline so
+   *  the OMP Chat channel is grep-able for duplicates and slow calls. */
+  private trace(tag: string, fields: Record<string, unknown>): void {
+    const stamp = new Date().toISOString().slice(11, 23);
+    const parts: string[] = [];
+    for (const [k, v] of Object.entries(fields)) {
+      if (v === undefined || v === null) continue;
+      const s = typeof v === "string" ? v : JSON.stringify(v);
+      parts.push(`${k}=${s.length > 80 ? `${s.slice(0, 80)}…` : s}`);
+    }
+    this.log.appendLine(`[${stamp}] [${tag}] ${parts.join(" ")}`);
+  }
+
   private async handleHostCall(
     requestId: number,
     method: string,
     params: unknown
   ): Promise<void> {
+    const t0 = Date.now();
+    // Log the call at issue-time so a duplicate volley is visible even if
+    // one of them stalls. `params` is truncated by trace() to keep lines
+    // scannable.
+    this.trace("host", { req: requestId, method, params });
     try {
       const data = await this.host.dispatch(method as never, params);
+      this.trace("host↩", {
+        req: requestId,
+        method,
+        ok: true,
+        ms: Date.now() - t0,
+      });
       this.post({ type: "host/result", requestId, ok: true, data });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      this.trace("host↩", {
+        req: requestId,
+        method,
+        ok: false,
+        ms: Date.now() - t0,
+        err: message,
+      });
       this.post({ type: "host/result", requestId, ok: false, error: message });
     }
   }

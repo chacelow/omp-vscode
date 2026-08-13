@@ -841,6 +841,25 @@ export class AcpService {
     update: import("@agentclientprotocol/sdk").SessionUpdate
   ): void {
     const patch: Partial<AcpSessionState> = {};
+    // Compact one-line trace of every ACP session/update. Includes the
+    // update kind, session prefix, and any messageId/toolCallId when
+    // present — enough to spot duplicates ("agent_message_chunk × 30
+    // sharing messageId=abcd") and out-of-order events. Kept lightweight:
+    // no JSON.stringify of payload.
+    const meta: string[] = [];
+    if ("messageId" in update && typeof update.messageId === "string") {
+      meta.push(`mid=${update.messageId.slice(0, 8)}`);
+    }
+    if ("toolCallId" in update && typeof update.toolCallId === "string") {
+      meta.push(`tid=${update.toolCallId.slice(0, 8)}`);
+    }
+    if ("status" in update && typeof update.status === "string") {
+      meta.push(`st=${update.status}`);
+    }
+    const stamp = new Date().toISOString().slice(11, 23);
+    this.options.output(
+      `[${stamp}] [acp/upd] sid=${sessionId.slice(0, 8)} kind=${update.sessionUpdate}${meta.length ? ` ${meta.join(" ")}` : ""}`
+    );
     if (isSessionNotice(update)) {
       const notice = readSessionNotice(update);
       if (notice) this.emitSessionNotice(sessionId, notice);

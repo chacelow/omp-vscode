@@ -21,6 +21,7 @@ import { normalizeToolCalls } from "@/lib/normalize";
 import { getToolNamesForPreset } from "@/lib/tool-presets";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 import { acpRequest, hostCall, subscribeAcp } from "../../bridge";
+import { ompTrace } from "../../boot";
 import type {
   AcpCapabilitySnapshot,
   AcpElicitationRequest,
@@ -931,6 +932,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const toolCallsChanged = state.toolCalls !== lastAcpToolCallsRef.current;
       lastAcpMessagesRef.current = state.messages;
       lastAcpToolCallsRef.current = state.toolCalls;
+      ompTrace("snap", {
+        sid: state.sessionId.slice(0, 8),
+        rev: state.revision,
+        msgs: state.messages.length,
+        tools: Object.keys(state.toolCalls).length,
+        pending: state.promptPending,
+        stop: state.stopReason,
+        msgsΔ: messagesChanged,
+        toolsΔ: toolCallsChanged,
+      });
       let nextMessages = lastNextMessagesRef.current;
       if (messagesChanged || toolCallsChanged) {
         nextMessages = coalesceToolAssistants(

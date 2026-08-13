@@ -23,6 +23,24 @@ export function ompPost(msg: unknown): void {
   }
 }
 
+/** Compact structured trace to the OMP Chat output channel. Format
+ *  `[hh:mm:ss.mmm] [webview/<tag>] k=v k=v ...` — cheap to scan for
+ *  duplicate calls and slow spots. */
+export function ompTrace(tag: string, fields: Record<string, unknown>): void {
+  const stamp = new Date().toISOString().slice(11, 23);
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === undefined || v === null) continue;
+    const s = typeof v === "string" ? v : JSON.stringify(v);
+    parts.push(`${k}=${s.length > 80 ? `${s.slice(0, 80)}…` : s}`);
+  }
+  ompPost({
+    type: "log",
+    level: "info",
+    message: `[${stamp}] [webview/${tag}] ${parts.join(" ")}`,
+  });
+}
+
 // Marker so the host can confirm the bundle executed at all.
 ompPost({ type: "log", level: "info", message: "[webview] boot ok" });
 
