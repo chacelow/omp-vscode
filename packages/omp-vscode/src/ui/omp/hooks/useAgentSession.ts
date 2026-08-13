@@ -13,70 +13,44 @@ import type {
   AssistantMessage,
   SessionInfo,
   SessionTreeNode,
-  ToolCallKind,
-  ToolCallStatus,
-  ToolResultMessage,
 } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { getToolNamesForPreset } from "@/lib/tool-presets";
 import type { SessionStatsInfo } from "@/lib/pi-types";
-import { acpRequest, hostCall, subscribeAcp } from "../../bridge";
-import { ompTrace } from "../../boot";
+import { acpRequest, hostCall } from "../../bridge";
 import type {
   AcpCapabilitySnapshot,
   AcpElicitationRequest,
-  AcpHostEvent,
-  AcpMessage,
   AcpPermissionRequest,
   AcpSessionState,
 } from "../../../core/acp/protocol";
 import type {
   ContentBlock,
   ElicitationContentValue,
-  ToolCall,
 } from "@agentclientprotocol/sdk";
 import type { ModelsResult } from "../../../core/host/protocol";
 
-export interface SessionData {
-  sessionId: string;
-  filePath: string;
-  tree: SessionTreeNode[];
-  leafId: string | null;
-  context: {
-    messages: AgentMessage[];
-    entryIds: string[];
-    thinkingLevel: string;
-    model: { provider: string; modelId: string } | null;
-  };
-}
+import { useSessionStore } from "@/state/session-store";
+import { useTranscriptStore } from "@/state/transcript-store";
+import { installAcpEventBridge } from "@/transport/acp-events";
+import { messageText } from "@/domain/acp-message-adapter";
+import {
+  useCurrentSessionId,
+  useSessionData,
+  useSessionLoading,
+  useSessionError,
+  useActiveLeafId,
+} from "@/hooks/useCurrentSession";
+import {
+  useMessages,
+  usePendingUserMessage,
+  useEntryIds,
+  useStreamState,
+} from "@/hooks/useTranscript";
 
-interface StreamingState {
-  isStreaming: boolean;
-  streamingMessage: Partial<AgentMessage> | null;
-}
-
-type StreamAction =
-  | { type: "start" }
-  | { type: "update"; message: Partial<AgentMessage> }
-  | { type: "end" }
-  | { type: "reset" };
-
-function streamReducer(
-  state: StreamingState,
-  action: StreamAction
-): StreamingState {
-  switch (action.type) {
-    case "start":
-      return { isStreaming: true, streamingMessage: null };
-    case "update":
-      return { isStreaming: true, streamingMessage: action.message };
-    case "end":
-    case "reset":
-      return { isStreaming: false, streamingMessage: null };
-    default:
-      return state;
-  }
-}
+// SessionData is now owned by the session-store; re-export the type so
+// existing consumers of `useAgentSession` continue to see it here.
+export type { SessionData } from "@/state/session-store";
 
 export type NoticeType = "info" | "success" | "warning" | "error";
 export type NoticeItem = {
@@ -163,18 +137,21 @@ type ModelEntry = {
 };
 type InteractionDialog = AcpPermissionRequest | AcpElicitationRequest;
 
+// The historical StreamAction shape is preserved so the facade's returned
+// `dispatch` still accepts the same messages any legacy caller might send.
+// External code does not use `dispatch` today (see grep), so this shim is
+// only exercised by the facade itself.
+type StreamAction =
+  | { type: "start" }
+  | { type: "update"; message: Partial<AgentMessage> }
+  | { type: "end" }
+  | { type: "reset" };
+
 const LAST_MODEL_KEY = "omp.lastModel";
 const MAX_NOTICES = 5;
 const NOTICE_VISIBLE_MS = 5000;
-type DisplayContent = Array<
-  | { type: "text"; text: string }
-  | {
-      type: "image";
-      source: { type: "base64"; media_type: string; data: string };
-    }
-  | { type: "thinking"; thinking: string }
->;
 const NOTICE_EXIT_ANIMATION_MS = 180;
+
 function createNoticeId(): string {
   return typeof crypto !== "undefined" &&
     typeof crypto.randomUUID === "function"
@@ -261,273 +238,6 @@ function noticeReducer(state: NoticeState, action: NoticeAction): NoticeState {
     );
   return state;
 }
-function blocksToContent(blocks: readonly ContentBlock[]): DisplayContent {
-  const result: DisplayContent = [];
-  for (const block of blocks) {
-    if (block.type === "text") result.push({ type: "text", text: block.text });
-    else if (block.type === "image")
-      result.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: block.mimeType,
-          data: block.data,
-        },
-      });
-  }
-  return result;
-}
-function normalizeKind(kind: string | undefined): ToolCallKind | undefined {
-  const allowed: readonly ToolCallKind[] = [
-    "read",
-    "edit",
-    "delete",
-    "move",
-    "search",
-    "execute",
-    "think",
-    "fetch",
-    "switch_mode",
-    "other",
-  ];
-  return kind && (allowed as readonly string[]).includes(kind)
-    ? (kind as ToolCallKind)
-    : undefined;
-}
-function normalizeStatus(
-  status: string | undefined
-): ToolCallStatus | undefined {
-  const allowed: readonly ToolCallStatus[] = [
-    "pending",
-    "in_progress",
-    "completed",
-    "failed",
-  ];
-  return status && (allowed as readonly string[]).includes(status)
-    ? (status as ToolCallStatus)
-    : undefined;
-}
-function toolMessages(
-  message: AcpMessage,
-  tool: ToolCall | undefined
-): AgentMessage[] {
-  if (message.role !== "toolCall" || !tool) return [];
-  const toolName = tool.name?.trim() || tool.kind || tool.title || "tool";
-  const input =
-    typeof tool.rawInput === "object" &&
-    tool.rawInput !== null &&
-    !Array.isArray(tool.rawInput)
-      ? (tool.rawInput as Record<string, unknown>)
-      : {};
-  const locations = (tool.locations ?? []).flatMap((location) =>
-    location.path
-      ? [
-          {
-            path: location.path,
-            line: typeof location.line === "number" ? location.line : undefined,
-          },
-        ]
-      : []
-  );
-  // Prefer the tool's content blocks (human-readable text the agent
-  // produced) over rawOutput. rawOutput is a structured object; JSON.stringify
-  // of it feeds garbage into tool-specific renderers (e.g. the grep match
-  // list treated every JSON line as a match).
-  let output = (tool.content ?? [])
-    .flatMap((item) =>
-      item.type === "content" && item.content.type === "text"
-        ? [item.content.text]
-        : item.type === "diff"
-          ? [item.newText]
-          : []
-    )
-    .join("\n");
-  if (!output) {
-    if (typeof tool.rawOutput === "string") output = tool.rawOutput;
-    else if (tool.rawOutput !== undefined) {
-      try {
-        output = JSON.stringify(tool.rawOutput, null, 2);
-      } catch {
-        output = String(tool.rawOutput);
-      }
-    }
-  }
-  const call: AssistantMessage = {
-    role: "assistant",
-    content: [
-      {
-        type: "toolCall",
-        toolCallId: message.toolCallId,
-        toolName,
-        input,
-        toolKind: normalizeKind(tool.kind ?? undefined),
-        title: tool.title ?? undefined,
-        status: normalizeStatus(tool.status ?? undefined),
-        locations: locations.length > 0 ? locations : undefined,
-      },
-    ],
-    model: "",
-    provider: "",
-    timestamp: Date.now(),
-  };
-  if (tool.status !== "completed" && tool.status !== "failed") return [call];
-  const details =
-    tool.rawOutput !== undefined && typeof tool.rawOutput !== "string"
-      ? tool.rawOutput
-      : undefined;
-  const result: ToolResultMessage = {
-    role: "toolResult",
-    toolCallId: message.toolCallId,
-    toolName,
-    content: output ? [{ type: "text", text: output }] : [],
-    isError: tool.status === "failed",
-    details,
-    timestamp: Date.now(),
-  };
-  return [call, result];
-}
-
-/**
- * ACP emits each tool_call as its own tool-only assistant message; that breaks
- * cross-tool grouping in the UI, which only groups within a single assistant
- * block list. Merge consecutive tool-only assistant messages (with toolResult
- * dividers in between) into one assistant message so the message-scoped ToolLine
- * grouping can fold sibling reads/greps/bashes across the whole tool run.
- */
-function coalesceToolAssistants(messages: AgentMessage[]): AgentMessage[] {
-  const merged: AgentMessage[] = [];
-  const isToolOnlyAssistant = (
-    message: AgentMessage
-  ): message is AssistantMessage =>
-    message.role === "assistant" &&
-    message.content.length > 0 &&
-    message.content.every((block) => block.type === "toolCall");
-
-  for (const message of messages) {
-    if (isToolOnlyAssistant(message)) {
-      let prevIndex = merged.length - 1;
-      while (prevIndex >= 0 && merged[prevIndex].role === "toolResult")
-        prevIndex -= 1;
-      const prev = prevIndex >= 0 ? merged[prevIndex] : null;
-      if (prev && isToolOnlyAssistant(prev)) {
-        merged[prevIndex] = {
-          ...prev,
-          content: [...prev.content, ...message.content],
-        };
-        continue;
-      }
-    }
-    merged.push(message);
-  }
-  return merged;
-}
-// Identity cache — one AgentMessage per AcpMessage reference. Snapshots
-// arrive many times a second during streaming; acp-service already
-// returns the SAME AcpMessage object for messages that didn't change
-// this update, and only allocates a fresh one for the message whose
-// content grew. Without this cache, `toAgentMessage(...)` rebuilt every
-// message from scratch on every snapshot (new object refs, new
-// Date.now() timestamps), React saw them as different, and every
-// MessageView re-rendered per chunk — the "全量刷新，顿一下" the user
-// reported.
-//
-// Keys: AcpMessage (unchanged → cache hit) AND for tool-call rows the
-// ToolCall record it points at (tool progress mutates that separately).
-const agentMessageCache = new WeakMap<AcpMessage, AgentMessage[]>();
-const toolCallSnapshotCache = new WeakMap<AcpMessage, ToolCall | undefined>();
-
-function toAgentMessages(
-  message: AcpMessage,
-  tools: Record<string, ToolCall>
-): AgentMessage[] {
-  if (message.role === "toolCall") {
-    const tool = tools[message.toolCallId];
-    const cached = agentMessageCache.get(message);
-    if (cached && toolCallSnapshotCache.get(message) === tool) return cached;
-    const fresh = toolMessages(message, tool);
-    agentMessageCache.set(message, fresh);
-    toolCallSnapshotCache.set(message, tool);
-    return fresh;
-  }
-  const cached = agentMessageCache.get(message);
-  if (cached) return cached;
-  const fresh = [toAgentMessage(message)];
-  agentMessageCache.set(message, fresh);
-  return fresh;
-}
-
-function toAgentMessage(message: AcpMessage): AgentMessage {
-  const content = blocksToContent(message.content);
-  if (message.role === "user") {
-    return {
-      role: "user",
-      content: content.filter(
-        (
-          block
-        ): block is DisplayContent[number] &
-          ({ type: "text" } | { type: "image" }) =>
-          block.type === "text" || block.type === "image"
-      ),
-      timestamp: Date.now(),
-    };
-  }
-  if (message.role === "thought") {
-    return {
-      role: "assistant",
-      content: content
-        .filter((block) => block.type === "text")
-        .map((block) => ({ type: "thinking" as const, thinking: block.text })),
-      model: "",
-      provider: "",
-      timestamp: Date.now(),
-    };
-  }
-  return {
-    role: "assistant",
-    content,
-    model: "",
-    provider: "",
-    timestamp: Date.now(),
-  };
-}
-function messageText(message: unknown): string {
-  if (
-    !message ||
-    typeof message !== "object" ||
-    !("content" in message) ||
-    !Array.isArray(message.content)
-  )
-    return "";
-  return message.content.reduce<string>((text, block) => {
-    if (
-      !block ||
-      typeof block !== "object" ||
-      !("type" in block) ||
-      block.type !== "text" ||
-      !("text" in block) ||
-      typeof block.text !== "string"
-    )
-      return text;
-    return text + block.text;
-  }, "");
-}
-
-/**
- * Signature identifying a submitted user message so an authoritative
- * server-side copy can be matched against the optimistic one. Mirrors
- * TUI's `${text}\u0000${imageCount}` pattern (interactive-mode.ts:1609).
- */
-function userMessageSignature(message: AgentMessage): string {
-  if (message.role !== "user") return "";
-  const text = messageText(message);
-  const imageCount = Array.isArray(message.content)
-    ? message.content.reduce(
-        (count, block) => count + (block?.type === "image" ? 1 : 0),
-        0
-      )
-    : 0;
-  return `${text}\u0000${imageCount}`;
-}
 function parseModel(value: string | undefined): SelectedModel | null {
   if (!value) return null;
   const separator = value.indexOf("/");
@@ -589,30 +299,80 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     onOpenResumeDialog,
   } = opts;
   const isNew = session === null && newSessionCwd !== null;
-  const [data, setData] = useState<SessionData | null>(null);
-  // Loading only applies to opening an EXISTING session (JSONL fetch).
-  // A blank new chat renders instantly.
-  const [loading, setLoading] = useState(session !== null);
-  const [error, setError] = useState<string | null>(null);
-  const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-  // Optimistic user message (single-slot, TUI-parity). omp does NOT echo
-  // the just-prompted user text via `user_message_chunk` during a live
-  // turn (see `acp-event-mapper.ts:145-219`); the authoritative user row
-  // only appears in `state.messages` on the next full replay. We keep the
-  // just-submitted user turn in its own slot until an ACP snapshot's
-  // messages array contains a user row with a matching signature.
-  const [pendingUserMessage, setPendingUserMessage] =
-    useState<AgentMessage | null>(null);
-  const messagesRef = useRef<AgentMessage[]>([]);
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-  const [entryIds, setEntryIds] = useState<string[]>([]);
-  const [streamState, dispatch] = useReducer(streamReducer, {
-    isStreaming: false,
-    streamingMessage: null,
-  });
+
+  // ---- Store-backed slices (session + transcript). -----------------------
+  //
+  // Session + transcript state now live in `state/session-store.ts` and
+  // `state/transcript-store.ts`. The facade reaches them through the
+  // narrow selector hooks in `hooks/useCurrentSession` / `hooks/useTranscript`
+  // and mutates through the store methods; ACP-driven mutations are
+  // funneled via `transport/acp-events.ts` (installed once below).
+  const initRef = useRef(false);
+  if (!initRef.current) {
+    initRef.current = true;
+    // Synchronously seed the store so the very first render matches the
+    // previous `useState(session !== null)` behavior: loading=true when a
+    // session is provided, false for a blank chat.
+    const s = useSessionStore.getState();
+    s.setCurrent(session?.id ?? null, isNew);
+    s.setLoading(session !== null);
+    s.setError(null);
+    // A fresh mount starts with an empty transcript. The store is a
+    // module-level singleton — if a previous ChatWindow mounted the same
+    // process, we must reset so stale messages don't leak in.
+    useTranscriptStore.getState().resetAll();
+  }
+  const data = useSessionData();
+  const loading = useSessionLoading();
+  const error = useSessionError();
+  const activeLeafId = useActiveLeafId();
+  const messages = useMessages();
+  const pendingUserMessage = usePendingUserMessage();
+  const entryIds = useEntryIds();
+  const streamState = useStreamState();
+  const currentSessionId = useCurrentSessionId();
+
+  // Track messages through a ref for the ACP callback / turn-end backfill —
+  // the store IS the source of truth, but a ref sidesteps closure staleness
+  // in nested callbacks scheduled outside React's render cycle.
+  const messagesRef = useRef<AgentMessage[]>(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Dispatch shim — preserves the return-shape signature (`dispatch({type})`)
+  // for any legacy caller. Internally routes to the transcript-store's
+  // stream actions.
+  const dispatch = useCallback((action: StreamAction) => {
+    const t = useTranscriptStore.getState();
+    if (action.type === "start") t.streamStart();
+    else if (action.type === "update") t.streamUpdate(action.message);
+    else if (action.type === "end") t.streamEnd();
+    else if (action.type === "reset") t.streamReset();
+  }, []);
+  // Store-method proxies — the previous return exposed these as
+  // per-instance setState fns. Wrapping in useCallback preserves reference
+  // stability so downstream memoization doesn't invalidate on every render.
+  const setData = useCallback(
+    (
+      next:
+        | ReturnType<typeof useSessionData>
+        | ((
+            current: ReturnType<typeof useSessionData>
+          ) => ReturnType<typeof useSessionData>)
+    ) => useSessionStore.getState().setData(next),
+    []
+  );
+  const setActiveLeafId = useCallback(
+    (id: string | null) => useSessionStore.getState().setActiveLeafId(id),
+    []
+  );
+  const setMessages = useCallback(
+    (
+      next: AgentMessage[] | ((current: AgentMessage[]) => AgentMessage[])
+    ) => useTranscriptStore.getState().setMessages(next),
+    []
+  );
+
+  // ---- Facade-owned state (concerns not yet extracted). ------------------
   const [agentRunning, setAgentRunning] = useState(false);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelEntry[]>([]);
@@ -707,19 +467,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const sawErrorStopRef = useRef(false);
   const tpsRef = useRef({ chars: 0, startedAt: 0 });
   const restoredTurnRef = useRef<string | null>(null);
-  // Identity cache: when a snapshot arrives whose `messages` and
-  // `toolCalls` refs are unchanged (usage_update / session_info_update /
-  // plan / config / available_commands — none of them touch the message
-  // list), the whole flatMap + coalesce + setMessages pipeline is
-  // guaranteed to produce the same result. Skip it.
-  // Partition revisions from acp-service (see AcpSessionState.*Revision).
-  // NOTE we cannot use `state.messages !==` here — postMessage's
-  // structured clone deep-copies state on every hop, so refs are NEVER
-  // stable across snapshots. Numbers survive the clone unchanged.
-  const lastAcpMessagesRevRef = useRef(-1);
-  const lastAcpToolCallsRevRef = useRef(-1);
+  // Commands revision — orthogonal to the message/toolCalls partitions the
+  // transcript-store tracks; slashCommands remains a facade-owned concern
+  // until its own store extraction.
   const lastAcpCommandsRevRef = useRef(-1);
-  const lastNextMessagesRef = useRef<AgentMessage[]>([]);
+
   const addNotice = useCallback(
     (notice: Omit<NoticeItem, "id"> & { id?: string }) =>
       dispatchNotice({
@@ -889,100 +641,29 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setCompactError(null);
   }, []);
 
-  const applySnapshot = useCallback(
-    (state: AcpSessionState) => {
-      if (state.sessionId !== sessionIdRef.current) return;
-      // Never let an empty-messages snapshot wipe a non-empty local transcript.
-      // This covers both the transient replaying-clear during session/load AND
-      // the initial post-newSession snapshot (which arrives with messages=[]
-      // because omp's bootstrap events don't include historical entries).
-      // The local transcript came from sessionDetail's authoritative JSONL
-      // parse; ACP snapshots only enrich it with mode/config/usage/plan.
-      if (
-        (state.messages?.length ?? 0) === 0 &&
-        messagesRef.current.length > 0
-      ) {
-        setSnapshot(state);
-        return;
+  // ---- Snapshot side effects (message-processing half lives inside the
+  // transcript-store; here we handle everything else the snapshot drives).
+  const handleSnapshotExtras = useCallback(
+    (
+      state: AcpSessionState,
+      summary: {
+        processed: boolean;
+        toolCallsChanged: boolean;
+        nextMessages: readonly AgentMessage[];
+        streamingTail: AssistantMessage | undefined;
       }
+    ) => {
+      // Foreign session or empty-guard suppressed → still update snapshot
+      // (mode/config/plan/etc.) but skip everything else.
       setSnapshot(state);
-      // Fast path — skip the whole message pipeline when neither the
-      // messages array nor the toolCalls map changed reference (which
-      // covers usage_update / session_info_update / plan* /
-      // config_option_update / available_commands_update: they touch
-      // orthogonal state slots). Before: every session/update rebuilt
-      // nextMessages by iterating all N messages, ran coalesce, and
-      // recomputed setMessages. Multiplied by 30+ events per turn on a
-      // long session it was the biggest source of per-chunk overhead.
-      const messagesChanged =
-        state.messagesRevision !== lastAcpMessagesRevRef.current;
-      const toolCallsChanged =
-        state.toolCallsRevision !== lastAcpToolCallsRevRef.current;
-      lastAcpMessagesRevRef.current = state.messagesRevision;
-      lastAcpToolCallsRevRef.current = state.toolCallsRevision;
-      ompTrace("snap", {
-        sid: state.sessionId.slice(0, 8),
-        rev: state.revision,
-        msgs: state.messages.length,
-        tools: Object.keys(state.toolCalls).length,
-        pending: state.promptPending,
-        stop: state.stopReason,
-        msgsΔ: messagesChanged,
-        toolsΔ: toolCallsChanged,
-      });
-      let nextMessages = lastNextMessagesRef.current;
-      if (messagesChanged || toolCallsChanged) {
-        nextMessages = coalesceToolAssistants(
-          state.messages.flatMap((message) =>
-            toAgentMessages(message, state.toolCalls)
-          )
-        );
-        lastNextMessagesRef.current = nextMessages;
-        setMessages((current) => {
-          const previousAssistants: AssistantMessage[] = current.filter(
-            (message): message is AssistantMessage => message.role === "assistant"
-          );
-          let assistantIndex = 0;
-          return nextMessages.map((message) => {
-            if (message.role !== "assistant") return message;
-            const previous = previousAssistants[assistantIndex++];
-            if (!previous) return message;
-            const usage = message.usage ?? previous.usage;
-            const duration = message.duration ?? previous.duration;
-            const ttft = message.ttft ?? previous.ttft;
-            const timestamp = message.timestamp ?? previous.timestamp;
-            if (
-              usage === message.usage &&
-              duration === message.duration &&
-              ttft === message.ttft &&
-              timestamp === message.timestamp
-            )
-              return message;
-            return {
-              ...message,
-              usage,
-              duration,
-              ttft,
-              timestamp,
-            } satisfies AssistantMessage;
-          });
-        });
-        setPendingUserMessage((pending) => {
-          if (!pending) return pending;
-          const sig = userMessageSignature(pending);
-          const authoritative = nextMessages.some(
-            (message) =>
-              message.role === "user" && userMessageSignature(message) === sig
-          );
-          return authoritative ? null : pending;
-        });
-      }
+      if (!summary.processed) return;
+
       const wasRunning = agentRunningRef.current;
       agentRunningRef.current = state.promptPending;
       setAgentRunning(state.promptPending);
       // Skip activeTools+agentPhase recompute when toolCalls and
       // promptPending both stable — a usage_update carries neither.
-      if (toolCallsChanged || wasRunning !== state.promptPending) {
+      if (summary.toolCallsChanged || wasRunning !== state.promptPending) {
         const activeTools = Object.entries(state.toolCalls).flatMap(
           ([id, tool]) =>
             tool.status === "in_progress"
@@ -1045,7 +726,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         )
           setCompactionBoundary({
             at: Date.now(),
-            messageIndex: nextMessages.length,
+            messageIndex: summary.nextMessages.length,
           });
         preCompactUsedRef.current = null;
         setIsCompacting(false);
@@ -1056,16 +737,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setRetryInfo(null);
       }
       if (state.promptPending) {
-        // Only the transcript TAIL is the live streaming message. A prior
-        // turn's assistant must not count — prompt() appends the user row
-        // before any chunk arrives, so at turn start the tail is the user
-        // message (→ "start": shimmer shows), and once assistant chunks land
-        // the tail flips to the new assistant (→ "update": text streams).
-        const tail = nextMessages[nextMessages.length - 1];
-        const streaming = tail?.role === "assistant" ? tail : undefined;
-        if (streaming) dispatch({ type: "update", message: streaming });
-        else dispatch({ type: "start" });
-        const chars = messageText(streaming ?? null);
+        const chars = messageText(summary.streamingTail ?? null);
         const now = performance.now();
         if (
           tpsRef.current.startedAt === 0 ||
@@ -1078,7 +750,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
               ((now - tpsRef.current.startedAt) / 1000)
           );
       } else {
-        dispatch({ type: "end" });
         setLiveTps(null);
         tpsRef.current = { chars: 0, startedAt: 0 };
         if (isCompacting) setIsCompacting(false);
@@ -1095,12 +766,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const loadSession = useCallback(
     async (sid: string, showLoading = false) => {
-      if (showLoading) setLoading(true);
+      const store = useSessionStore.getState();
+      if (showLoading) store.setLoading(true);
       try {
         const detail = await hostCall("sessionDetail", { sessionId: sid });
         if (sessionIdRef.current !== sid) return null;
         if (!detail) throw new Error("Session not found");
-        const loaded: SessionData = {
+        const loaded = {
           sessionId: detail.sessionId,
           filePath: detail.filePath,
           tree: detail.tree.filter(
@@ -1110,17 +782,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           leafId: detail.leafId,
           context: detail.context,
         };
-        setData(loaded);
-        setActiveLeafId(loaded.leafId);
-        setMessages(loaded.context.messages.map(normalizeToolCalls));
-        setEntryIds(loaded.context.entryIds);
+        store.setData(loaded);
+        store.setActiveLeafId(loaded.leafId);
+        useTranscriptStore
+          .getState()
+          .setMessages(loaded.context.messages.map(normalizeToolCalls));
+        useTranscriptStore.getState().setEntryIds(loaded.context.entryIds);
         setThinkingLevel(loaded.context.thinkingLevel as ThinkingLevelOption);
-        setError(null);
+        store.setError(null);
         // JSONL is painted → release the loading overlay NOW. Attaching ACP
         // (which re-parses the same JSONL server-side and replays it as
         // notifications) can take another 2–5 s for long sessions; blocking
         // the UI on that felt like "loading half a day".
-        if (showLoading) setLoading(false);
+        if (showLoading) store.setLoading(false);
 
         // ACP subscription is best-effort: if the agent hasn't heard of this
         // session yet (fresh cold start after the file was written) we still
@@ -1159,8 +833,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         })();
         return loaded;
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
-        if (showLoading) setLoading(false);
+        store.setError(cause instanceof Error ? cause.message : String(cause));
+        if (showLoading) store.setLoading(false);
         return null;
       }
     },
@@ -1184,6 +858,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const sid = responseSessionId(created);
       if (!sid) return null;
       sessionIdRef.current = sid;
+      useSessionStore.getState().setCurrent(sid, isNew);
       // session/new returns a fully-live session — mark it loaded so the
       // later selectedSession promotion doesn't re-run loadSession (which
       // would trigger a pointless historical replay of an empty session).
@@ -1201,7 +876,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally {
       ensuringNewSessionRef.current = null;
     }
-  }, [newSessionCwd, session?.cwd]);
+  }, [newSessionCwd, session?.cwd, isNew]);
 
   const sendPrompt = useCallback(
     async (message: string, images?: AttachedImage[]) => {
@@ -1234,22 +909,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             type: "info",
             message: `/${command.toLowerCase()} is TUI-only for now`,
           });
-        const displayContent = blocksToContent(
-          contentFor(message, images)
-        ).filter(
-          (
-            block
-          ): block is DisplayContent[number] &
-            ({ type: "text" } | { type: "image" }) =>
-            block.type === "text" || block.type === "image"
-        );
         // Optimistic user message lives in its own slot until the ACP
         // snapshot's messages array contains a signature-matched user row.
-        // Do NOT push into `messages` — that racedwith applySnapshot and
+        // Do NOT push into `messages` — that races with applySnapshot and
         // caused duplicates + wrong ordering.
-        setPendingUserMessage({
+        useTranscriptStore.getState().setPendingUserMessage({
           role: "user",
-          content: displayContent,
+          content: [
+            { type: "text", text: message },
+            ...(images ?? []).map((image) => ({
+              type: "image" as const,
+              source: {
+                type: "base64" as const,
+                media_type: image.mimeType,
+                data: image.data,
+              },
+            })),
+          ],
           timestamp: Date.now(),
         });
         await acpRequest({
@@ -1259,7 +935,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         });
         promoteNewSession(1, message);
       } catch (cause) {
-        setPendingUserMessage(null);
+        useTranscriptStore.getState().setPendingUserMessage(null);
         addNotice({
           type: "error",
           message:
@@ -1340,7 +1016,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       await acpRequest({ type: "acp/closeSession", sessionId: sid });
       await hostCall("sessionNavigateLeaf", { sessionId: sid, entryId });
       await reloadAfterFileChange(sid);
-      setActiveLeafId(entryId);
+      useSessionStore.getState().setActiveLeafId(entryId);
     },
     [reloadAfterFileChange]
   );
@@ -1652,35 +1328,35 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     await hostCall("sessionDelete", { sessionId: sid });
   }, []);
 
-  useEffect(
-    () =>
-      subscribeAcp((event: AcpHostEvent) => {
-        if (event.type === "acp/sessionSnapshot") applySnapshot(event.state);
-        else if (event.type === "acp/connection")
-          setCapabilities(event.snapshot.capabilities);
-        else if (event.type === "acp/notice") {
-          if (event.sessionId && event.sessionId !== sessionIdRef.current)
-            return;
-          addNotice({ type: event.level, message: event.message });
-          if (
-            sawErrorStopRef.current &&
-            /retry|retrying/i.test(event.message)
-          ) {
-            const attemptMatch = /attempt (\d+)\/(\d+)/i.exec(event.message);
-            setRetryInfo({
-              attempt: attemptMatch ? Number(attemptMatch[1]) : 1,
-              maxAttempts: attemptMatch ? Number(attemptMatch[2]) : 1,
-              errorMessage: event.message,
-            });
-          }
-        } else if (event.type === "acp/permissionRequest")
-          setInteractionDialog(event.request);
-        else if (event.type === "acp/elicitationRequest")
-          setInteractionDialog(event.request);
-        else if (event.type === "acp/error") setError(event.message);
-      }),
-    [addNotice, applySnapshot]
+  // ACP event bridge — single subscription installed once per mount. The
+  // getter pattern keeps the subscription stable while allowing the
+  // handlers' closures to evolve across renders (standard latest-ref
+  // pattern; avoids the previous [addNotice, applySnapshot] re-subscribe
+  // dance and its identity-cache churn).
+  const handlersRef = useRef<Parameters<typeof installAcpEventBridge>[0]>(
+    () => ({})
   );
+  handlersRef.current = () => ({
+    onSnapshot: handleSnapshotExtras,
+    onConnection: (snap) => setCapabilities(snap.capabilities),
+    onNotice: (level, message, sid) => {
+      if (sid && sid !== sessionIdRef.current) return;
+      addNotice({ type: level, message });
+      if (sawErrorStopRef.current && /retry|retrying/i.test(message)) {
+        const attemptMatch = /attempt (\d+)\/(\d+)/i.exec(message);
+        setRetryInfo({
+          attempt: attemptMatch ? Number(attemptMatch[1]) : 1,
+          maxAttempts: attemptMatch ? Number(attemptMatch[2]) : 1,
+          errorMessage: message,
+        });
+      }
+    },
+    onPermissionRequest: (request) => setInteractionDialog(request),
+    onElicitationRequest: (request) => setInteractionDialog(request),
+    onError: (message) => useSessionStore.getState().setError(message),
+  });
+  useEffect(() => installAcpEventBridge(() => handlersRef.current()), []);
+
   // Load a session on `session.id` change only. React may hand us a new
   // `session` OBJECT with the same id (e.g. AppShell hydrates missing
   // projectRoot metadata after promoteNewSession) — re-running loadSession
@@ -1696,6 +1372,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     lastLoadedSessionIdRef.current = session.id;
     sessionIdRef.current = session.id;
+    useSessionStore.getState().setCurrent(session.id, isNew);
     void loadSession(session.id, true);
     return () => {
       void acpRequest({
@@ -1703,14 +1380,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         sessionId: session.id,
       });
     };
-  }, [loadSession, session?.id, session]);
+  }, [loadSession, session?.id, session, isNew]);
   // Blank-chat mount: ACP-native means NO session exists until the first
   // send (handleSend → ensureNewSession → session/new). Just load models
   // and release the loading overlay; nothing to create or attach here.
   useEffect(() => {
     if (session || !isNew || !newSessionCwd || sessionIdRef.current) return;
     void loadModels();
-    setLoading(false);
+    useSessionStore.getState().setLoading(false);
   }, [isNew, loadModels, newSessionCwd, session]);
   useEffect(() => {
     if (onBranchDataChange)
@@ -1800,26 +1477,23 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
         // Non-message updates are safe to swap wholesale — they don't
         // feed the message list.
-        setData((prev) => {
-          const nextTree = detail.tree.filter(
+        useSessionStore.getState().setData(() => ({
+          sessionId: detail.sessionId,
+          filePath: detail.filePath,
+          tree: detail.tree.filter(
             (node): node is SessionTreeNode =>
               typeof node === "object" && node !== null
-          );
-          return {
-            sessionId: detail.sessionId,
-            filePath: detail.filePath,
-            tree: nextTree,
-            leafId: detail.leafId,
-            context: detail.context,
-          };
-        });
-        setActiveLeafId(detail.leafId);
-        setEntryIds(detail.context.entryIds);
+          ),
+          leafId: detail.leafId,
+          context: detail.context,
+        }));
+        useSessionStore.getState().setActiveLeafId(detail.leafId);
+        useTranscriptStore.getState().setEntryIds(detail.context.entryIds);
 
         // Index-aligned in-place merge into the LIVE `messages` array.
         // Only patches assistant stats fields (usage/duration/ttft/
         // contextSnapshot) — content, role, and everything else stay put.
-        setMessages((current) => {
+        useTranscriptStore.getState().setMessages((current) => {
           const persisted = detail.context.messages;
           let mutated = false;
           const next = current.map((message, index) => {
@@ -1861,6 +1535,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     snapshot?.stopReason,
     snapshot?.messages?.length,
   ]);
+  void currentSessionId; // read to keep the store subscription alive for the
+  // future in which acp-events reads currentId in-line and downstream selectors
+  // are added; today it's used only inside the event bridge closure.
 
   return {
     data,
