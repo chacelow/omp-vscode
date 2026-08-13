@@ -5,7 +5,6 @@ import { TextPart } from "./TextPart";
 import { ThinkingPart } from "./ThinkingPart";
 import { ToolCallPart } from "./ToolCallPart";
 import {
-  BashToolPart,
   ChangeToolPart,
   FetchToolPart,
   GlobToolPart,
@@ -14,13 +13,24 @@ import {
   TodoToolPart,
   WebSearchToolPart,
 } from "./tools";
+import { BashToolPart } from "./tools/BashToolPart";
+import { EditToolPart } from "./tools/EditToolPart";
+import { WriteToolPart } from "./tools/WriteToolPart";
 import type { AssistantPartProps, PartRenderer, ToolPartProps, ToolRenderer } from "./types";
+
 export const partRegistry: Record<AssistantContentBlock["type"], PartRenderer> = {
   text: TextPart,
   image: ImagePart,
   thinking: ThinkingPart,
   toolCall: ToolCallPart,
 };
+
+/**
+ * Per-tool renderers. Edit / write / create / multi_edit go through the
+ * vendored `<CodeDiff>`-backed renderer. `delete` / `move` / `rename` stay
+ * on the legacy `ChangeToolPart` line style — those tools don't produce
+ * a hunk to draw and the diff card would be visually empty.
+ */
 export const toolRenderers: Record<string, ToolRenderer> = {
   todo: TodoToolPart,
   read: ReadToolPart,
@@ -35,12 +45,13 @@ export const toolRenderers: Record<string, ToolRenderer> = {
   bash: BashToolPart,
   run: BashToolPart,
   shell: BashToolPart,
-  edit: ChangeToolPart,
-  write: ChangeToolPart,
-  create: ChangeToolPart,
+  edit: EditToolPart,
+  write: WriteToolPart,
+  create: WriteToolPart,
+  multi_edit: EditToolPart,
   delete: ChangeToolPart,
   move: ChangeToolPart,
   rename: ChangeToolPart,
-  multi_edit: ChangeToolPart,
 };
+
 export type { AssistantPartProps, ToolPartProps, PartRenderer, ToolRenderer, ComponentType };

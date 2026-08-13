@@ -68,6 +68,8 @@ import type {
 } from "@/lib/types";
 import { hostCall } from "../../bridge";
 import { useStreamingReveal } from "../hooks/useStreamingReveal";
+import { MessageTiming } from "./ai/message-timing";
+import { toTimingStats } from "@/domain/timing";
 import { useToolArgsReveal } from "../hooks/useToolArgsReveal";
 
 const MAX_THINKING_CACHE_ENTRIES = 100;
@@ -955,33 +957,45 @@ function AssistantMessageView({
           Error: {providerError}
         </div>
       )}
-      {(time || canFork) ? (
-        <div className="assistant-message-meta group/meta mt-1 flex min-h-[18px] min-w-0 flex-nowrap items-center justify-end gap-2 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
-          {canFork && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onFork?.(entryId!)}
-              disabled={forking}
-              title={
-                forking ? t("i18n.creatingSession") : t("i18n.newSessionTitle")
-              }
-              className={cn(
-                // Reveal on hover — reserves layout space at all times so
-                // completing a turn does not add a visible row; only the
-                // button's opacity animates on hover.
-                "assistant-meta-action h-[18px] shrink-0 gap-1 px-1.5 text-[10px] font-normal opacity-0 transition-opacity group-hover/meta:opacity-100 focus-visible:opacity-100",
-                forking && "cursor-not-allowed text-[var(--accent)] opacity-100"
-              )}
-            >
-              <GitBranch size={10} strokeWidth={1.8} />
-              {forking ? t("i18n.creating") : t("i18n.newSession")}
-            </Button>
-          )}
-          {time && <span className="assistant-meta-time shrink-0">{time}</span>}
-        </div>
-      ) : null}
+      {(() => {
+        const timing = toTimingStats(message, { modelNames, streaming: isStreaming });
+        const hasTiming = timing.stats.length > 0;
+        if (!time && !canFork && !hasTiming) return null;
+        return (
+          <div className="assistant-message-meta group/meta mt-1 flex min-h-[18px] min-w-0 flex-nowrap items-center justify-end gap-2 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
+            {canFork && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onFork?.(entryId!)}
+                disabled={forking}
+                title={
+                  forking ? t("i18n.creatingSession") : t("i18n.newSessionTitle")
+                }
+                className={cn(
+                  // Reveal on hover — reserves layout space at all times so
+                  // completing a turn does not add a visible row; only the
+                  // button's opacity animates on hover.
+                  "assistant-meta-action h-[18px] shrink-0 gap-1 px-1.5 text-[10px] font-normal opacity-0 transition-opacity group-hover/meta:opacity-100 focus-visible:opacity-100",
+                  forking && "cursor-not-allowed text-[var(--accent)] opacity-100"
+                )}
+              >
+                <GitBranch size={10} strokeWidth={1.8} />
+                {forking ? t("i18n.creating") : t("i18n.newSession")}
+              </Button>
+            )}
+            {hasTiming && (
+              <MessageTiming
+                className="assistant-meta-timing shrink min-w-0 justify-end"
+                stats={timing.stats}
+                streaming={timing.streaming}
+              />
+            )}
+            {time && <span className="assistant-meta-time shrink-0">{time}</span>}
+          </div>
+        );
+      })()}
     </div>
   );
 }

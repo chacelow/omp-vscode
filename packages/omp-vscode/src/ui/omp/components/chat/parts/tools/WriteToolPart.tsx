@@ -1,1 +1,1 @@
-export { ChangeToolPart as WriteToolPart } from "../tools";
+export { DiffToolPart as WriteToolPart } from "./DiffToolPart";
