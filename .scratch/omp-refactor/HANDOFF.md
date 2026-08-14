@@ -24,6 +24,24 @@ Full context: GitHub issue [#1 (retitled Ticket 3)](https://github.com/chacelow/
 
 Phase 1 + Phase A cont. complete. Bundle 1,846,459 → **1,852,471 gzip bytes** (+6,012 B / +30 KB budget = 20% used). vitest 38/38 pass. tsc silent for `omp-vscode`. `subscribeAcp` has one non-bridge caller (`transport/acp-events.ts`). `useAgentSession.ts` is 1623 lines; Phase A contract step (delete facade) is deferred to a future ticket.
 
+## ACP chain findings (2026-08-15 audit)
+
+Resume floods: omp's `session/load` replays history as individual ACP
+notifications; host suppressed them behind a `replaying` flag but late
+arrivals after the load RPC resolved were amplified 1:1 into webview
+transcript rebuilds. Fixed in `96bd080`: host `publishSession` is 16ms
+trailing-edge batched (critical boundaries — prompt completion/error,
+registerSession — flush sync via `publishSessionNow`); webview
+`acp-events` adds a defensive 16ms snapshot coalescer.
+
+Scroll/resume semantics now ported from references (see
+`REFERENCE-PATTERNS.md` in this directory): `useAutoScroll` is
+assistant-ui's pattern; edit-resend anchors the resent user message at
+15% viewport top (`b264391`, ChatGPT/Continue semantics); model picks
+re-assert across the close→rewind→load resume (`515c331`).
+
+Open (ticketed): #6 facade snapshot slimming, #7 replay harness.
+
 ## 3. Established conventions (MUST follow for future tickets)
 
 Landed in `23f07d8`. Do NOT deviate.
