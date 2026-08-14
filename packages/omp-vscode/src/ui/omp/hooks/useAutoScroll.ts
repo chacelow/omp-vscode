@@ -40,6 +40,10 @@ export interface AutoScrollHandle {
 }
 
 const BOTTOM_EPSILON_PX = 1;
+/** Scrolling down into this zone re-engages follow (use-stick-to-bottom's
+ * threshold); requiring the exact bottom made manual re-attachment nearly
+ * impossible on trackpads. */
+const REENGAGE_PX = 70;
 
 export function useAutoScroll(): AutoScrollHandle {
   const divRef = useRef<HTMLElement | null>(null);
@@ -87,9 +91,15 @@ export function useAutoScroll(): AutoScrollHandle {
     const div = divRef.current;
     if (!div) return;
 
+    const distance = div.scrollHeight - div.scrollTop - div.clientHeight;
+    const strictAtBottom =
+      distance <= BOTTOM_EPSILON_PX || div.scrollHeight <= div.clientHeight;
+    // Re-engage when the user actively scrolls DOWN into the near-bottom
+    // zone (70px, use-stick-to-bottom's threshold) — requiring exact
+    // bottom made manual re-attachment nearly impossible on trackpads.
+    const scrolledDown = div.scrollTop > lastScrollTop.current;
     const newIsAtBottom =
-      Math.abs(div.scrollHeight - div.scrollTop - div.clientHeight) <=
-        BOTTOM_EPSILON_PX || div.scrollHeight <= div.clientHeight;
+      strictAtBottom || (scrolledDown && distance <= REENGAGE_PX);
 
     const isInFlightDownwardScroll =
       !newIsAtBottom && lastScrollTop.current < div.scrollTop;

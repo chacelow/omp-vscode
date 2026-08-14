@@ -806,21 +806,16 @@ export function ChatWindow({
 
   // Shared props for both the bottom composer and inline edit-from-here.
   // Big-action scroll intents (the ONLY places that programmatically scroll):
-  // send / edit-resend → smooth scroll to bottom (runStart semantics);
-  // session load → instant jump (initialize semantics, effect below).
+  // send → smooth scroll to bottom (runStart semantics);
+  // session load → instant jump (initialize semantics, effect above).
+  // Edit-resend deliberately plants NO intent: the user is reading at the
+  // edited message; the viewport must not move (ChatGPT edit semantics).
   const sendWithIntent = useCallback(
     (...args: Parameters<typeof handleSend>) => {
       autoScroll.scrollToBottom("smooth");
       return handleSend(...args);
     },
     [autoScroll.scrollToBottom, handleSend]
-  );
-  const editResendWithIntent = useCallback(
-    (...args: Parameters<typeof handleEditResend>) => {
-      autoScroll.scrollToBottom("smooth");
-      return handleEditResend(...args);
-    },
-    [autoScroll.scrollToBottom, handleEditResend]
   );
   const chatInputProps: ChatInputProps = {
     onSend: sendWithIntent,
@@ -1379,7 +1374,7 @@ export function ChatWindow({
                           prevAssistantEntryId={
                             sessionBusy ? undefined : prevAssistantEntryId
                           }
-                          onEditResend={editResendWithIntent}
+                          onEditResend={handleEditResend}
                           editInputRender={renderEditInput}
                           onEditContent={handleEditContent}
                           showTimestamp={showTimestamp}
