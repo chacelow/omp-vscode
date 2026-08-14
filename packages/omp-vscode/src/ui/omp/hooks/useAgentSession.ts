@@ -1004,6 +1004,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       await acpRequest({ type: "acp/closeSession", sessionId: sid });
       await hostCall("sessionRewind", { sessionId: sid, entryId });
       await reloadAfterFileChange(sid);
+      // A model switched in the edit composer may not have been confirmed
+      // by the agent before closeSession, and session/load restores the
+      // model persisted in the JSONL — re-assert the user's optimistic
+      // pick so the resent prompt runs on the model they just chose.
+      if (optimisticModel) {
+        try {
+          await acpRequest({
+            type: "acp/setConfigOption",
+            sessionId: sid,
+            configId: "model",
+            value: `${optimisticModel.provider}/${optimisticModel.modelId}`,
+          });
+        } catch {
+          // Non-fatal: the prompt still runs on the session's persisted model.
+        }
+      }
       const attached = images?.map((img) => ({
         data: img.data,
         mimeType: img.mimeType,
@@ -1011,7 +1027,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }));
       await sendPrompt(text, attached);
     },
-    [reloadAfterFileChange, sendPrompt]
+    [optimisticModel, reloadAfterFileChange, sendPrompt]
   );
   const handleNavigate = useCallback(
     async (entryId: string) => {
