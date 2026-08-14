@@ -99,12 +99,15 @@ export function TerminalBlock({
             </div>
           );
         })}
-        {!done && (
-          <span
-            aria-hidden
-            className="inline-block h-3 w-1.5 animate-pulse bg-blue-500/70 motion-reduce:animate-none dark:bg-blue-400/70"
-          />
-        )}
+        <span
+          aria-hidden
+          className={cn(
+            "inline-block h-3 w-1.5 motion-reduce:animate-none",
+            done
+              ? "invisible"
+              : "animate-pulse bg-blue-500/70 dark:bg-blue-400/70",
+          )}
+        />
       </div>
     </div>
   );

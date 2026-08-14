@@ -26,8 +26,13 @@ pinned SHA.
 
 ## Behavioral deltas from upstream
 
-Every file above is **byte-identical** to the upstream source at
-`822a3b39dc3d6df1e65d93493a338623d7570ff7`. No source edits were made.
+Files are byte-identical to the upstream source at
+`822a3b39dc3d6df1e65d93493a338623d7570ff7`, with one exception:
+
+- **`terminal-block.tsx`** — the streaming cursor `<span>` was conditionally
+  mounted (`{!done && …}`), which removed a line-height of space at
+  completion and caused a visible layout jump. We keep the span always
+  mounted and toggle `invisible` instead (same box, no reflow).
 
 The only structural note is import-resolution:
 

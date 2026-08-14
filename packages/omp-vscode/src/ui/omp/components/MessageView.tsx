@@ -754,7 +754,15 @@ function AssistantMessageView({
   return (
     <div
       className="group assistant-message"
-      style={{ marginBottom: endsWithTool ? 2 : 16, position: "relative" }}
+      style={{
+        // endsWithTool flips exactly when the final answer text lands after
+        // a tool chain — animate the margin change instead of snapping
+        // (the "spacing jumps at completion" complaint).
+        marginBottom: endsWithTool ? 2 : 16,
+        transition:
+          "margin-bottom var(--omp-motion-base, 160ms) var(--omp-motion-ease, ease)",
+        position: "relative",
+      }}
       onMouseEnter={publishMeta}
       onMouseLeave={clearMeta}
     >
