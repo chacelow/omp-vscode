@@ -441,11 +441,14 @@ export class AcpService {
         promptPending: false,
         stopReason: promptResponse.stopReason,
       });
+      // Turn completion is a critical boundary — deliver without the 16ms wait.
+      this.publishSessionNow(sessionId);
     } catch (error) {
       this.updateSession(sessionId, {
         promptPending: false,
         error: error instanceof Error ? error.message : String(error),
       });
+      this.publishSessionNow(sessionId);
       throw error;
     }
   }
@@ -856,7 +859,9 @@ export class AcpService {
     };
     this.sessions.set(sessionId, state);
     this.messageIndex.delete(sessionId);
-    this.publishSession(sessionId);
+    // Load/new/resume completion is a critical boundary: the webview is
+    // waiting on this exact snapshot to hydrate — skip the batch window.
+    this.publishSessionNow(sessionId);
     this.publishRunning();
     return state;
   }
@@ -1120,7 +1125,34 @@ export class AcpService {
       }
   }
 
+  /**
+   * Coalesced publish. ACP replays history as individual notifications
+   * (session/load) and streams tool status flips in sub-ms bursts; pushing
+   * every state through postMessage's structured clone made the webview
+   * rebuild its transcript dozens of times per frame (observed: ~60
+   * pending→completed pairs in 30ms after a resume). One pending flag per
+   * session + a 16ms flush turns a burst into a single publish. Late
+   * replay notifications that escape the `replaying` barrier (they arrive
+   * after the load RPC resolves) are folded into the same flush instead of
+   * amplifying one-by-one. Critical boundaries (permission requests,
+   * prompt completion, errors) call `publishSessionNow` to skip the wait.
+   */
+  private readonly pendingPublish = new Set<string>();
+  private publishFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
   private publishSession(sessionId: string): void {
+    this.pendingPublish.add(sessionId);
+    if (this.publishFlushTimer !== null) return;
+    this.publishFlushTimer = setTimeout(() => {
+      this.publishFlushTimer = null;
+      const ids = [...this.pendingPublish];
+      this.pendingPublish.clear();
+      for (const id of ids) this.publishSessionNow(id);
+    }, 16);
+  }
+
+  private publishSessionNow(sessionId: string): void {
+    this.pendingPublish.delete(sessionId);
     const state = this.sessions.get(sessionId);
     if (!state) return;
     for (const listener of this.sessionListeners.get(sessionId) ?? [])

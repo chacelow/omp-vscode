@@ -60,20 +60,46 @@ export interface AcpEventHandlers {
 export function installAcpEventBridge(
   getHandlers: () => AcpEventHandlers
 ): () => void {
-  return subscribeAcp((event: AcpHostEvent) => {
+  // Defensive coalescer: even with host-side publish batching, multiple
+  // snapshots can land in one macrotask (e.g. a critical-boundary flush
+  // chased by a batched one). Only the LAST snapshot per tick matters —
+  // each is a full state, so intermediates are pure waste (a transcript
+  // rebuild costs O(messages) allocations). Trailing-edge 16ms timer.
+  let pendingSnapshot: Extract<
+    AcpHostEvent,
+    { type: "acp/sessionSnapshot" }
+  > | null = null;
+  let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const applySnapshot = (
+    event: Extract<AcpHostEvent, { type: "acp/sessionSnapshot" }>,
+    h: AcpEventHandlers
+  ) => {
+    const currentId = useSessionStore.getState().currentId;
+    const summary = useTranscriptStore
+      .getState()
+      .applyAcpSnapshot(event.state, currentId);
+    // Tools bookkeeping is fed even for foreign / empty-guarded
+    // snapshots — `syncFromSnapshot` skips work internally when
+    // `toolCallsRevision` is stable, so the extra call is cheap
+    // and keeps `activeTools` consistent across session flips.
+    useToolsStore.getState().syncFromSnapshot(event.state);
+    h.onSnapshot?.(event.state, summary);
+  };
+
+  const unsubscribe = subscribeAcp((event: AcpHostEvent) => {
     const h = getHandlers();
     switch (event.type) {
       case "acp/sessionSnapshot": {
-        const currentId = useSessionStore.getState().currentId;
-        const summary = useTranscriptStore
-          .getState()
-          .applyAcpSnapshot(event.state, currentId);
-        // Tools bookkeeping is fed even for foreign / empty-guarded
-        // snapshots — `syncFromSnapshot` skips work internally when
-        // `toolCallsRevision` is stable, so the extra call is cheap
-        // and keeps `activeTools` consistent across session flips.
-        useToolsStore.getState().syncFromSnapshot(event.state);
-        h.onSnapshot?.(event.state, summary);
+        pendingSnapshot = event;
+        if (snapshotTimer === null) {
+          snapshotTimer = setTimeout(() => {
+            snapshotTimer = null;
+            const latest = pendingSnapshot;
+            pendingSnapshot = null;
+            if (latest) applySnapshot(latest, getHandlers());
+          }, 16);
+        }
         return;
       }
       case "acp/connection":
@@ -103,4 +129,16 @@ export function installAcpEventBridge(
         return;
     }
   });
+  return () => {
+    if (snapshotTimer !== null) {
+      clearTimeout(snapshotTimer);
+      snapshotTimer = null;
+      // Apply the trailing snapshot before detaching — dropping it would
+      // lose the final state of an in-flight burst.
+      const latest = pendingSnapshot;
+      pendingSnapshot = null;
+      if (latest) applySnapshot(latest, getHandlers());
+    }
+    unsubscribe();
+  };
 }
