@@ -34,6 +34,10 @@ import {
   type ChatInputProps,
 } from "./ChatInput";
 import { ChatFooterBar } from "./chat/ChatFooterBar";
+import {
+  ApprovalBar,
+  supportsInlineApproval,
+} from "./chat/ApprovalBar";
 import { ChatMinimap } from "./chat/ChatMinimap";
 import { Shimmer } from "./ai-elements/shimmer";
 import { InteractionDialog } from "./InteractionDialog";
@@ -879,6 +883,11 @@ export function ChatWindow({
     onOpenAgentHub: () => setAgentHubOpen(true),
   };
 
+  const approvalBar =
+    interactionDialog && supportsInlineApproval(interactionDialog) ? (
+      <ApprovalBar request={interactionDialog} onRespond={respondInteraction} />
+    ) : null;
+
   const chatInputElement = (
     <ChatInput
       ref={chatInputRef}
@@ -1095,7 +1104,8 @@ export function ChatWindow({
           }
         />
       ) : (
-        interactionDialog && (
+        interactionDialog &&
+        !supportsInlineApproval(interactionDialog) && (
           <InteractionDialog
             request={interactionDialog}
             onRespond={respondInteraction}
@@ -1216,8 +1226,11 @@ export function ChatWindow({
             </div>
 
             <NoticeShelf notices={notices} align="right" />
-            {chatInputElement}
-            {chatFooterElement}
+            <div className="relative">
+              <AnimatePresence initial={false}>{approvalBar}</AnimatePresence>
+              {chatInputElement}
+              {chatFooterElement}
+            </div>
           </div>
         </div>
       ) : (
@@ -1773,6 +1786,7 @@ export function ChatWindow({
           </div>
 
           <div className="relative">
+            <AnimatePresence initial={false}>{approvalBar}</AnimatePresence>
             {chatInputElement}
             {chatFooterElement}
           </div>
