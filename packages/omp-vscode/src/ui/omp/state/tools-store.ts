@@ -70,7 +70,7 @@ export const useToolsStore = create<ToolsState>()(
       const activeTools = Object.entries(state.toolCalls).flatMap(
         ([id, tool]) =>
           tool.status === "in_progress"
-            ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }]
+            ? [{ id, name: tool.name?.trim() || tool.kind || "Tool" }]
             : []
       );
       set((s) => {

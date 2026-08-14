@@ -110,8 +110,8 @@ function phaseLabel(
     if (names.length <= 3)
       return t("chat.runningTools", { names: names.join(", ") });
     return t("chat.runningToolsMore", {
-      names: names.slice(0, 2).join(", "),
-      count: names.length - 2,
+      names: names.slice(0, 3).join(", "),
+      count: names.length - 3,
     });
   }
   if (phase?.kind === "waiting_model") return t("chat.waitingModel");
@@ -634,6 +634,7 @@ export function ChatWindow({
       registerScrollControl({
         stopScroll: autoScroll.release,
         scrollToBottom: () => autoScroll.scrollToBottom("smooth"),
+        getScrollElement: () => scrollContainerRef.current,
       }),
     [autoScroll.release, autoScroll.scrollToBottom]
   );
@@ -1704,9 +1705,7 @@ export function ChatWindow({
                           duration={2.5}
                           spread={1}
                         >
-                          {agentPhase.kind === "waiting_model"
-                            ? t("chat.thinking")
-                            : (phaseLabel(agentPhase, t) ?? "")}
+                          {phaseLabel(agentPhase, t) ?? ""}
                         </Shimmer>
                       </div>
                     )}
