@@ -1,31 +1,38 @@
 import { subscribeAcp } from "../../bridge";
 import { useSessionStore } from "@/state/session-store";
+import { usePermissionsStore } from "@/state/permissions-store";
+import { useToolsStore } from "@/state/tools-store";
 import {
   useTranscriptStore,
   type ApplyAcpSnapshotSummary,
 } from "@/state/transcript-store";
 import type {
   AcpConnectionSnapshot,
-  AcpElicitationRequest,
   AcpHostEvent,
-  AcpPermissionRequest,
   AcpSessionState,
 } from "../../../core/acp/protocol";
 
 /**
  * ACP event bridge — the single choke point translating `subscribeAcp`
- * events into store patches for the session + transcript slices.
+ * events into store patches for every slice.
  *
- * On `acp/sessionSnapshot`, transcript-store's `applyAcpSnapshot` reducer
- * owns the message / streaming / partition-revision half; the raw state
- * is then forwarded via `onSnapshot(state, summary)` so the facade can
- * handle the not-yet-extracted concerns (agentPhase, contextUsage, TPS,
- * retry info, isCompacting, slashCommands, onAgentEnd firing).
+ * Slice ownership (T4 + T5 Phase A):
+ *   • session-store        writes on `acp/error` (setError)
+ *   • transcript-store     writes on `acp/sessionSnapshot` (applyAcpSnapshot)
+ *   • tools-store          writes on `acp/sessionSnapshot` (syncFromSnapshot)
+ *   • permissions-store    writes on `acp/permissionRequest` +
+ *                          `acp/elicitationRequest` (setInteractionDialog)
  *
- * Other event types are pure passthrough — they touch state slices that
- * remain in `useAgentSession.ts` for now (notices, permissions,
- * elicitations, capabilities, errors) and will migrate to their own
- * stores in later tickets.
+ * Snapshot flow: transcript's `applyAcpSnapshot` reducer owns the
+ * message / streaming / partition-revision half; tools' `syncFromSnapshot`
+ * derives the in-progress `activeTools` list; the raw state is then
+ * forwarded via `onSnapshot(state, summary)` so the facade can handle the
+ * not-yet-extracted concerns (agentPhase, contextUsage, TPS, retry info,
+ * isCompacting, slashCommands, onAgentEnd firing).
+ *
+ * Notices, capability snapshots, and error passthroughs stay on the
+ * handlers interface — those slices remain in `useAgentSession.ts` for
+ * now and will migrate later.
  */
 
 export type NoticeLevel = "info" | "success" | "warning" | "error";
@@ -41,8 +48,6 @@ export interface AcpEventHandlers {
     message: string,
     sessionId?: string
   ) => void;
-  onPermissionRequest?: (request: AcpPermissionRequest) => void;
-  onElicitationRequest?: (request: AcpElicitationRequest) => void;
   onError?: (message: string) => void;
 }
 
@@ -63,6 +68,11 @@ export function installAcpEventBridge(
         const summary = useTranscriptStore
           .getState()
           .applyAcpSnapshot(event.state, currentId);
+        // Tools bookkeeping is fed even for foreign / empty-guarded
+        // snapshots — `syncFromSnapshot` skips work internally when
+        // `toolCallsRevision` is stable, so the extra call is cheap
+        // and keeps `activeTools` consistent across session flips.
+        useToolsStore.getState().syncFromSnapshot(event.state);
         h.onSnapshot?.(event.state, summary);
         return;
       }
@@ -73,15 +83,23 @@ export function installAcpEventBridge(
         h.onNotice?.(event.level, event.message, event.sessionId);
         return;
       case "acp/permissionRequest":
-        h.onPermissionRequest?.(event.request);
+        usePermissionsStore
+          .getState()
+          .setInteractionDialog(event.request);
         return;
       case "acp/elicitationRequest":
-        h.onElicitationRequest?.(event.request);
+        usePermissionsStore
+          .getState()
+          .setInteractionDialog(event.request);
         return;
       case "acp/error":
         h.onError?.(event.message);
         return;
       case "acp/runningSessions":
+        // Reserved for the subagents slice — the current
+        // `useSubagentsStore` is a placeholder and does not yet
+        // ingest `runningSessions`. Wiring lands in a follow-up
+        // ticket once the corresponding UI surface is designed.
         return;
     }
   });

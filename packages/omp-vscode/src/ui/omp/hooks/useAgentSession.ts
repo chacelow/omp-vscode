@@ -32,6 +32,9 @@ import type { ModelsResult } from "../../../core/host/protocol";
 
 import { useSessionStore } from "@/state/session-store";
 import { useTranscriptStore } from "@/state/transcript-store";
+import { useToolsStore } from "@/state/tools-store";
+import { usePermissionsStore } from "@/state/permissions-store";
+import { useSubagentsStore } from "@/state/subagents-store";
 import { installAcpEventBridge } from "@/transport/acp-events";
 import { messageText } from "@/domain/acp-message-adapter";
 import {
@@ -47,6 +50,8 @@ import {
   useEntryIds,
   useStreamState,
 } from "@/hooks/useTranscript";
+import { useToolPreset } from "@/hooks/useTools";
+import { useInteractionDialog } from "@/hooks/usePermissions";
 
 // SessionData is now owned by the session-store; re-export the type so
 // existing consumers of `useAgentSession` continue to see it here.
@@ -300,13 +305,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   } = opts;
   const isNew = session === null && newSessionCwd !== null;
 
-  // ---- Store-backed slices (session + transcript). -----------------------
-  //
-  // Session + transcript state now live in `state/session-store.ts` and
-  // `state/transcript-store.ts`. The facade reaches them through the
-  // narrow selector hooks in `hooks/useCurrentSession` / `hooks/useTranscript`
-  // and mutates through the store methods; ACP-driven mutations are
-  // funneled via `transport/acp-events.ts` (installed once below).
+  // ---- Store-backed slices (session/transcript/tools/permissions/subagents).
+  // The facade reads via narrow selector hooks and writes via each store's
+  // named methods; ACP-driven mutations flow through
+  // `transport/acp-events.ts` (installed once below).
   const initRef = useRef(false);
   if (!initRef.current) {
     initRef.current = true;
@@ -317,10 +319,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     s.setCurrent(session?.id ?? null, isNew);
     s.setLoading(session !== null);
     s.setError(null);
-    // A fresh mount starts with an empty transcript. The store is a
-    // module-level singleton — if a previous ChatWindow mounted the same
-    // process, we must reset so stale messages don't leak in.
+    // Stores are module-level singletons; reset on fresh mount so a
+    // previous ChatWindow's state doesn't leak into this one.
     useTranscriptStore.getState().resetAll();
+    useToolsStore.getState().reset();
+    usePermissionsStore.getState().reset();
+    useSubagentsStore.getState().reset();
   }
   const data = useSessionData();
   const loading = useSessionLoading();
@@ -331,6 +335,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const entryIds = useEntryIds();
   const streamState = useStreamState();
   const currentSessionId = useCurrentSessionId();
+  const toolPreset = useToolPreset();
+  const interactionDialog = useInteractionDialog();
 
   // Track messages through a ref for the ACP callback / turn-end backfill —
   // the store IS the source of truth, but a ref sidesteps closure staleness
@@ -395,9 +401,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   );
   const [newSessionDefaultModel, setNewSessionDefaultModel] =
     useState<SelectedModel | null>(null);
-  const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">(
-    "default"
-  );
   const [thinkingLevel, setThinkingLevel] =
     useState<ThinkingLevelOption>("auto");
   const [contextUsage, setContextUsage] = useState<{
@@ -445,8 +448,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     () => activeModesFromSnapshot(snapshot),
     [snapshot]
   );
-  const [interactionDialog, setInteractionDialog] =
-    useState<InteractionDialog | null>(null);
 
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   // Tracks the session id we've actually LOADED (sessionDetail returned).
@@ -509,7 +510,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     snapshot?.currentMode && /fast/i.test(snapshot.currentMode)
   );
   const bashRunning = false;
-  const setToolPresetState = opts.setToolPreset ?? setToolPreset;
+  const setToolPresetInternal = useCallback(
+    (preset: "none" | "default" | "full") =>
+      useToolsStore.getState().setToolPreset(preset),
+    []
+  );
+  const setToolPresetState = opts.setToolPreset ?? setToolPresetInternal;
   const pendingBash = null as {
     command: string;
     excludeFromContext?: boolean;
@@ -664,15 +670,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // Skip activeTools+agentPhase recompute when toolCalls and
       // promptPending both stable — a usage_update carries neither.
       if (summary.toolCallsChanged || wasRunning !== state.promptPending) {
-        const activeTools = Object.entries(state.toolCalls).flatMap(
-          ([id, tool]) =>
-            tool.status === "in_progress"
-              ? [{ id, name: tool.title ?? tool.kind ?? "Tool" }]
-              : []
-        );
+        // `activeTools` was derived by `tools-store.syncFromSnapshot` on
+        // this same event — read it back and copy into a fresh array so
+        // later store mutations don't leak into the stored `agentPhase`.
+        const activeTools = useToolsStore.getState().activeTools;
         setAgentPhase(
           activeTools.length > 0
-            ? { kind: "running_tools", tools: activeTools }
+            ? { kind: "running_tools", tools: [...activeTools] }
             : state.promptPending
               ? { kind: "waiting_model" }
               : null
@@ -1319,7 +1323,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           action: response.action ?? "cancel",
           content: response.content,
         });
-      setInteractionDialog(null);
+      usePermissionsStore.getState().clearDialog();
     },
     []
   );
@@ -1351,8 +1355,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         });
       }
     },
-    onPermissionRequest: (request) => setInteractionDialog(request),
-    onElicitationRequest: (request) => setInteractionDialog(request),
     onError: (message) => useSessionStore.getState().setError(message),
   });
   useEffect(() => installAcpEventBridge(() => handlersRef.current()), []);
