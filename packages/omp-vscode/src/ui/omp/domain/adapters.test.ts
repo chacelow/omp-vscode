@@ -442,14 +442,15 @@ describe("toTimingStats", () => {
 
   it("missing usage: stats degrade to model + duration only when known", () => {
     const out = toTimingStats(baseMessage({ duration: 1200 }));
-    expect(out.stats.map((s) => s.label)).toEqual(["model", "took"]);
+    expect(out.stats.map((s) => s.label)).toEqual(["took", "model"]);
     expect(out.stats.find((s) => s.label === "took")?.value).toBe("1.2s");
   });
 
-  it("all four token buckets present: ordered model → took → tokens → cache → cost", () => {
+  it("all timing data uses compact-row priority order", () => {
     const out = toTimingStats(
       baseMessage({
         duration: 3500,
+        ttft: 125,
         usage: {
           input: 512,
           output: 1024,
@@ -466,16 +467,20 @@ describe("toTimingStats", () => {
       })
     );
     expect(out.stats.map((s) => s.label)).toEqual([
-      "model",
       "took",
-      "tokens",
+      "output",
+      "model",
       "cache",
+      "input",
       "cost",
+      "TTFT",
     ]);
-    expect(out.stats[2].value).toBe("512 in / 1.0k out");
+    expect(out.stats.map((s) => s.priority)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(out.stats[1].value).toBe("1.0k");
     // Ratio: 2048 / (512 + 2048) = 80%.
     expect(out.stats[3].value).toContain("80% hit");
-    expect(out.stats[4].value).toContain("$0.02");
+    expect(out.stats[5].value).toContain("$0.02");
+    expect(out.stats[6].value).toBe("125ms");
   });
 
   it("cache-hit ratio with zero cacheRead: cache stat omitted entirely", () => {

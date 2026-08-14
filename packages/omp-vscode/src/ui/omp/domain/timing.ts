@@ -5,9 +5,13 @@
  * `adapters.test.ts`.
  *
  * `<MessageTiming>` does no formatting; every stat we emit is a
- * pre-formatted `{ label, value }` pair. Stat ordering is stable:
+ * pre-formatted `{ label, value, priority }` tuple. Stat ordering is stable
+ * and runs from highest to lowest display priority:
  *
- *   model → duration → tokens → cache → cost
+ *   duration → output tokens → model → cache → input tokens → cost → TTFT
+ *
+ * The priority lets the compact timing row hide detail without obscuring the
+ * most useful generation facts.
  *
  * Stats that would render as an empty or meaningless value are omitted
  * (rather than rendered as `—` or `0`), so short turns collapse cleanly.
@@ -18,6 +22,8 @@ import type { AssistantMessage } from "@/lib/types";
 export interface TimingStat {
   label: string;
   value: string;
+  /** Lower values are retained first in the compact timing row. */
+  priority: number;
 }
 
 export interface TimingFooterStats {
@@ -81,30 +87,24 @@ export function toTimingStats(
 ): TimingFooterStats {
   const stats: TimingStat[] = [];
 
-  // 1) Model — usually the row's identity.
-  const model = resolveModelName(message, options.modelNames);
-  if (model) stats.push({ label: "model", value: model });
-
-  // 2) Duration — engine-computed generation time, formatted.
+  // Compact-row priority: duration → output → model → cache → input → cost → TTFT.
   const duration = formatDurationMs(message.duration);
-  if (duration !== undefined) stats.push({ label: "took", value: duration });
+  if (duration !== undefined) stats.push({ label: "took", value: duration, priority: 1 });
 
-  // 3) Tokens — input / output as a single "N in / N out" stat if both known,
-  //    else whichever is present. Cache is a separate stat below.
   const usage = message.usage;
+  const outTok = usage?.output ?? 0;
+  if (outTok > 0) {
+    stats.push({ label: "output", value: formatTokens(outTok), priority: 2 });
+  }
+
+  const model = resolveModelName(message, options.modelNames);
+  if (model) stats.push({ label: "model", value: model, priority: 3 });
+
   if (usage) {
     const inTok = usage.input ?? 0;
-    const outTok = usage.output ?? 0;
-    if (inTok > 0 || outTok > 0) {
-      stats.push({
-        label: "tokens",
-        value: `${formatTokens(inTok)} in / ${formatTokens(outTok)} out`,
-      });
-    }
-
-    // 4) Cache — read/write pair, plus hit ratio when there is a read.
     const cacheRead = usage.cacheRead ?? 0;
     const cacheWrite = usage.cacheWrite ?? 0;
+
     if (cacheRead > 0 || cacheWrite > 0) {
       const totalIn = inTok + cacheRead;
       const ratio = totalIn > 0 ? Math.round((cacheRead / totalIn) * 100) : 0;
@@ -112,10 +112,13 @@ export function toTimingStats(
       parts.push(`${formatTokens(cacheRead)} read`);
       if (cacheWrite > 0) parts.push(`${formatTokens(cacheWrite)} write`);
       if (cacheRead > 0) parts.push(`${ratio}% hit`);
-      stats.push({ label: "cache", value: parts.join(" · ") });
+      stats.push({ label: "cache", value: parts.join(" · "), priority: 4 });
     }
 
-    // 5) Cost — total plus per-Mtok rate on output when both known.
+    if (inTok > 0) {
+      stats.push({ label: "input", value: formatTokens(inTok), priority: 5 });
+    }
+
     const cost = usage.cost;
     if (cost && Number.isFinite(cost.total) && cost.total > 0) {
       const perMtok = outTok > 0 ? (cost.total * 1_000_000) / outTok : 0;
@@ -123,9 +126,12 @@ export function toTimingStats(
         perMtok > 0
           ? `${formatCostUsd(cost.total)} · ${formatCostUsd(perMtok)}/Mtok`
           : formatCostUsd(cost.total);
-      stats.push({ label: "cost", value });
+      stats.push({ label: "cost", value, priority: 6 });
     }
   }
+
+  const ttft = formatDurationMs(message.ttft);
+  if (ttft !== undefined) stats.push({ label: "TTFT", value: ttft, priority: 7 });
 
   const out: TimingFooterStats = { stats };
   if (options.streaming) out.streaming = true;

@@ -2260,3 +2260,45 @@ span.linenumber {
     transform: rotate(360deg);
   }
 }
+
+
+/* Assistant timing metadata stays a single compact line. Detail is elided by
+ * priority as its own container narrows; the full set is an absolute hover
+ * surface, so revealing it never moves the next message. */
+.assistant-meta-timing {
+  container-type: inline-size;
+}
+
+.assistant-meta-timing__compact {
+  overflow: hidden;
+}
+
+.assistant-meta-timing__overlay {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--omp-motion-fast) var(--omp-motion-ease),
+    visibility 0s linear var(--omp-motion-fast);
+}
+
+.assistant-message-meta:hover .assistant-meta-timing__overlay {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+@container (max-width: 360px) {
+  .assistant-meta-timing__stat--priority-4,
+  .assistant-meta-timing__stat--priority-5,
+  .assistant-meta-timing__stat--priority-6,
+  .assistant-meta-timing__stat--priority-7 {
+    display: none;
+  }
+}
+
+@container (max-width: 260px) {
+  .assistant-meta-timing__stat--priority-4 {
+    display: none;
+  }
+}

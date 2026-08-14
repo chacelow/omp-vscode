@@ -1001,7 +1001,7 @@ function AssistantMessageView({
             )}
             {hasTiming && (
               <MessageTiming
-                className="assistant-meta-timing shrink min-w-0 justify-end"
+                className="assistant-meta-timing shrink min-w-0 justify-start"
                 stats={timing.stats}
                 streaming={timing.streaming}
               />
