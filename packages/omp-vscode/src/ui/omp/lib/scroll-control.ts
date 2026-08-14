@@ -18,6 +18,8 @@
 interface ScrollControl {
   stopScroll: () => void;
   scrollToBottom: () => void;
+  /** The scroll container element (for expansion anchoring). */
+  getScrollElement?: () => HTMLElement | null;
 }
 
 let current: ScrollControl | null = null;
@@ -37,4 +39,32 @@ export function releaseAutoFollow(): void {
 /** Re-engage: jump to the bottom and re-pin (the ↓ button). */
 export function jumpToBottom(): void {
   current?.scrollToBottom();
+}
+
+/**
+ * Keep a user-clicked expandable visually anchored while it grows.
+ *
+ * Convention from polished agent UIs (Cursor, Linear): if the element's
+ * bottom edge sits in the LOWER half of the viewport, anchor the bottom
+ * edge — the expansion grows UPWARD and the content the user is about to
+ * read stays on screen. Otherwise anchor the top edge (natural downward
+ * growth). Implemented as scrollTop compensation on the next frame,
+ * after React commits the expanded layout.
+ *
+ * Call SYNCHRONOUSLY in the click handler, before the state update.
+ */
+export function anchorExpansion(el: HTMLElement | null): void {
+  const scroller = current?.getScrollElement?.();
+  if (!(scroller && el)) return;
+  const scrollerRect = scroller.getBoundingClientRect();
+  const before = el.getBoundingClientRect();
+  const anchorBottom =
+    before.bottom - scrollerRect.top > scroller.clientHeight / 2;
+  requestAnimationFrame(() => {
+    const after = el.getBoundingClientRect();
+    const delta = anchorBottom
+      ? after.bottom - before.bottom
+      : after.top - before.top;
+    if (delta !== 0) scroller.scrollTop += delta;
+  });
 }

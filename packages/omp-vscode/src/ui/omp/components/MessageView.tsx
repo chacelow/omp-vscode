@@ -11,7 +11,7 @@ import {
 import { Collapse } from "./ui/collapse";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
-import { releaseAutoFollow } from "@/lib/scroll-control";
+import { anchorExpansion, releaseAutoFollow } from "@/lib/scroll-control";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
@@ -971,9 +971,12 @@ function AssistantMessageView({
       {(() => {
         const timing = toTimingStats(message, { modelNames, streaming: isStreaming });
         const hasTiming = timing.stats.length > 0;
-        if (!time && !canFork && !hasTiming) return null;
+        // While streaming, ALWAYS render the (empty) meta row so completion
+        // fills it in place instead of mounting a new row — mounting caused
+        // a visible layout jump at turn end.
+        if (!isStreaming && !time && !canFork && !hasTiming) return null;
         return (
-          <div className="assistant-message-meta group/meta mt-1 flex min-h-[18px] min-w-0 flex-nowrap items-center justify-end gap-2 overflow-hidden font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
+          <div className="assistant-message-meta group/meta mt-1 flex min-h-[18px] min-w-0 flex-nowrap items-center justify-end gap-2 overflow-visible font-mono text-[10px] text-[var(--text-dim)] tabular-nums">
             {canFork && (
               <Button
                 type="button"
@@ -1066,6 +1069,7 @@ export function ThinkingBlock({
   const [expanded, setExpanded] = useState(isStreaming === true);
   const prevStreamingRef = useRef(isStreaming);
   const contentRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState<string | null>(null);
   const { displayText } = useStreamingReveal(
     block.thinking,
@@ -1093,9 +1097,14 @@ export function ThinkingBlock({
 
   const toggle = async () => {
     const nextExpanded = !expanded;
-    // Expanding mid-transcript grows content; release the follow lock so the
-    // viewport isn't re-pinned to the bottom by the growth.
-    if (nextExpanded) releaseAutoFollow();
+    if (nextExpanded) {
+      // Expanding mid-transcript grows content: release the follow lock so
+      // the growth isn't chased to the bottom, and anchor the block so the
+      // expansion grows UPWARD when the block sits in the lower half of the
+      // viewport (the clicked header stays under the cursor).
+      releaseAutoFollow();
+      anchorExpansion(rootRef.current);
+    }
     setExpanded(nextExpanded);
     if (!nextExpanded || !block.deferred || content !== null) return;
     if (!sessionId || !entryId) {
@@ -1115,7 +1124,7 @@ export function ThinkingBlock({
   };
 
   return (
-    <div className="sf-thinking-block text-[13px]">
+    <div ref={rootRef} className="sf-thinking-block text-[13px]">
       <button
         onClick={() => void toggle()}
         className="flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-[11px] text-[var(--text-dim)] transition-colors duration-100 hover:text-[var(--text-muted)]"

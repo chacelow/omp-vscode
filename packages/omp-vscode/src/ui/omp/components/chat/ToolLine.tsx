@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { copyText } from "@/lib/clipboard";
-import { releaseAutoFollow } from "@/lib/scroll-control";
+import { anchorExpansion, releaseAutoFollow } from "@/lib/scroll-control";
 import { cn } from "@/lib/utils";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import type {
@@ -1436,6 +1436,7 @@ export function ExploringGroup({
     return count + (result?.isError ? 1 : 0);
   }, 0);
   const [expanded, setExpanded] = useState(live);
+  const groupRef = useRef<HTMLDivElement>(null);
   useMemo(() => {
     if (!live) setExpanded(false);
   }, [live]);
@@ -1512,14 +1513,18 @@ export function ExploringGroup({
   if (failed > 0) summaryParts.push(`${failed} failed`);
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div ref={groupRef} className="flex flex-col gap-0.5">
       <button
         type="button"
         onClick={() =>
           setExpanded((prev) => {
-            // Expanding grows content mid-transcript; release the follow lock
-            // so the growth isn't mistaken for streaming output.
-            if (!prev) releaseAutoFollow();
+            if (!prev) {
+              // Expanding grows content mid-transcript: release the follow
+              // lock and anchor the group so it grows UPWARD when it sits in
+              // the lower half of the viewport.
+              releaseAutoFollow();
+              anchorExpansion(groupRef.current);
+            }
             return !prev;
           })
         }
