@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useStickToBottom } from "use-stick-to-bottom";
+import { useAutoScroll } from "@/hooks/useAutoScroll";
 import type {
   AgentMessage,
   AssistantContentBlock,
@@ -608,30 +608,43 @@ export function ChatWindow({
     prevScrollDistanceRef.current = null;
   }, [visibleCount, scrollContainerRef]);
 
-  // Auto-follow while streaming: use-stick-to-bottom (StackBlitz's
-  // library used by Bolt.new / Copilot Chat / etc.) — release on
-  // wheel-up + user scroll, re-engage when user comes back within
-  // ~70px of the bottom. Spring animation catches up smoothly to
-  // fast content growth without fighting the browser's smooth-scroll.
-  const stick = useStickToBottom({ initial: "instant" });
+  // Auto-follow while streaming — ported from assistant-ui's
+  // useThreadViewportAutoScroll (see hooks/useAutoScroll.ts). Follows
+  // content growth ONLY while pinned at the bottom, with instant jumps
+  // (no animation loop to fight user input). User scroll-up releases;
+  // explicit intents (send/load) re-engage.
+  const autoScroll = useAutoScroll();
+  const [pinnedToBottom, setPinnedToBottom] = useState(true);
+  useEffect(
+    () => autoScroll.subscribe(setPinnedToBottom),
+    [autoScroll.subscribe]
+  );
   const mergedScrollRef = useCallback(
     (node: HTMLDivElement | null) => {
       scrollContainerRef.current = node;
-      stick.scrollRef.current = node;
+      autoScroll.scrollRef(node);
     },
-    [scrollContainerRef, stick.scrollRef]
+    [scrollContainerRef, autoScroll.scrollRef]
   );
-  // Expose stopScroll/scrollToBottom to nested components (edit-mode mounts,
+  // Expose release/scrollToBottom to nested components (edit-mode mounts,
   // tool expanders) so user-initiated layout growth releases the follow lock
   // instead of being mistaken for streaming output. See lib/scroll-control.ts.
   useEffect(
     () =>
       registerScrollControl({
-        stopScroll: stick.stopScroll,
-        scrollToBottom: () => void stick.scrollToBottom(),
+        stopScroll: autoScroll.release,
+        scrollToBottom: () => autoScroll.scrollToBottom("smooth"),
       }),
-    [stick.stopScroll, stick.scrollToBottom]
+    [autoScroll.release, autoScroll.scrollToBottom]
   );
+  // Load intent: when a session finishes loading (or the user switches
+  // sessions) the scroll container remounts at the top — jump to the
+  // bottom instantly and re-engage follow (assistant-ui's
+  // scrollToBottomOnInitialize / OnThreadSwitch semantics).
+  useEffect(() => {
+    if (loading) return;
+    autoScroll.scrollToBottom("instant");
+  }, [loading, session?.id, autoScroll.scrollToBottom]);
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
@@ -792,8 +805,25 @@ export function ChatWindow({
   }, [streamState.streamingMessage]);
 
   // Shared props for both the bottom composer and inline edit-from-here.
+  // Big-action scroll intents (the ONLY places that programmatically scroll):
+  // send / edit-resend → smooth scroll to bottom (runStart semantics);
+  // session load → instant jump (initialize semantics, effect below).
+  const sendWithIntent = useCallback(
+    (...args: Parameters<typeof handleSend>) => {
+      autoScroll.scrollToBottom("smooth");
+      return handleSend(...args);
+    },
+    [autoScroll.scrollToBottom, handleSend]
+  );
+  const editResendWithIntent = useCallback(
+    (...args: Parameters<typeof handleEditResend>) => {
+      autoScroll.scrollToBottom("smooth");
+      return handleEditResend(...args);
+    },
+    [autoScroll.scrollToBottom, handleEditResend]
+  );
   const chatInputProps: ChatInputProps = {
-    onSend: handleSend,
+    onSend: sendWithIntent,
     onAbort: handleAbort,
     onSteer: agentRunning ? handleSteer : undefined,
     onFollowUp: agentRunning ? handleFollowUp : undefined,
@@ -843,10 +873,9 @@ export function ChatWindow({
     onOpenTemporaryModelPicker: () => setTemporaryModelPickerOpen(true),
     onToggleThinking: () => setShowThinking((visible) => !visible),
     onDisplayReset: () => {
-      // Route through the stick-to-bottom controller instead of a raw
-      // scrollIntoView so its internal anchor state stays consistent
-      // (a bypassed jump leaves the spring animating from a stale target).
-      void stick.scrollToBottom({ animation: "instant" });
+      // Route through the auto-scroll controller so its pinned state stays
+      // consistent with the jump.
+      autoScroll.scrollToBottom("instant");
       setDisplayResetKey((key) => key + 1);
     },
     onToggleExpandAllTools: () => setExpandAllTools((expanded) => !expanded),
@@ -1219,7 +1248,7 @@ export function ChatWindow({
               style={{ overflowAnchor: "none" }}
             >
               <div
-                ref={stick.contentRef}
+                ref={autoScroll.contentRef}
                 style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}
               >
                 <div
@@ -1350,7 +1379,7 @@ export function ChatWindow({
                           prevAssistantEntryId={
                             sessionBusy ? undefined : prevAssistantEntryId
                           }
-                          onEditResend={handleEditResend}
+                          onEditResend={editResendWithIntent}
                           editInputRender={renderEditInput}
                           onEditContent={handleEditContent}
                           showTimestamp={showTimestamp}
@@ -1727,11 +1756,11 @@ export function ChatWindow({
                 </div>
               </div>
             </div>
-            {!stick.isAtBottom && (
+            {!pinnedToBottom && (
               <button
                 type="button"
                 aria-label={t("chat.jumpToBottom")}
-                onClick={() => void stick.scrollToBottom()}
+                onClick={() => autoScroll.scrollToBottom("smooth")}
                 className="absolute bottom-3 left-1/2 z-40 flex size-7 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-secondary)] text-[var(--text-muted)] shadow-md transition-colors duration-100 hover:text-[var(--text)]"
               >
                 <ChevronDown size={14} />
@@ -1744,7 +1773,7 @@ export function ChatWindow({
                 scrollContainer={scrollContainerRef}
                 messageRefs={messageRefs}
                 onRevealHistory={revealHistoryForMinimap}
-                onNavigateStart={stick.stopScroll}
+                onNavigateStart={autoScroll.release}
               />
             )}
           </div>
