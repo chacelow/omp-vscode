@@ -20,8 +20,9 @@ Full context: GitHub issue [#1 (retitled Ticket 3)](https://github.com/chacelow/
 | **#3** | **T2 part registry** | ✅ landed | `9140a77` |
 | **#4** | **T4 useAgentSession decomp Phase A** | ✅ landed | `feb904a` |
 | **#1** | **T3 vendor + 4 assistant-ui swap** | ✅ landed | `f741088` |
+| **#5** | **T5 Phase A cont. (tools + permissions + subagents)** | ✅ landed | `fa065ba` |
 
-Phase 1 complete. Bundle 1,846,459 → **1,852,070 gzip bytes** (+5,611 B / +30 KB budget = 18% used). vitest 38/38 pass. tsc silent for `omp-vscode`.
+Phase 1 + Phase A cont. complete. Bundle 1,846,459 → **1,852,471 gzip bytes** (+6,012 B / +30 KB budget = 20% used). vitest 38/38 pass. tsc silent for `omp-vscode`. `subscribeAcp` has one non-bridge caller (`transport/acp-events.ts`). `useAgentSession.ts` is 1623 lines; Phase A contract step (delete facade) is deferred to a future ticket.
 
 ## 3. Established conventions (MUST follow for future tickets)
 
