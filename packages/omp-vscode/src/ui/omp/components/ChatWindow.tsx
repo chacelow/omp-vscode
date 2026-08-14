@@ -650,6 +650,29 @@ export function ChatWindow({
     if (loading) return;
     autoScroll.scrollToBottom("instant");
   }, [loading, session?.id, autoScroll.scrollToBottom]);
+  // Edit-resend anchoring (ChatGPT edit semantics; cf. Continue's
+  // useAutoScroll: "Only reset scroll state when a new user message is
+  // added"). The rewind+reload rebuilds the transcript with fresh entry
+  // ids, so exact scrollTop restoration is meaningless — instead anchor
+  // the resent user message (now the LAST user message) near the top of
+  // the viewport and let the new response stream in below it. Follow
+  // stays released; the ↓ button re-engages.
+  const pendingResendAnchorRef = useRef(false);
+  useEffect(() => {
+    if (!pendingResendAnchorRef.current) return;
+    const el = lastUserMsgRef.current;
+    const scroller = scrollContainerRef.current;
+    if (!(el && scroller)) return;
+    pendingResendAnchorRef.current = false;
+    requestAnimationFrame(() => {
+      const top =
+        el.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().top +
+        scroller.scrollTop -
+        scroller.clientHeight * 0.15;
+      scroller.scrollTo({ top: Math.max(0, top), behavior: "instant" });
+    });
+  }, [messages, lastUserMsgRef, scrollContainerRef]);
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
@@ -821,6 +844,15 @@ export function ChatWindow({
       return handleSend(...args);
     },
     [autoScroll.scrollToBottom, handleSend]
+  );
+  const editResendAnchored = useCallback(
+    (...args: Parameters<typeof handleEditResend>) => {
+      // No scroll intent — the viewport must not move now. The anchor
+      // effect above repositions once the rewound transcript arrives.
+      pendingResendAnchorRef.current = true;
+      return handleEditResend(...args);
+    },
+    [handleEditResend]
   );
   const chatInputProps: ChatInputProps = {
     onSend: sendWithIntent,
@@ -1388,7 +1420,7 @@ export function ChatWindow({
                           prevAssistantEntryId={
                             sessionBusy ? undefined : prevAssistantEntryId
                           }
-                          onEditResend={handleEditResend}
+                          onEditResend={editResendAnchored}
                           editInputRender={renderEditInput}
                           onEditContent={handleEditContent}
                           showTimestamp={showTimestamp}
