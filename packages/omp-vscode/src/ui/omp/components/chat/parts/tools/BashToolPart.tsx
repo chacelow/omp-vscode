@@ -6,6 +6,7 @@ import { TerminalBlock } from "@/components/ai/terminal-block";
 import { toTerminalStats } from "@/domain/terminal";
 import type { ToolPartProps } from "../types";
 import { cn } from "@/lib/utils";
+import { releaseAutoFollow } from "@/lib/scroll-control";
 
 /**
  * Bash / shell tool renderer, backed by the vendored `<TerminalBlock>`.
@@ -67,7 +68,12 @@ export function BashToolPart({ block, result, cwd }: ToolPartProps) {
           {overflowed && (
             <button
               type="button"
-              onClick={() => setExpanded((v) => !v)}
+              onClick={() =>
+                setExpanded((v) => {
+                  if (!v) releaseAutoFollow();
+                  return !v;
+                })
+              }
               className="text-[var(--text-dim)] hover:text-[var(--text-muted)] underline-offset-2 hover:underline"
             >
               {expanded ? "Collapse" : `Show ${hidden} more line${hidden === 1 ? "" : "s"}`}

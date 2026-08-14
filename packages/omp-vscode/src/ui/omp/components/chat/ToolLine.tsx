@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { copyText } from "@/lib/clipboard";
+import { releaseAutoFollow } from "@/lib/scroll-control";
 import { cn } from "@/lib/utils";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import type {
@@ -1514,7 +1515,14 @@ export function ExploringGroup({
     <div className="flex flex-col gap-0.5">
       <button
         type="button"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={() =>
+          setExpanded((prev) => {
+            // Expanding grows content mid-transcript; release the follow lock
+            // so the growth isn't mistaken for streaming output.
+            if (!prev) releaseAutoFollow();
+            return !prev;
+          })
+        }
         className="flex items-center gap-1.5 border-none bg-transparent p-0 text-left text-[12px] text-[var(--text-muted)] hover:text-[var(--text)]"
       >
         {expanded ? (

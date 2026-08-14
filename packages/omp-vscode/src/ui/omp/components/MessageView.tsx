@@ -11,6 +11,7 @@ import {
 import { Collapse } from "./ui/collapse";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
+import { releaseAutoFollow } from "@/lib/scroll-control";
 import { cn } from "@/lib/utils";
 import { parseAnsiLine } from "@/lib/ansi";
 import { Shimmer } from "./ai-elements/shimmer";
@@ -405,7 +406,17 @@ function UserMessageView({
         flexDirection: "column",
         alignItems: "center",
       }}
-      onPointerDown={!editing ? () => setEditing(true) : undefined}
+      onPointerDown={
+        !editing
+          ? () => {
+              // Entering edit mode mounts the composer (content grows). If the
+              // viewport is pinned at the bottom, that growth would re-pin and
+              // yank the clicked message out of view — release the lock first.
+              releaseAutoFollow();
+              setEditing(true);
+            }
+          : undefined
+      }
     >
       {/* Inline composer/editor: full column width, no side padding or bleed
           — same box geometry as the bottom composer. */}
@@ -1082,6 +1093,9 @@ export function ThinkingBlock({
 
   const toggle = async () => {
     const nextExpanded = !expanded;
+    // Expanding mid-transcript grows content; release the follow lock so the
+    // viewport isn't re-pinned to the bottom by the growth.
+    if (nextExpanded) releaseAutoFollow();
     setExpanded(nextExpanded);
     if (!nextExpanded || !block.deferred || content !== null) return;
     if (!sessionId || !entryId) {

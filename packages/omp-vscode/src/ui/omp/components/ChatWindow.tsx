@@ -45,7 +45,8 @@ import { UserMessageSelector } from "./UserMessageSelector";
 import { AgentHub } from "./agent-hub/AgentHub";
 import { HistorySearchDialog } from "./HistorySearchDialog";
 import { AppLoading } from "./ui/app-loading";
-import { ChevronRight, Clock, TriangleAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, TriangleAlert } from "lucide-react";
+import { registerScrollControl } from "@/lib/scroll-control";
 import { useI18n } from "@/hooks/useI18n";
 import {
   useAgentSession,
@@ -619,6 +620,17 @@ export function ChatWindow({
       stick.scrollRef.current = node;
     },
     [scrollContainerRef, stick.scrollRef]
+  );
+  // Expose stopScroll/scrollToBottom to nested components (edit-mode mounts,
+  // tool expanders) so user-initiated layout growth releases the follow lock
+  // instead of being mistaken for streaming output. See lib/scroll-control.ts.
+  useEffect(
+    () =>
+      registerScrollControl({
+        stopScroll: stick.stopScroll,
+        scrollToBottom: () => void stick.scrollToBottom(),
+      }),
+    [stick.stopScroll, stick.scrollToBottom]
   );
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
@@ -1204,6 +1216,7 @@ export function ChatWindow({
             <div
               ref={mergedScrollRef}
               className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4"
+              style={{ overflowAnchor: "none" }}
             >
               <div
                 ref={stick.contentRef}
@@ -1714,6 +1727,16 @@ export function ChatWindow({
                 </div>
               </div>
             </div>
+            {!stick.isAtBottom && (
+              <button
+                type="button"
+                aria-label={t("chat.jumpToBottom")}
+                onClick={() => void stick.scrollToBottom()}
+                className="absolute bottom-3 left-1/2 z-40 flex size-7 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-secondary)] text-[var(--text-muted)] shadow-md transition-colors duration-100 hover:text-[var(--text)]"
+              >
+                <ChevronDown size={14} />
+              </button>
+            )}
             {minimapOpen && (
               <ChatMinimap
                 messages={messages}
