@@ -831,10 +831,10 @@ export function ChatWindow({
     onOpenTemporaryModelPicker: () => setTemporaryModelPickerOpen(true),
     onToggleThinking: () => setShowThinking((visible) => !visible),
     onDisplayReset: () => {
-      messagesEndRef.current?.scrollIntoView({
-        block: "end",
-        behavior: "instant",
-      });
+      // Route through the stick-to-bottom controller instead of a raw
+      // scrollIntoView so its internal anchor state stays consistent
+      // (a bypassed jump leaves the spring animating from a stale target).
+      void stick.scrollToBottom({ animation: "instant" });
       setDisplayResetKey((key) => key + 1);
     },
     onToggleExpandAllTools: () => setExpandAllTools((expanded) => !expanded),
@@ -1721,6 +1721,7 @@ export function ChatWindow({
                 scrollContainer={scrollContainerRef}
                 messageRefs={messageRefs}
                 onRevealHistory={revealHistoryForMinimap}
+                onNavigateStart={stick.stopScroll}
               />
             )}
           </div>

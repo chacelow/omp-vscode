@@ -1069,11 +1069,15 @@ export function ThinkingBlock({
     prevStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
-  // While streaming + expanded, keep the tail of the thinking visible.
+  // While streaming + expanded, keep the tail of the thinking visible —
+  // but only when the user hasn't scrolled up inside the box. Following
+  // unconditionally yanks the inner scrollbox back to the tail on every
+  // chunk, fighting the user's read position.
   useEffect(() => {
-    if (isStreaming && expanded && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
-    }
+    const el = contentRef.current;
+    if (!(isStreaming && expanded && el)) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [content, block.thinking, isStreaming, expanded]);
 
   const toggle = async () => {

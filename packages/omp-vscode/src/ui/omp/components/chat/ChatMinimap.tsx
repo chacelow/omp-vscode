@@ -29,6 +29,10 @@ interface Props {
   scrollContainer: RefObject<HTMLDivElement | null>;
   messageRefs: RefObject<(HTMLDivElement | null)[]>;
   onRevealHistory: () => void;
+  /** Called before any programmatic navigation scroll. Lets the owner
+   * release the stick-to-bottom lock so the auto-follow spring doesn't
+   * fight the smooth scroll while a turn is streaming. */
+  onNavigateStart?: () => void;
 }
 
 const MAX_NODE_GAP = 50;
@@ -89,6 +93,7 @@ export function ChatMinimap({
   scrollContainer,
   messageRefs,
   onRevealHistory,
+  onNavigateStart,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const [allNodes, setAllNodes] = useState<NodeInfo[]>([]);
@@ -262,6 +267,7 @@ export function ChatMinimap({
         if (targetTop === null) return;
         pendingNavigationRef.current = null;
         lockActiveNode(pendingNode.index);
+        onNavigateStart?.();
         const targetOffset = scrollEl.clientHeight * 0.3;
         scrollEl.scrollTo({
           top: Math.max(0, targetTop - targetOffset),
@@ -269,7 +275,7 @@ export function ChatMinimap({
         });
       }
     }, 150);
-  }, [lockActiveNode, messageRefs, scrollContainer, syncActiveNode]);
+  }, [lockActiveNode, messageRefs, onNavigateStart, scrollContainer, syncActiveNode]);
 
   useEffect(() => {
     const el = scrollContainer.current;
@@ -319,13 +325,14 @@ export function ChatMinimap({
         onRevealHistory();
         return;
       }
+      onNavigateStart?.();
       const targetTop = Math.max(
         0,
         node.targetTurn.scrollTop - scrollEl.clientHeight * 0.3
       );
       scrollEl.scrollTo({ top: targetTop, behavior });
     },
-    [lockActiveNode, onRevealHistory, scrollContainer]
+    [lockActiveNode, onNavigateStart, onRevealHistory, scrollContainer]
   );
 
   const scrollToAssistant = useCallback(
@@ -351,9 +358,10 @@ export function ChatMinimap({
         scrollEl.scrollTop -
         scrollEl.clientHeight * 0.3;
       lockActiveNode(node.index);
+      onNavigateStart?.();
       scrollEl.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
     },
-    [lockActiveNode, onRevealHistory, scrollContainer]
+    [lockActiveNode, onNavigateStart, onRevealHistory, scrollContainer]
   );
 
   const findNearestNode = useCallback((ratio: number): NodeInfo | null => {
@@ -403,9 +411,10 @@ export function ChatMinimap({
         scrollEl.scrollTop -
         scrollEl.clientHeight * 0.3;
       lockActiveNode(node.index);
+      onNavigateStart?.();
       scrollEl.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
     },
-    [lockActiveNode, onRevealHistory, scrollContainer]
+    [lockActiveNode, onNavigateStart, onRevealHistory, scrollContainer]
   );
 
   const cancelPreviewHide = useCallback(() => {
